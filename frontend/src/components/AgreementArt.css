@@ -1,0 +1,154 @@
+.d26-agr {
+  --black: #0a0a0e;
+  --amber: #f0a500;
+  --cream: #f0ebe0;
+  --muted: #8a8378;
+  width: min(720px, 100%);
+  margin: 0 auto;
+  background: var(--black);
+  color: var(--cream);
+  position: relative;
+  border: 1px solid rgba(240, 165, 0, 0.28);
+  font-family: "DM Sans", system-ui, sans-serif;
+}
+
+.d26-agr__frame-outer,
+.d26-agr__frame-inner {
+  position: absolute;
+  pointer-events: none;
+}
+.d26-agr__frame-outer {
+  inset: 8px;
+  border: 1px solid rgba(240, 165, 0, 0.2);
+}
+.d26-agr__frame-inner {
+  inset: 14px;
+  border: 1px solid rgba(240, 165, 0, 0.08);
+}
+
+.d26-agr__logo {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.75rem;
+  width: 56px;
+  height: 56px;
+  z-index: 2;
+}
+.d26-agr__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 2px solid rgba(240, 165, 0, 0.45);
+  background: #000;
+}
+
+.d26-agr__letter {
+  position: relative;
+  z-index: 1;
+  padding: 2rem 2rem 1.75rem;
+}
+
+.d26-agr__org {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--amber);
+  font-weight: 700;
+}
+
+.d26-agr__title {
+  margin: 0.35rem 0 0.25rem;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
+  font-weight: 700;
+  color: var(--cream);
+}
+
+.d26-agr__meta {
+  margin: 0 0 1.25rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.d26-agr__salute {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  max-width: 36rem;
+}
+.d26-agr__salute strong {
+  color: var(--amber);
+}
+
+.d26-agr__tagline {
+  margin: 0 0 1.1rem;
+  padding: 0.65rem 0.85rem;
+  border-left: 3px solid var(--amber);
+  background: rgba(240, 165, 0, 0.06);
+  font-size: 0.9rem;
+}
+.d26-agr__tagline strong {
+  color: var(--cream);
+}
+
+.d26-agr__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+  max-width: 38rem;
+}
+.d26-agr__body p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: #c8c2b6;
+}
+
+.d26-agr__sign-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid rgba(240, 165, 0, 0.18);
+}
+
+.d26-agr__sign-name {
+  margin: 0 0 0.25rem;
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-style: italic;
+  font-size: 1.15rem;
+  color: var(--cream);
+}
+
+.d26-agr__sign-label {
+  margin: 0;
+  font-size: 0.65rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.d26-agr__check {
+  margin: 1.1rem 0 0;
+  font-size: 0.7rem;
+  color: rgba(240, 165, 0, 0.75);
+  word-break: break-all;
+}
+
+@media (max-width: 560px) {
+  .d26-agr__letter {
+    padding: 1.5rem 1.25rem 1.25rem;
+  }
+  .d26-agr__sign-block {
+    grid-template-columns: 1fr;
+  }
+  .d26-agr__logo {
+    width: 44px;
+    height: 44px;
+    top: 1.1rem;
+    right: 1.1rem;
+  }
+}

@@ -1,0 +1,45 @@
+User-agent: *
+Allow: /
+Allow: /verify
+Allow: /verify/
+Allow: /check-agreement
+Allow: /check-agreement/
+Allow: /contact
+Allow: /about
+Allow: /a/
+Allow: /llms.txt
+Allow: /sitemap.xml
+Disallow: /sign/
+Disallow: /claim-cert/
+Disallow: /admin
+
+User-agent: GPTBot
+Allow: /
+Allow: /verify
+Allow: /a/
+Allow: /llms.txt
+
+User-agent: Google-Extended
+Allow: /
+Allow: /verify
+Allow: /a/
+Allow: /llms.txt
+
+User-agent: ClaudeBot
+Allow: /
+Allow: /verify
+Allow: /a/
+Allow: /llms.txt
+
+User-agent: PerplexityBot
+Allow: /
+Allow: /verify
+Allow: /a/
+Allow: /llms.txt
+
+User-agent: Applebot-Extended
+Allow: /
+Allow: /verify
+Allow: /a/
+
+Sitemap: https://digital26.online/sitemap.xml

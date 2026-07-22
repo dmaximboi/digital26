@@ -1,0 +1,27 @@
+{
+  "name": "The Digital 26",
+  "short_name": "Digital26",
+  "description": "3-month Vibe Coding masterclass, service agreements, and publicly verifiable certificates.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#000000",
+  "theme_color": "#ff9e00",
+  "lang": "en",
+  "categories": ["education", "business"],
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

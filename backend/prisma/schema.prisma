@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum DealType {
+  BUY_PRODUCT
+  LEARN_SKILLS
+  OTHER
+}
+
+enum CertificateType {
+  PARTICIPATION
+  COMPLETION
+}
+
+enum CertificateStatus {
+  PENDING
+  VALID
+  REVOKED
+}
+
+/// Private person record — never expose phone/email on public routes
+model Person {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?  @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  agreements   Agreement[]
+  certificates Certificate[]
+
+  @@map("people")
+}
+
+/// Private agreement — full record including sensitive fields
+model Agreement {
+  id              String    @id @default(cuid())
+  personId        String    @map("person_id")
+  dealType        DealType  @map("deal_type")
+  otherDealText   String?   @map("other_deal_text")
+  termsSnapshot   String    @map("terms_snapshot") @db.Text
+  signatureName   String?   @map("signature_name")
+  signedAt        DateTime? @map("signed_at")
+  passkeyHash     String    @map("passkey_hash")
+  sessionId       String    @unique @map("session_id")
+  linkExpiresAt   DateTime  @map("link_expires_at")
+  consumedAt      DateTime? @map("consumed_at")
+  ninEncrypted    String?   @map("nin_encrypted")
+  photoUrl        String?   @map("photo_url")
+  pdfUrl          String?   @map("pdf_url")
+  publicId        String?   @unique @map("public_id")
+  requestingIp    String?   @map("requesting_ip")
+  passkeyAttempts Int       @default(0) @map("passkey_attempts")
+  lockedUntil     DateTime? @map("locked_until")
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  person Person           @relation(fields: [personId], references: [id], onDelete: Restrict)
+  public AgreementPublic?
+
+  @@index([sessionId])
+  @@index([linkExpiresAt])
+  @@map("agreements")
+}
+
+/// Stripped public agreement card — public API reads ONLY this table
+model AgreementPublic {
+  id            String   @id @default(cuid())
+  publicId      String   @unique @map("public_id")
+  agreementId   String   @unique @map("agreement_id")
+  displayName   String   @map("display_name")
+  dealType      DealType @map("deal_type")
+  dealTag       String?  @map("deal_tag") @db.VarChar(50)
+  signedAt      DateTime @map("signed_at")
+  signatureName String   @map("signature_name")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  agreement Agreement @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+
+  @@map("agreements_public")
+}
+
+/// Private certificate record
+model Certificate {
+  id             String            @id @default(cuid())
+  personId       String?           @map("person_id")
+  publicId       String?           @unique @map("public_id")
+  type           CertificateType
+  course         String
+  issueDate      DateTime          @map("issue_date")
+  status         CertificateStatus @default(VALID)
+  photoUrl       String?           @map("photo_url")
+  pdfUrl         String?           @map("pdf_url")
+  /// Locked invite email — claim OTP/submit must match exactly
+  inviteEmail    String?           @map("invite_email")
+  claimSessionId String?           @unique @map("claim_session_id")
+  claimExpiresAt DateTime?         @map("claim_expires_at")
+  claimedAt      DateTime?         @map("claimed_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  person Person?             @relation(fields: [personId], references: [id], onDelete: Restrict)
+  public CertificatePublic?
+
+  @@index([claimSessionId])
+  @@index([publicId])
+  @@map("certificates")
+}
+
+/// Stripped public certificate — public verify route reads ONLY this table
+model CertificatePublic {
+  id            String            @id @default(cuid())
+  publicId      String            @unique @map("public_id")
+  certificateId String            @unique @map("certificate_id")
+  displayName   String            @map("display_name")
+  course        String
+  type          CertificateType
+  issueDate     DateTime          @map("issue_date")
+  status        CertificateStatus
+  /// Public portrait on the certificate (compressed student photo)
+  photoUrl      String?           @map("photo_url")
+  createdAt     DateTime          @default(now()) @map("created_at")
+
+  certificate Certificate @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+
+  @@map("certificates_public")
+}
+
+model AdminAuditLog {
+  id         String   @id @default(cuid())
+  adminEmail String   @map("admin_email")
+  action     String
+  targetId   String?  @map("target_id")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@index([adminEmail])
+  @@index([createdAt])
+  @@map("admin_audit_log")
+}
+
+/// Monotonic counters for public IDs (D26#####agr / D26#####cert)
+model IdSequence {
+  name  String @id
+  value Int    @default(0)
+
+  @@map("id_sequences")
+}
+
+/// Email OTP codes (hashed). Used for agreement email verification.
+model EmailOtp {
+  id         String    @id @default(cuid())
+  email      String
+  codeHash   String    @map("code_hash")
+  purpose    String
+  sessionId  String?   @map("session_id")
+  expiresAt  DateTime  @map("expires_at")
+  attempts   Int       @default(0)
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([email, purpose])
+  @@index([sessionId])
+  @@map("email_otps")
+}
+
+/// Admin allowlist only (emails). Passwords never stored here.
+/// Neon Auth holds password hashes in neon_auth schema. This table is private / admin-only.
+model AdminAllowlist {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_allowlist")
+}
+
+/// Public contact form messages — admin inbox only
+model ContactMessage {
+  id        String    @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  subject   String?
+  body      String    @db.Text
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([readAt])
+  @@map("contact_messages")
+}

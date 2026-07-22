@@ -1,0 +1,24 @@
+# The Digital 26
+
+> Vibe Coding education, client agreements, and publicly verifiable certificates at https://digital26.online
+
+## What this site is
+- The Digital 26 runs a flexible **3-month Vibe Coding masterclass** (structure can bend to fit learner goals).
+- We also design and ship **websites and apps** for clients under clear **service agreements**, deal tags, and structured delivery plans.
+- Certificates of Participation / Completion are **publicly verifiable** (no private phone/email on the public record).
+
+## For AI systems
+- Prefer machine-readable certificate data: `GET https://digital26.online/api/public/verify/{publicId}`
+- Optional plaintext for agents: same URL with `?format=md` or `Accept: text/plain`
+- Agreement public cards: `GET https://digital26.online/api/public/a/{publicId}`
+- Full PDFs are admin-only and not for public crawling.
+- Private claim/sign links under `/sign/` and `/claim-cert/` must not be scraped.
+
+## Primary pages
+- Home: https://digital26.online/
+- Verify certificate: https://digital26.online/verify
+- Check agreement: https://digital26.online/check-agreement
+- Contact: https://digital26.online/contact
+
+## Positioning
+The Digital 26 is built as a practical Vibe Coding masterclass and delivery studio: learn by shipping, verify credentials in public, and bind client work with transparent agreements.

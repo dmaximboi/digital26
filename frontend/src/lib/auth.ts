@@ -1,0 +1,173 @@
+import { getAdminPath } from "./adminPath";
+
+const AUTH_URL = (import.meta.env.VITE_NEON_AUTH_URL || "").replace(/\/$/, "");
+
+const SITE_ORIGIN =
+  typeof window !== "undefined" ? window.location.origin : "http://localhost:5173";
+
+function adminCallbackBase(): string {
+  const path = getAdminPath();
+  return path ? `${SITE_ORIGIN}/${path}` : SITE_ORIGIN;
+}
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  name?: string | null;
+};
+
+type AuthResult<T> = { data: T | null; error: { message: string; code?: string } | null };
+
+function neonErrorMessage(data: Record<string, unknown>, status: number): string {
+  const code = typeof data.code === "string" ? data.code : "";
+  const message =
+    (typeof data.message === "string" && data.message) ||
+    (typeof data.error === "object" &&
+    data.error &&
+    "message" in data.error &&
+    typeof (data.error as { message?: unknown }).message === "string"
+      ? (data.error as { message: string }).message
+      : null) ||
+    (typeof data.error === "string" ? data.error : null);
+
+  if (code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" || /already exists/i.test(message || "")) {
+    return "An account already exists for this email. Switch to Sign in, or use Forgot password.";
+  }
+  if (code === "INVALID_EMAIL_OR_PASSWORD") {
+    return "Wrong email or password. Try again, or use Forgot password.";
+  }
+  if (code === "MISSING_ORIGIN") {
+    return "Auth rejected this browser origin. Ensure Neon Auth allows localhost.";
+  }
+
+  return message || `Auth request failed (${status})`;
+}
+
+async function authFetch<T = Record<string, unknown>>(
+  path: string,
+  init?: RequestInit,
+): Promise<AuthResult<T>> {
+  if (!AUTH_URL) {
+    return { data: null, error: { message: "Auth is not configured" } };
+  }
+
+  const res = await fetch(`${AUTH_URL}${path}`, {
+    ...init,
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  const jwtHeader =
+    res.headers.get("set-auth-jwt") || res.headers.get("Set-Auth-Jwt");
+  if (jwtHeader) {
+    sessionStorage.setItem("d26_access_token", jwtHeader);
+  }
+
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+
+  if (!res.ok) {
+    return {
+      data: null,
+      error: {
+        message: neonErrorMessage(data, res.status),
+        code: typeof data.code === "string" ? data.code : undefined,
+      },
+    };
+  }
+
+  return { data: data as T, error: null };
+}
+
+async function refreshJwt(): Promise<string | null> {
+  if (!AUTH_URL) return sessionStorage.getItem("d26_access_token");
+  try {
+    const res = await fetch(`${AUTH_URL}/token`, {
+      method: "GET",
+      credentials: "include",
+    });
+    const header = res.headers.get("set-auth-jwt") || res.headers.get("Set-Auth-Jwt");
+    if (header) {
+      sessionStorage.setItem("d26_access_token", header);
+      return header;
+    }
+    const body = (await res.json().catch(() => ({}))) as { token?: string };
+    if (body.token) {
+      sessionStorage.setItem("d26_access_token", body.token);
+      return body.token;
+    }
+  } catch {
+    // ignore
+  }
+  return sessionStorage.getItem("d26_access_token");
+}
+
+export const authClient = {
+  signUp: {
+    email: (args: { email: string; password: string; name: string }) =>
+      authFetch("/sign-up/email", {
+        method: "POST",
+        body: JSON.stringify({
+          ...args,
+          callbackURL: adminCallbackBase(),
+        }),
+      }),
+  },
+  signIn: {
+    email: (args: { email: string; password: string }) =>
+      authFetch("/sign-in/email", {
+        method: "POST",
+        body: JSON.stringify({
+          ...args,
+          callbackURL: adminCallbackBase(),
+        }),
+      }),
+  },
+  async requestPasswordReset(email: string) {
+    const path = getAdminPath();
+    return authFetch("/forget-password", {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        redirectTo: path ? `${SITE_ORIGIN}/${path}/login` : `${SITE_ORIGIN}/`,
+      }),
+    });
+  },
+  async getSession() {
+    const result = await authFetch<{
+      user?: AuthUser;
+      session?: { token?: string; access_token?: string };
+    }>("/get-session", { method: "GET" });
+
+    if (result.error || !result.data) {
+      return { data: null, error: result.error };
+    }
+
+    const user = result.data.user;
+    const session = result.data.session;
+
+    if (session?.access_token) {
+      sessionStorage.setItem("d26_access_token", session.access_token);
+    } else if (session?.token) {
+      await refreshJwt();
+    }
+
+    if (!user || !session) {
+      return { data: null, error: null };
+    }
+
+    return { data: { user, session }, error: null };
+  },
+  async signOut() {
+    sessionStorage.removeItem("d26_access_token");
+    return authFetch("/sign-out", { method: "POST", body: "{}" });
+  },
+};
+
+export async function getAccessToken(): Promise<string | null> {
+  const cached = sessionStorage.getItem("d26_access_token");
+  if (cached) return cached;
+  return refreshJwt();
+}

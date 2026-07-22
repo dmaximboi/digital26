@@ -1,0 +1,331 @@
+.cl-scene {
+  --amber: #f0a500;
+  position: relative;
+  width: 100%;
+  max-width: min(420px, 92vw);
+  margin: 0 auto 1.5rem;
+  padding: clamp(0.75rem, 3vw, 1.5rem) clamp(0.5rem, 2vw, 1rem) 0.25rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.cl-glow {
+  position: absolute;
+  width: 70%;
+  height: 55%;
+  top: 12%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(240, 165, 0, 0.22), transparent 70%);
+  filter: blur(8px);
+  animation: cl-pulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.cl-laptop {
+  position: relative;
+  width: min(100%, 340px);
+  z-index: 1;
+  transform-origin: center bottom;
+  animation: cl-float 5s ease-in-out infinite;
+}
+.cl-laptop--tap {
+  animation: none;
+  transform: translateY(2px) scale(0.985);
+}
+
+.cl-screen {
+  background: #1a1e28;
+  border-radius: clamp(8px, 2vw, 12px) clamp(8px, 2vw, 12px) 4px 4px;
+  padding: clamp(6px, 1.5vw, 10px) clamp(6px, 1.5vw, 10px) 6px;
+  border: 1px solid rgba(240, 165, 0, 0.25);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+
+.cl-bezel {
+  background: #080a10;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  min-height: clamp(132px, 38vw, 168px);
+  display: flex;
+  flex-direction: column;
+}
+
+.cl-chrome {
+  display: flex;
+  gap: 5px;
+  padding: clamp(6px, 1.5vw, 8px) clamp(8px, 2vw, 10px);
+  background: #12151e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+}
+.cl-chrome span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3a4150;
+}
+.cl-chrome span:nth-child(1) {
+  background: #ff6b6b;
+}
+.cl-chrome span:nth-child(2) {
+  background: #f0a500;
+}
+.cl-chrome span:nth-child(3) {
+  background: #3dd6c6;
+}
+
+.cl-editor {
+  display: flex;
+  flex: 1;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: clamp(0.62rem, 2.4vw, 0.75rem);
+  line-height: 1.55;
+}
+
+.cl-gutter {
+  padding: 12px 8px 12px 10px;
+  color: #3a4150;
+  text-align: right;
+  user-select: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.04);
+}
+.cl-gutter i {
+  display: block;
+  font-style: normal;
+}
+
+.cl-code {
+  padding: 12px 12px 12px 10px;
+  color: #c8cdd8;
+  flex: 1;
+  overflow: hidden;
+}
+.cl-code p {
+  margin: 0 0 0.35rem;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 0;
+  animation: cl-type 2.4s steps(32) forwards;
+}
+
+.cl-code .kw {
+  color: #c792ea;
+}
+.cl-code .str {
+  color: #c3e88d;
+}
+.cl-code .fn {
+  color: #82aaff;
+}
+
+.cl-code .cursor,
+.cl-execute .cursor {
+  display: inline-block;
+  width: 7px;
+  height: 0.9em;
+  margin-left: 2px;
+  background: var(--amber);
+  vertical-align: text-bottom;
+  animation: cl-blink 1s step-end infinite;
+}
+
+.cl-execute {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: clamp(0.85rem, 3vw, 1.05rem);
+  color: var(--amber);
+  animation: cl-fade-in 0.35s ease;
+}
+.cl-execute__prompt {
+  color: #3dd6c6;
+  font-weight: 700;
+}
+.cl-execute__text {
+  letter-spacing: 0.04em;
+}
+
+.cl-logo-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  animation: cl-logo-in 0.55s ease;
+  background: radial-gradient(circle at center, rgba(240, 165, 0, 0.12), transparent 65%);
+}
+.cl-logo-screen__img {
+  width: clamp(52px, 16vw, 72px);
+  height: clamp(52px, 16vw, 72px);
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(240, 165, 0, 0.55);
+  box-shadow: 0 0 28px rgba(240, 165, 0, 0.35);
+  background: #000;
+}
+.cl-logo-screen__name {
+  margin: 0;
+  font-family: Orbitron, sans-serif;
+  font-size: clamp(0.7rem, 2.5vw, 0.85rem);
+  letter-spacing: 0.12em;
+  color: var(--amber);
+  text-transform: uppercase;
+}
+
+.cl-hinge {
+  height: 6px;
+  background: #252b38;
+  margin: 0 8%;
+  border-radius: 0 0 2px 2px;
+}
+
+.cl-base {
+  display: block;
+  width: 100%;
+  background: linear-gradient(180deg, #2a3140, #1a1e28);
+  border-radius: 0 0 14px 14px;
+  min-height: clamp(36px, 10vw, 48px);
+  border: 1px solid rgba(240, 165, 0, 0.12);
+  border-top: none;
+  position: relative;
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  padding: 0;
+  color: inherit;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.cl-base:hover {
+  border-color: rgba(240, 165, 0, 0.35);
+}
+.cl-base:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+.cl-base--pressed {
+  transform: translateY(2px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.35);
+}
+
+.cl-keys {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 8px;
+  display: flex;
+  gap: 3px;
+  justify-content: center;
+  pointer-events: none;
+}
+.cl-key {
+  width: clamp(8px, 2.2vw, 12px);
+  height: clamp(6px, 1.6vw, 8px);
+  background: #3a4150;
+  border-radius: 2px;
+  opacity: 0.7;
+}
+.cl-base--pressed .cl-key:nth-child(odd) {
+  transform: translateY(1px);
+  background: var(--amber);
+  opacity: 0.85;
+}
+
+.cl-track {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: clamp(28px, 10vw, 40px);
+  height: 7px;
+  background: #12151e;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.cl-hint {
+  position: absolute;
+  right: 10px;
+  bottom: 6px;
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(240, 165, 0, 0.55);
+  pointer-events: none;
+}
+
+.cl-caption {
+  margin: 0.85rem 0 0;
+  font-family: Orbitron, sans-serif;
+  font-size: clamp(0.65rem, 2.5vw, 0.75rem);
+  letter-spacing: 0.14em;
+  color: var(--amber);
+  text-transform: uppercase;
+}
+
+@keyframes cl-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+@keyframes cl-pulse {
+  0%,
+  100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes cl-blink {
+  50% {
+    opacity: 0;
+  }
+}
+@keyframes cl-type {
+  from {
+    max-width: 0;
+    opacity: 0.4;
+  }
+  to {
+    max-width: 100%;
+    opacity: 1;
+  }
+}
+@keyframes cl-fade-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes cl-logo-in {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 400px) {
+  .cl-hint {
+    display: none;
+  }
+  .cl-gutter {
+    display: none;
+  }
+}
