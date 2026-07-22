@@ -231,148 +231,173 @@ certificatesRouter.post(
 certificatesRouter.post(
   "/claim-cert/:sessionId/submit",
   authLimiter,
-  upload.single("photo"),
+  (req, res, next) => {
+    upload.single("photo")(req, res, (err: unknown) => {
+      if (err) {
+        const message =
+          err instanceof Error ? err.message : "Photo upload failed";
+        res.status(400).json({ error: message });
+        return;
+      }
+      next();
+    });
+  },
   async (req, res) => {
-    const sessionId = String(req.params.sessionId ?? "");
-    const body = z
-      .object({
-        fullName: z.string().min(2).max(120),
-        email: z.string().email(),
-        phone: z.string().min(5).max(32),
-        otpCode: z.string().regex(/^\d{6}$/),
-      })
-      .parse({
-        fullName: req.body?.fullName,
-        email: req.body?.email,
-        phone: req.body?.phone,
-        otpCode: req.body?.otpCode,
-      });
+    try {
+      const sessionId = String(req.params.sessionId ?? "");
+      const parsed = z
+        .object({
+          fullName: z.string().min(2).max(120),
+          email: z.string().email(),
+          phone: z.string().min(5).max(32),
+          otpCode: z.string().regex(/^\d{6}$/),
+        })
+        .safeParse({
+          fullName: req.body?.fullName,
+          email: req.body?.email,
+          phone: req.body?.phone,
+          otpCode: req.body?.otpCode,
+        });
 
-    if (!req.file) {
-      res.status(400).json({ error: "Student photo is required" });
-      return;
-    }
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid claim details or OTP format" });
+        return;
+      }
+      const body = parsed.data;
 
-    const cert = await prisma.certificate.findUnique({
-      where: { claimSessionId: sessionId },
-    });
-    if (!cert || cert.claimedAt || cert.status !== CertificateStatus.PENDING) {
-      res.status(410).json({ error: "Claim link invalid or already used" });
-      return;
-    }
-    if (cert.claimExpiresAt && cert.claimExpiresAt.getTime() < Date.now()) {
-      res.status(410).json({ error: "Claim link expired" });
-      return;
-    }
-
-    const email = body.email.toLowerCase();
-    if (!cert.inviteEmail || !emailsEqual(email, cert.inviteEmail)) {
-      res.status(400).json({
-        error: "Unable to verify this request. Check the email address and try again.",
-      });
-      return;
-    }
-
-    const phone = parsePhoneNumberFromString(body.phone, "NG");
-    if (!phone || !phone.isValid()) {
-      res.status(400).json({ error: "Invalid phone number" });
-      return;
-    }
-
-    const otp = await verifyEmailOtp({
-      email,
-      purpose: "cert_claim",
-      code: body.otpCode,
-      sessionId,
-    });
-    if (!otp.ok) {
-      res.status(400).json({ error: otp.error });
-      return;
-    }
-
-    const stored = await compressAndStoreStudentPhoto(req.file.path, uploadDir);
-    const photoUrl = stored.publicPath;
-    const claimedAt = new Date();
-
-    const result = await prisma.$transaction(async (tx) => {
-      const fresh = await tx.certificate.findUnique({
-        where: { claimSessionId: sessionId },
-      });
-      if (!fresh || fresh.claimedAt || fresh.status !== CertificateStatus.PENDING) {
-        throw new Error("LINK_INVALID");
+      if (!req.file) {
+        res.status(400).json({ error: "Student photo is required" });
+        return;
       }
 
-      const person = await tx.person.upsert({
-        where: { email },
-        create: {
-          name: body.fullName.trim(),
-          email,
-          phone: phone.format("E.164"),
-        },
-        update: {
-          name: body.fullName.trim(),
-          phone: phone.format("E.164"),
-        },
+      const cert = await prisma.certificate.findUnique({
+        where: { claimSessionId: sessionId },
       });
+      if (!cert || cert.claimedAt || cert.status !== CertificateStatus.PENDING) {
+        res.status(410).json({ error: "Claim link invalid or already used" });
+        return;
+      }
+      if (cert.claimExpiresAt && cert.claimExpiresAt.getTime() < Date.now()) {
+        res.status(410).json({ error: "Claim link expired" });
+        return;
+      }
 
-      const publicId = await nextPublicId(tx);
+      const email = body.email.toLowerCase();
+      if (!cert.inviteEmail || !emailsEqual(email, cert.inviteEmail)) {
+        res.status(400).json({
+          error: "Unable to verify this request. Check the email address and try again.",
+        });
+        return;
+      }
 
-      const updated = await tx.certificate.update({
-        where: { id: fresh.id },
-        data: {
-          personId: person.id,
-          publicId,
-          photoUrl,
-          claimedAt,
-          status: CertificateStatus.VALID,
-          claimExpiresAt: claimedAt,
-        },
+      const phone = parsePhoneNumberFromString(body.phone, "NG");
+      if (!phone || !phone.isValid()) {
+        res.status(400).json({ error: "Invalid phone number" });
+        return;
+      }
+
+      const otp = await verifyEmailOtp({
+        email,
+        purpose: "cert_claim",
+        code: body.otpCode,
+        sessionId,
       });
+      if (!otp.ok) {
+        res.status(400).json({ error: otp.error });
+        return;
+      }
 
-      await tx.certificatePublic.create({
-        data: {
+      const stored = await compressAndStoreStudentPhoto(req.file.path, uploadDir);
+      const photoUrl = stored.publicPath;
+      const claimedAt = new Date();
+
+      const result = await prisma.$transaction(async (tx) => {
+        const fresh = await tx.certificate.findUnique({
+          where: { claimSessionId: sessionId },
+        });
+        if (!fresh || fresh.claimedAt || fresh.status !== CertificateStatus.PENDING) {
+          throw new Error("LINK_INVALID");
+        }
+
+        const person = await tx.person.upsert({
+          where: { email },
+          create: {
+            name: body.fullName.trim(),
+            email,
+            phone: phone.format("E.164"),
+          },
+          update: {
+            name: body.fullName.trim(),
+            phone: phone.format("E.164"),
+          },
+        });
+
+        const publicId = await nextPublicId(tx);
+
+        const updated = await tx.certificate.update({
+          where: { id: fresh.id },
+          data: {
+            personId: person.id,
+            publicId,
+            photoUrl,
+            claimedAt,
+            status: CertificateStatus.VALID,
+            claimExpiresAt: claimedAt,
+          },
+        });
+
+        await tx.certificatePublic.create({
+          data: {
+            publicId,
+            certificateId: updated.id,
+            displayName: body.fullName.trim(),
+            course: updated.course,
+            type: updated.type,
+            issueDate: updated.issueDate,
+            status: CertificateStatus.VALID,
+            photoUrl,
+          },
+        });
+
+        return {
           publicId,
           certificateId: updated.id,
-          displayName: body.fullName.trim(),
           course: updated.course,
           type: updated.type,
           issueDate: updated.issueDate,
-          status: CertificateStatus.VALID,
-          photoUrl,
-        },
+        };
       });
 
-      return {
-        publicId,
-        certificateId: updated.id,
-        course: updated.course,
-        type: updated.type,
-        issueDate: updated.issueDate,
-      };
-    });
+      const pdf = await buildCertificatePdf({
+        publicId: result.publicId,
+        displayName: body.fullName.trim(),
+        course: result.course,
+        type: result.type,
+        issueDate: result.issueDate,
+        status: "VALID",
+        photoPath: stored.diskPath,
+        photoUrl: stored.publicPath.startsWith("http") ? stored.publicPath : undefined,
+      });
 
-    const pdf = await buildCertificatePdf({
-      publicId: result.publicId,
-      displayName: body.fullName.trim(),
-      course: result.course,
-      type: result.type,
-      issueDate: result.issueDate,
-      status: "VALID",
-      photoPath: stored.diskPath,
-      photoUrl: stored.publicPath.startsWith("http") ? stored.publicPath : undefined,
-    });
+      await prisma.certificate.update({
+        where: { id: result.certificateId },
+        data: { pdfUrl: pdf.publicUrl },
+      });
 
-    await prisma.certificate.update({
-      where: { id: result.certificateId },
-      data: { pdfUrl: pdf.publicUrl },
-    });
-
-    res.status(201).json({
-      ok: true,
-      publicId: result.publicId,
-      publicUrl: `${env.PUBLIC_SITE_URL}/verify/${result.publicId}`,
-      pdfUrl: pdf.publicUrl,
-    });
+      res.status(201).json({
+        ok: true,
+        publicId: result.publicId,
+        publicUrl: `${env.PUBLIC_SITE_URL}/verify/${result.publicId}`,
+        pdfUrl: pdf.publicUrl,
+      });
+    } catch (err) {
+      console.error("[cert.claim]", err);
+      if (err instanceof Error && err.message === "LINK_INVALID") {
+        res.status(410).json({ error: "Claim link invalid or already used" });
+        return;
+      }
+      res.status(500).json({ error: "Failed to publish certificate" });
+    }
   },
 );
 

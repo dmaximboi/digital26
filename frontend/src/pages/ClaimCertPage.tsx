@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { DocBrandHeader } from "../components/BrandMark";
 import { CertificateArt } from "../components/CertificateArt";
-import { apiGet, apiPost } from "../lib/api";
+import { apiGet, apiPost, apiPostForm } from "../lib/api";
 import { compressImage } from "../lib/compressImage";
 
 type Status =
@@ -106,18 +106,11 @@ export function ClaimCertPage() {
       form.append("otpCode", otpCode);
       form.append("photo", photo);
 
-      const res = await fetch(`/api/claim-cert/${encodeURIComponent(sessionId)}/submit`, {
-        method: "POST",
-        body: form,
-        credentials: "include",
-      });
-      const data = (await res.json()) as {
-        error?: string;
-        publicId?: string;
-        publicUrl?: string;
-      };
-      if (!res.ok) throw new Error(data.error || `Failed (${res.status})`);
-      setDone({ publicId: data.publicId!, publicUrl: data.publicUrl! });
+      const data = await apiPostForm<{ publicId: string; publicUrl: string }>(
+        `/api/claim-cert/${encodeURIComponent(sessionId)}/submit`,
+        form,
+      );
+      setDone({ publicId: data.publicId, publicUrl: data.publicUrl });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Submit failed");
     } finally {

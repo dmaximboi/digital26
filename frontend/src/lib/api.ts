@@ -1,7 +1,13 @@
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
 
 async function parseJson(res: Response): Promise<unknown> {
-  return res.json().catch(() => ({}));
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return {};
+  }
 }
 
 function errorMessage(data: unknown, status: number): string {
@@ -44,6 +50,18 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
     },
     credentials: "include",
     body: JSON.stringify(body),
+  });
+  const data = await parseJson(res);
+  if (!res.ok) throw new Error(errorMessage(data, res.status));
+  return data as T;
+}
+
+export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { Accept: "application/json" },
+    credentials: "include",
+    body: form,
   });
   const data = await parseJson(res);
   if (!res.ok) throw new Error(errorMessage(data, res.status));
