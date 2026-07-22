@@ -1,10 +1,47 @@
 import { Router } from "express";
+import { z } from "zod";
 import { prisma } from "../db/prisma.js";
 import { env } from "../config/env.js";
 import { isValidPublicId } from "../lib/publicId.js";
 import { publicLookupLimiter } from "../middleware/security.js";
 
 export const publicRouter = Router();
+
+function clientIp(req: { headers: Record<string, unknown>; ip?: string }): string {
+  const fwd = req.headers["x-forwarded-for"];
+  if (typeof fwd === "string" && fwd.trim()) {
+    return fwd.split(",")[0]?.trim() || "unknown";
+  }
+  return req.ip || "unknown";
+}
+
+const hitSchema = z.object({
+  path: z.string().min(1).max(300),
+  referrer: z.string().max(500).optional(),
+});
+
+publicRouter.post("/hit", publicLookupLimiter, async (req, res) => {
+  const parsed = hitSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(204).end();
+    return;
+  }
+
+  const ua = String(req.headers["user-agent"] ?? "").slice(0, 400);
+  try {
+    await prisma.siteVisit.create({
+      data: {
+        ip: clientIp(req).slice(0, 64),
+        path: parsed.data.path,
+        referrer: parsed.data.referrer?.trim() || null,
+        userAgent: ua || null,
+      },
+    });
+  } catch {
+    /* ignore write failures */
+  }
+  res.status(204).end();
+});
 
 function verifyUrl(publicId: string): string {
   const base = (env.PUBLIC_SITE_URL || env.APP_URL).replace(/\/$/, "");

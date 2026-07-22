@@ -196,3 +196,17 @@ model ContactMessage {
   @@index([readAt])
   @@map("contact_messages")
 }
+
+model SiteVisit {
+  id        String   @id @default(cuid())
+  ip        String
+  path      String
+  referrer  String?
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([ip])
+  @@index([path])
+  @@map("site_visits")
+}

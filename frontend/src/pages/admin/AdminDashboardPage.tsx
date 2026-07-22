@@ -10,6 +10,8 @@ type Dash = {
   pendingLinks: number;
   peopleCount: number;
   unreadMessages: number;
+  visitsToday?: number;
+  visitsTotal?: number;
 };
 
 export function AdminDashboardPage() {
@@ -47,6 +49,13 @@ export function AdminDashboardPage() {
       </div>
 
       <div className="stat-grid">
+        <article>
+          <h3>Visits today</h3>
+          <p className="stat">{data.visitsToday ?? 0}</p>
+          <Link className="muted" to={`/${ADMIN_BASE}/visits`}>
+            Open visitors →
+          </Link>
+        </article>
         <article>
           <h3>Unread messages</h3>
           <p className="stat">{data.unreadMessages}</p>

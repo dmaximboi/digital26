@@ -22,6 +22,7 @@ export function AdminLayout() {
   const links = [
     { to: `/${adminPath}`, label: "Dashboard", end: true as const },
     { to: `/${adminPath}/messages`, label: "Messages" },
+    { to: `/${adminPath}/visits`, label: "Visitors" },
     { to: `/${adminPath}/agreements`, label: "Agreements" },
     { to: `/${adminPath}/certificates`, label: "Certificates" },
     { to: `/${adminPath}/clients`, label: "Clients" },

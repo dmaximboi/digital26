@@ -17,6 +17,15 @@ export function createApp() {
   app.use(express.urlencoded({ extended: false, limit: "32kb" }));
   app.use(globalLimiter);
 
+  app.use((req, _res, next) => {
+    if (req.url.startsWith("/api/admin/") || req.url.startsWith("/api/admin?")) {
+      req.url = req.url.replace("/api/admin", "/api/ops");
+    } else if (req.url === "/api/admin") {
+      req.url = "/api/ops";
+    }
+    next();
+  });
+
   app.use(healthRouter);
   app.use("/api/public", publicRouter);
   app.use("/api/public", filesRouter);

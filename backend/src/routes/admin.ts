@@ -28,6 +28,8 @@ adminRouter.get("/ops/dashboard", requireAdmin, async (req: AuthedRequest, res) 
     pendingLinks,
     peopleCount,
     unreadMessages,
+    visitsToday,
+    visitsTotal,
   ] = await Promise.all([
     prisma.agreement.count({
       where: { signedAt: { gte: monthStart }, consumedAt: { not: null } },
@@ -47,6 +49,14 @@ adminRouter.get("/ops/dashboard", requireAdmin, async (req: AuthedRequest, res) 
     }),
     prisma.person.count(),
     prisma.contactMessage.count({ where: { readAt: null } }),
+    prisma.siteVisit.count({
+      where: {
+        createdAt: {
+          gte: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())),
+        },
+      },
+    }),
+    prisma.siteVisit.count(),
   ]);
 
   await writeAudit({
@@ -61,6 +71,37 @@ adminRouter.get("/ops/dashboard", requireAdmin, async (req: AuthedRequest, res) 
     pendingLinks,
     peopleCount,
     unreadMessages,
+    visitsToday,
+    visitsTotal,
+  });
+});
+
+adminRouter.get("/ops/visits", requireAdmin, async (_req, res) => {
+  const now = new Date();
+  const dayStart = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
+
+  const [total, today, todayRows, items] = await Promise.all([
+    prisma.siteVisit.count(),
+    prisma.siteVisit.count({ where: { createdAt: { gte: dayStart } } }),
+    prisma.siteVisit.findMany({
+      where: { createdAt: { gte: dayStart } },
+      select: { ip: true },
+    }),
+    prisma.siteVisit.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 200,
+    }),
+  ]);
+
+  const uniqueIpsToday = new Set(todayRows.map((r) => r.ip)).size;
+
+  res.json({
+    total,
+    today,
+    uniqueIpsToday,
+    items,
   });
 });
 

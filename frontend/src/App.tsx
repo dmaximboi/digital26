@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useParams } from "react-router-dom";
 import { AdminAuthProvider } from "./auth/AdminAuthContext";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
@@ -21,10 +21,23 @@ import { AdminCertificatesPage } from "./pages/admin/AdminCertificatesPage";
 import { AdminClientsPage } from "./pages/admin/AdminClientsPage";
 import { AdminAuditLogPage } from "./pages/admin/AdminAuditLogPage";
 import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
-import { ConsolePathProvider, useConsolePath } from "./lib/adminPath";
+import { AdminVisitsPage } from "./pages/admin/AdminVisitsPage";
+import {
+  ConsolePathProvider,
+  normalizeConsolePath,
+} from "./lib/adminPath";
+import { useVisitorBeacon } from "./lib/visitorBeacon";
+
+function ConsoleSegmentGate({ children }: { children: React.ReactNode }) {
+  const { seg } = useParams();
+  if (!seg || !normalizeConsolePath(seg)) {
+    return <Navigate to="/" replace />;
+  }
+  return <AdminAuthProvider>{children}</AdminAuthProvider>;
+}
 
 function AppRoutes() {
-  const { path: consolePath } = useConsolePath();
+  useVisitorBeacon();
 
   return (
     <Routes>
@@ -41,36 +54,33 @@ function AppRoutes() {
       <Route path="/admin/*" element={<Navigate to="/" replace />} />
       <Route path="/ops/*" element={<Navigate to="/" replace />} />
 
-      {consolePath ? (
-        <>
-          <Route
-            path={`/${consolePath}/login`}
-            element={
-              <AdminAuthProvider>
-                <AdminLoginPage />
-              </AdminAuthProvider>
-            }
-          />
-          <Route
-            path={`/${consolePath}`}
-            element={
-              <AdminAuthProvider>
-                <AdminLayout />
-              </AdminAuthProvider>
-            }
-          >
-            <Route index element={<AdminDashboardPage />} />
-            <Route path="messages" element={<AdminMessagesPage />} />
-            <Route path="agreements" element={<AdminAgreementsPage />} />
-            <Route path="agreements/new" element={<AdminCreateAgreementPage />} />
-            <Route path="agreements/:id" element={<AdminAgreementDetailPage />} />
-            <Route path="certificates" element={<AdminCertificatesPage />} />
-            <Route path="certificates/new" element={<AdminIssueCertificatePage />} />
-            <Route path="clients" element={<AdminClientsPage />} />
-            <Route path="audit" element={<AdminAuditLogPage />} />
-          </Route>
-        </>
-      ) : null}
+      <Route
+        path="/:seg/login"
+        element={
+          <ConsoleSegmentGate>
+            <AdminLoginPage />
+          </ConsoleSegmentGate>
+        }
+      />
+      <Route
+        path="/:seg"
+        element={
+          <ConsoleSegmentGate>
+            <AdminLayout />
+          </ConsoleSegmentGate>
+        }
+      >
+        <Route index element={<AdminDashboardPage />} />
+        <Route path="messages" element={<AdminMessagesPage />} />
+        <Route path="visits" element={<AdminVisitsPage />} />
+        <Route path="agreements" element={<AdminAgreementsPage />} />
+        <Route path="agreements/new" element={<AdminCreateAgreementPage />} />
+        <Route path="agreements/:id" element={<AdminAgreementDetailPage />} />
+        <Route path="certificates" element={<AdminCertificatesPage />} />
+        <Route path="certificates/new" element={<AdminIssueCertificatePage />} />
+        <Route path="clients" element={<AdminClientsPage />} />
+        <Route path="audit" element={<AdminAuditLogPage />} />
+      </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
