@@ -18,91 +18,115 @@ adminRouter.get("/ops/me", authLimiter, requireAdmin, async (req: AuthedRequest,
 });
 
 adminRouter.get("/ops/dashboard", requireAdmin, async (req: AuthedRequest, res) => {
-  const now = new Date();
-  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  try {
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    const dayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
 
-  const [
-    agreementsThisMonth,
-    certsIssued,
-    expiredUnusedLinks,
-    pendingLinks,
-    peopleCount,
-    unreadMessages,
-    visitsToday,
-    visitsTotal,
-  ] = await Promise.all([
-    prisma.agreement.count({
-      where: { signedAt: { gte: monthStart }, consumedAt: { not: null } },
-    }),
-    prisma.certificate.count({ where: { status: "VALID" } }),
-    prisma.agreement.count({
-      where: {
-        consumedAt: null,
-        linkExpiresAt: { lt: now },
-      },
-    }),
-    prisma.agreement.count({
-      where: {
-        consumedAt: null,
-        linkExpiresAt: { gte: now },
-      },
-    }),
-    prisma.person.count(),
-    prisma.contactMessage.count({ where: { readAt: null } }),
-    prisma.siteVisit.count({
-      where: {
-        createdAt: {
-          gte: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())),
+    const [
+      agreementsThisMonth,
+      certsIssued,
+      expiredUnusedLinks,
+      pendingLinks,
+      peopleCount,
+      unreadMessages,
+    ] = await Promise.all([
+      prisma.agreement.count({
+        where: { signedAt: { gte: monthStart }, consumedAt: { not: null } },
+      }),
+      prisma.certificate.count({ where: { status: "VALID" } }),
+      prisma.agreement.count({
+        where: {
+          consumedAt: null,
+          linkExpiresAt: { lt: now },
         },
-      },
-    }),
-    prisma.siteVisit.count(),
-  ]);
+      }),
+      prisma.agreement.count({
+        where: {
+          consumedAt: null,
+          linkExpiresAt: { gte: now },
+        },
+      }),
+      prisma.person.count(),
+      prisma.contactMessage.count({ where: { readAt: null } }),
+    ]);
 
-  await writeAudit({
-    adminEmail: req.adminEmail!,
-    action: "dashboard.view",
-  });
+    let visitsToday = 0;
+    let visitsTotal = 0;
+    try {
+      [visitsToday, visitsTotal] = await Promise.all([
+        prisma.siteVisit.count({ where: { createdAt: { gte: dayStart } } }),
+        prisma.siteVisit.count(),
+      ]);
+    } catch (err) {
+      console.warn("[dashboard] site_visits unavailable:", err);
+    }
 
-  res.json({
-    agreementsThisMonth,
-    certsIssued,
-    expiredUnusedLinks,
-    pendingLinks,
-    peopleCount,
-    unreadMessages,
-    visitsToday,
-    visitsTotal,
-  });
+    try {
+      await writeAudit({
+        adminEmail: req.adminEmail!,
+        action: "dashboard.view",
+      });
+    } catch (err) {
+      console.warn("[dashboard] audit write failed:", err);
+    }
+
+    res.json({
+      agreementsThisMonth,
+      certsIssued,
+      expiredUnusedLinks,
+      pendingLinks,
+      peopleCount,
+      unreadMessages,
+      visitsToday,
+      visitsTotal,
+    });
+  } catch (err) {
+    console.error("[dashboard]", err);
+    res.status(500).json({ error: "Failed to load dashboard" });
+  }
 });
 
 adminRouter.get("/ops/visits", requireAdmin, async (_req, res) => {
-  const now = new Date();
-  const dayStart = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
-  );
+  try {
+    const now = new Date();
+    const dayStart = new Date(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+    );
 
-  const [total, today, todayRows, items] = await Promise.all([
-    prisma.siteVisit.count(),
-    prisma.siteVisit.count({ where: { createdAt: { gte: dayStart } } }),
-    prisma.siteVisit.findMany({
-      where: { createdAt: { gte: dayStart } },
-      select: { ip: true },
-    }),
-    prisma.siteVisit.findMany({
-      orderBy: { createdAt: "desc" },
-      take: 200,
-    }),
-  ]);
+    const [total, today, todayRows, items] = await Promise.all([
+      prisma.siteVisit.count(),
+      prisma.siteVisit.count({ where: { createdAt: { gte: dayStart } } }),
+      prisma.siteVisit.findMany({
+        where: { createdAt: { gte: dayStart } },
+        select: { ip: true },
+      }),
+      prisma.siteVisit.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      }),
+    ]);
 
-  const uniqueIpsToday = new Set(todayRows.map((r) => r.ip)).size;
+    const uniqueIpsToday = new Set(todayRows.map((r) => r.ip)).size;
 
-  res.json({
-    total,
-    today,
-    uniqueIpsToday,
-    items,
-  });
+    res.json({
+      total,
+      today,
+      uniqueIpsToday,
+      items,
+    });
+  } catch (err) {
+    console.error("[visits]", err);
+    res.status(503).json({
+      error: "Visitor table is not ready yet. Redeploy API with prisma db push.",
+      total: 0,
+      today: 0,
+      uniqueIpsToday: 0,
+      items: [],
+    });
+  }
 });
 
 adminRouter.get("/ops/agreements", requireAdmin, async (req: AuthedRequest, res) => {
