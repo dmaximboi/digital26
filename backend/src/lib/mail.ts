@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
 
 type SendArgs = {
@@ -8,37 +7,18 @@ type SendArgs = {
   html?: string;
 };
 
-const SMTP_TIMEOUT_MS = 12_000;
-
 export function isResendConfigured(): boolean {
   return Boolean(env.RESEND_API_KEY?.trim());
 }
 
+/** @deprecated SMTP is unused — Render free blocks it. Kept name for older logs. */
 export function isSmtpConfigured(): boolean {
-  return Boolean(env.SMTP_USER && env.SMTP_PASS && env.SMTP_HOST);
+  return false;
 }
 
 export function mailTransportLabel(): string {
-  if (isResendConfigured()) return `resend`;
-  if (isSmtpConfigured()) return `smtp:${env.SMTP_HOST}`;
-  return "none";
+  return isResendConfigured() ? "resend" : "none";
 }
-
-const transporter = isSmtpConfigured()
-  ? nodemailer.createTransport({
-      host: env.SMTP_HOST,
-      port: env.SMTP_PORT ?? 587,
-      secure: (env.SMTP_PORT ?? 587) === 465,
-      requireTLS: (env.SMTP_PORT ?? 587) === 587,
-      auth: {
-        user: env.SMTP_USER,
-        pass: env.SMTP_PASS,
-      },
-      connectionTimeout: SMTP_TIMEOUT_MS,
-      greetingTimeout: SMTP_TIMEOUT_MS,
-      socketTimeout: SMTP_TIMEOUT_MS,
-    })
-  : null;
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
@@ -58,29 +38,48 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
 
 function defaultFrom(): string {
   if (env.EMAIL_FROM?.trim()) return env.EMAIL_FROM.trim();
-  if (isResendConfigured()) return "The Digital 26 <onboarding@resend.dev>";
-  return "The Digital 26 <noreply@digital26.online>";
+  return "The Digital 26 <onboarding@resend.dev>";
+}
+
+function fromAddressOnly(): string {
+  const from = defaultFrom();
+  const match = /<([^>]+)>/.exec(from);
+  return (match?.[1] || from).trim();
+}
+
+function deliveryHints(): string {
+  const sender = fromAddressOnly();
+  return [
+    "—",
+    "If you do not see this email in your inbox, check Spam / Junk / Promotions.",
+    "Gmail: open the message → mark Not spam, and add this sender to Contacts so later mail stays in Primary:",
+    sender,
+  ].join("\n");
+}
+
+function withDeliveryHints(text: string): string {
+  if (text.includes("check Spam / Junk")) return text;
+  return `${text.trim()}\n\n${deliveryHints()}`;
 }
 
 function friendlyMailError(raw: string): string {
   const msg = raw.toLowerCase();
-  if (
-    msg.includes("timed out") ||
-    msg.includes("etimedout") ||
-    msg.includes("econnrefused") ||
-    msg.includes("enetunreach") ||
-    msg.includes("esocket")
-  ) {
-    return "SMTP is blocked on Render free tier. Add RESEND_API_KEY (https://resend.com) and redeploy.";
-  }
-  if (msg.includes("smtp is not configured") || msg.includes("no email transport")) {
-    return "Email is not configured. Set RESEND_API_KEY on Render (recommended) or use a paid host with SMTP.";
+  if (msg.includes("not configured") || msg.includes("no email transport")) {
+    return "Email is not configured. Set RESEND_API_KEY on Render and redeploy.";
   }
   return raw;
 }
 
 async function sendViaResend(args: SendArgs): Promise<void> {
-  const key = env.RESEND_API_KEY!.trim();
+  const key = env.RESEND_API_KEY?.trim();
+  if (!key) throw new Error("RESEND_API_KEY is not configured");
+
+  const text = withDeliveryHints(args.text);
+  const html = `<pre style="font-family:sans-serif;white-space:pre-wrap">${text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")}</pre>`;
+
   const res = await withTimeout(
     fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -92,10 +91,8 @@ async function sendViaResend(args: SendArgs): Promise<void> {
         from: defaultFrom(),
         to: [args.to],
         subject: args.subject,
-        text: args.text,
-        html:
-          args.html ??
-          `<pre style="font-family:sans-serif;white-space:pre-wrap">${args.text}</pre>`,
+        text,
+        html,
       }),
     }),
     15_000,
@@ -115,48 +112,25 @@ async function sendViaResend(args: SendArgs): Promise<void> {
   }
 }
 
-async function sendViaSmtp(args: SendArgs): Promise<void> {
-  if (!transporter) {
-    throw new Error("SMTP is not configured");
-  }
-
-  await withTimeout(
-    transporter.sendMail({
-      from: defaultFrom(),
-      to: args.to,
-      subject: args.subject,
-      text: args.text,
-      html:
-        args.html ??
-        `<pre style="font-family:sans-serif;white-space:pre-wrap">${args.text}</pre>`,
-    }),
-    SMTP_TIMEOUT_MS + 2_000,
-    "SMTP send",
-  );
-}
-
 export async function sendMail(
   args: SendArgs,
-): Promise<{ delivered: boolean; mode: "resend" | "smtp" | "console" }> {
+): Promise<{ delivered: boolean; mode: "resend" | "console" }> {
   if (isResendConfigured()) {
     await sendViaResend(args);
     return { delivered: true, mode: "resend" };
   }
 
-  if (transporter) {
-    await sendViaSmtp(args);
-    return { delivered: true, mode: "smtp" };
-  }
-
   if (env.isProd) {
-    throw new Error("No email transport configured");
+    throw new Error("RESEND_API_KEY is not configured");
   }
 
-  console.log("\n========== EMAIL (dev console - set RESEND_API_KEY or SMTP_*) ==========");
+  const text = withDeliveryHints(args.text);
+  console.log("\n========== EMAIL (dev — set RESEND_API_KEY) ==========");
+  console.log(`From: ${defaultFrom()}`);
   console.log(`To: ${args.to}`);
   console.log(`Subject: ${args.subject}`);
-  console.log(args.text);
-  console.log("========================================================================\n");
+  console.log(text);
+  console.log("======================================================\n");
   return { delivered: true, mode: "console" };
 }
 
@@ -164,7 +138,7 @@ export async function trySendMail(
   args: SendArgs,
 ): Promise<{
   delivered: boolean;
-  mode: "resend" | "smtp" | "console" | "failed";
+  mode: "resend" | "console" | "failed";
   error?: string;
 }> {
   try {
@@ -214,4 +188,25 @@ export async function sendOtpEmail(opts: { to: string; code: string }): Promise<
   if (!result.delivered) {
     throw new Error(result.error || "Failed to send verification email");
   }
+}
+
+export async function sendCertificateClaimEmail(opts: {
+  to: string;
+  claimLink: string;
+}): Promise<{ delivered: boolean; error?: string }> {
+  const result = await trySendMail({
+    to: opts.to,
+    subject: "Your Digital 26 certificate claim link",
+    text: [
+      "You have a Digital 26 certificate waiting for your acknowledgement.",
+      "",
+      "Open this link within 24 hours:",
+      opts.claimLink,
+      "",
+      "Use this same email address when claiming. You will confirm with a code,",
+      "enter your name and phone, and upload your photo.",
+      "After you submit, the link expires and your certificate becomes public.",
+    ].join("\n"),
+  });
+  return { delivered: result.delivered, error: result.error };
 }

@@ -12,7 +12,7 @@ import { writeAudit } from "../lib/audit.js";
 import { buildCertificatePdf } from "../lib/pdf.js";
 import { generateSessionId } from "../lib/crypto.js";
 import { issueEmailOtp, verifyEmailOtp } from "../lib/otp.js";
-import { sendOtpEmail, trySendMail } from "../lib/mail.js";
+import { sendOtpEmail, sendCertificateClaimEmail } from "../lib/mail.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { authLimiter } from "../middleware/security.js";
 import type { AuthedRequest } from "../middleware/adminAuth.js";
@@ -89,19 +89,9 @@ certificatesRouter.post(
 
       const claimLink = `${env.APP_URL}/claim-cert/${claimSessionId}`;
 
-      const mail = await trySendMail({
+      const mail = await sendCertificateClaimEmail({
         to: inviteEmail,
-        subject: "Your Digital 26 certificate claim link",
-        text: [
-          "You have a Digital 26 certificate waiting for your acknowledgement.",
-          "",
-          `Open this link within 24 hours:`,
-          claimLink,
-          "",
-          "Use this same email address when claiming. You will confirm with a code,",
-          "enter your name and phone, and upload your photo.",
-          "After you submit, the link expires and your certificate becomes public.",
-        ].join("\n"),
+        claimLink,
       });
 
       try {

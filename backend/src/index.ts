@@ -1,6 +1,6 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
-import { isResendConfigured, isSmtpConfigured, mailTransportLabel } from "./lib/mail.js";
+import { isResendConfigured, mailTransportLabel } from "./lib/mail.js";
 
 const app = createApp();
 
@@ -16,11 +16,9 @@ app.listen(env.PORT, () => {
   } else {
     console.log(`[auth] Neon Auth: ${env.NEON_AUTH_URL}`);
   }
-  if (isResendConfigured() || isSmtpConfigured()) {
+  if (isResendConfigured()) {
     console.log(`[mail] ready via ${mailTransportLabel()}`);
   } else {
-    console.warn(
-      "[mail] no transport - set RESEND_API_KEY (works on Render free) or SMTP_* on a host that allows SMTP",
-    );
+    console.warn("[mail] set RESEND_API_KEY — all app email uses Resend (SMTP is not used)");
   }
 });

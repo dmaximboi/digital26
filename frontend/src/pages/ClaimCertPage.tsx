@@ -232,6 +232,12 @@ export function ClaimCertPage() {
             >
               {otpBusy ? "Sending…" : otpSent ? "Resend code" : "Send email code"}
             </button>
+            {otpSent && (
+              <p className="muted">
+                Code sent. Check inbox and Spam / Junk. Gmail: mark Not spam and add the sender to
+                Contacts.
+              </p>
+            )}
             <label className="otp-code-label">
               6-digit code
               <input
