@@ -23,6 +23,14 @@ import { AdminAuditLogPage } from "./pages/admin/AdminAuditLogPage";
 import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
 import { AdminPathProvider, useAdminPath } from "./lib/adminPath";
 
+function BootLoading() {
+  return (
+    <section className="panel">
+      <p className="muted">Loading…</p>
+    </section>
+  );
+}
+
 function AppRoutes() {
   const { path: adminPath, ready } = useAdminPath();
 
@@ -39,6 +47,9 @@ function AppRoutes() {
       <Route path="/sign/:sessionId" element={<SignPage />} />
       <Route path="/claim-cert/:sessionId" element={<ClaimCertPage />} />
       <Route path="/admin/*" element={<Navigate to="/" replace />} />
+
+      {/* Wait for console-route — do NOT bounce /d26-ops to home while loading */}
+      {!ready ? <Route path="*" element={<BootLoading />} /> : null}
 
       {ready && adminPath ? (
         <>
@@ -71,7 +82,7 @@ function AppRoutes() {
         </>
       ) : null}
 
-      <Route path="*" element={<Navigate to="/" replace />} />
+      {ready ? <Route path="*" element={<Navigate to="/" replace />} /> : null}
     </Routes>
   );
 }
