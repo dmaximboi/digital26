@@ -1,0 +1,14 @@
+# Render Web Service — always use these exact settings.
+# Root Directory: backend
+# Build Command: (below — one line)
+# Start Command: npm start
+
+services:
+  - type: web
+    name: digital26-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: cd .. && npm install --include=dev && cd backend && npx prisma generate && npm run build
+    startCommand: npm start
+    healthCheckPath: /health

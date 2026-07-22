@@ -21,7 +21,8 @@ publicRouter.get("/console-route", publicLookupLimiter, (_req, res) => {
 });
 
 function verifyUrl(publicId: string): string {
-  return `${env.PUBLIC_SITE_URL.replace(/\/$/, "")}/verify/${encodeURIComponent(publicId)}`;
+  const base = (env.PUBLIC_SITE_URL || env.APP_URL).replace(/\/$/, "");
+  return `${base}/verify/${encodeURIComponent(publicId)}`;
 }
 
 function certMarkdown(record: {
