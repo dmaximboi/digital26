@@ -40,7 +40,7 @@ export async function adminFetch<T>(path: string, init?: RequestInit): Promise<T
     const res = await fetch(`${API_BASE}${candidate}`, {
       ...init,
       headers,
-      credentials: "include",
+      credentials: "omit",
     });
     lastStatus = res.status;
     if (res.status === 404 && candidate !== withLegacyAlias(path).at(-1)) {
@@ -82,7 +82,7 @@ export async function adminDownloadPdf(
         Authorization: h.Authorization ?? "",
         Accept: "application/pdf",
       },
-      credentials: "include",
+      credentials: "omit",
     });
     if (res.status !== 404) break;
   }

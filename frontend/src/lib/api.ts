@@ -34,7 +34,7 @@ export async function apiGet<T>(path: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "GET",
     headers: { Accept: "application/json" },
-    credentials: "include",
+    credentials: "omit",
   });
   const data = await parseJson(res);
   if (!res.ok) throw new Error(errorMessage(data, res.status));
@@ -48,7 +48,7 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
       Accept: "application/json",
       "Content-Type": "application/json",
     },
-    credentials: "include",
+    credentials: "omit",
     body: JSON.stringify(body),
   });
   const data = await parseJson(res);
@@ -60,7 +60,7 @@ export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: "POST",
     headers: { Accept: "application/json" },
-    credentials: "include",
+    credentials: "omit",
     body: form,
   });
   const data = await parseJson(res);

@@ -68,22 +68,18 @@ export function applySecurity(app: Express): void {
     cors({
       origin(origin, callback) {
         if (!origin) {
-          if (env.isProd) {
-            callback(null, false);
-            return;
-          }
           callback(null, true);
           return;
         }
         if (env.corsOrigins.includes(origin)) {
-          callback(null, true);
+          callback(null, origin);
           return;
         }
         callback(new Error("CORS blocked"));
       },
       credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
+      allowedHeaders: ["Content-Type", "Authorization", "Accept"],
       maxAge: 600,
     }),
   );
