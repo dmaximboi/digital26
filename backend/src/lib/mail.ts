@@ -11,7 +11,7 @@ export function isResendConfigured(): boolean {
   return Boolean(env.RESEND_API_KEY?.trim());
 }
 
-/** @deprecated SMTP is unused — Render free blocks it. Kept name for older logs. */
+/** @deprecated SMTP is unused — Render free blocks it. */
 export function isSmtpConfigured(): boolean {
   return false;
 }
@@ -41,25 +41,6 @@ function defaultFrom(): string {
   return "The Digital 26 <onboarding@resend.dev>";
 }
 
-function fromAddressOnly(): string {
-  const from = defaultFrom();
-  const match = /<([^>]+)>/.exec(from);
-  return (match?.[1] || from).trim();
-}
-
-function deliveryHints(): string {
-  const sender = fromAddressOnly();
-  return [
-    "Important: if you do not see this message in your inbox, check Spam, Junk, or Promotions.",
-    `If you use Gmail, open this email, tap Not spam, and add ${sender} to Contacts so future Digital 26 mail stays in Primary.`,
-  ].join("\n");
-}
-
-function withDeliveryHints(text: string): string {
-  if (/check Spam|Not spam|add .+ to Contacts/i.test(text)) return text;
-  return `${text.trim()}\n\n${deliveryHints()}`;
-}
-
 function friendlyMailError(raw: string): string {
   const msg = raw.toLowerCase();
   if (msg.includes("not configured") || msg.includes("no email transport")) {
@@ -68,16 +49,18 @@ function friendlyMailError(raw: string): string {
   return raw;
 }
 
+function toHtml(text: string): string {
+  return `<pre style="font-family:sans-serif;white-space:pre-wrap">${text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")}</pre>`;
+}
+
 async function sendViaResend(args: SendArgs): Promise<void> {
   const key = env.RESEND_API_KEY?.trim();
   if (!key) throw new Error("RESEND_API_KEY is not configured");
 
-  const text = withDeliveryHints(args.text);
-  const html = `<pre style="font-family:sans-serif;white-space:pre-wrap">${text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")}</pre>`;
-
+  const text = args.text.trim();
   const res = await withTimeout(
     fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -90,7 +73,7 @@ async function sendViaResend(args: SendArgs): Promise<void> {
         to: [args.to],
         subject: args.subject,
         text,
-        html,
+        html: args.html ?? toHtml(text),
       }),
     }),
     15_000,
@@ -122,12 +105,11 @@ export async function sendMail(
     throw new Error("RESEND_API_KEY is not configured");
   }
 
-  const text = withDeliveryHints(args.text);
   console.log("\n========== EMAIL (dev — set RESEND_API_KEY) ==========");
   console.log(`From: ${defaultFrom()}`);
   console.log(`To: ${args.to}`);
   console.log(`Subject: ${args.subject}`);
-  console.log(text);
+  console.log(args.text);
   console.log("======================================================\n");
   return { delivered: true, mode: "console" };
 }
@@ -156,7 +138,6 @@ export async function sendPasskeyEmail(opts: {
   expiresAt: Date;
 }): Promise<{ delivered: boolean; error?: string }> {
   const expires = opts.expiresAt.toUTCString();
-  const sender = fromAddressOnly();
   const result = await trySendMail({
     to: opts.to,
     subject: "The Digital 26 agreement passkey",
@@ -169,16 +150,12 @@ export async function sendPasskeyEmail(opts: {
       `One-time passkey: ${opts.passkey}`,
       "",
       "This passkey works once. Do not share it.",
-      "",
-      "Important: if you do not see this message in your inbox, check Spam, Junk, or Promotions.",
-      `If you use Gmail, open this email, tap Not spam, and add ${sender} to Contacts so future Digital 26 mail stays in Primary.`,
     ].join("\n"),
   });
   return { delivered: result.delivered, error: result.error };
 }
 
 export async function sendOtpEmail(opts: { to: string; code: string }): Promise<void> {
-  const sender = fromAddressOnly();
   const result = await trySendMail({
     to: opts.to,
     subject: "The Digital 26 verification code",
@@ -187,9 +164,6 @@ export async function sendOtpEmail(opts: { to: string; code: string }): Promise<
       "",
       "Enter this 6-digit code on the website. It expires in 10 minutes.",
       "If you did not request this, ignore this email.",
-      "",
-      "Important: if you do not see this message in your inbox, check Spam, Junk, or Promotions.",
-      `If you use Gmail, open this email, tap Not spam, and add ${sender} to Contacts so future Digital 26 mail stays in Primary.`,
     ].join("\n"),
   });
   if (!result.delivered) {
@@ -201,7 +175,6 @@ export async function sendCertificateClaimEmail(opts: {
   to: string;
   claimLink: string;
 }): Promise<{ delivered: boolean; error?: string }> {
-  const sender = fromAddressOnly();
   const result = await trySendMail({
     to: opts.to,
     subject: "Your Digital 26 certificate claim link",
@@ -214,9 +187,6 @@ export async function sendCertificateClaimEmail(opts: {
       "Use this same email address when claiming. You will confirm with a code,",
       "enter your name and phone, and upload your photo.",
       "After you submit, the link expires and your certificate becomes public.",
-      "",
-      "Important: if you do not see this message in your inbox, check Spam, Junk, or Promotions.",
-      `If you use Gmail, open this email, tap Not spam, and add ${sender} to Contacts so future Digital 26 mail stays in Primary.`,
     ].join("\n"),
   });
   return { delivered: result.delivered, error: result.error };

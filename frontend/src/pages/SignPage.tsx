@@ -214,6 +214,10 @@ export function SignPage() {
           Enter the one-time passkey emailed to you. Valid for 24 hours — expires{" "}
           {new Date(status.expiresAt).toLocaleString()}.
         </p>
+        <p className="muted">
+          Cannot find the email? Check Spam / Junk / Promotions. In Gmail, mark Not spam and add the
+          sender to Contacts.
+        </p>
         <form className="lookup-form" onSubmit={onUnlock}>
           <label htmlFor="passkey">Passkey</label>
           <div className="lookup-row">
@@ -307,6 +311,12 @@ export function SignPage() {
             >
               {otpBusy ? "Sending…" : otpSent ? "Resend code" : "Send email code"}
             </button>
+            {otpSent && (
+              <p className="muted">
+                Code sent. Check inbox and Spam / Junk. In Gmail, mark Not spam and add the sender
+                to Contacts.
+              </p>
+            )}
             <label className="otp-code-label">
               6-digit code
               <input
