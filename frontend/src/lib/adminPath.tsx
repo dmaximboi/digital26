@@ -39,6 +39,9 @@ export function AdminPathProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
+    const ac = new AbortController();
+    const timer = window.setTimeout(() => ac.abort(), 8000);
+
     apiGet<{ path: string }>("/api/public/console-route")
       .then((data) => {
         if (cancelled) return;
@@ -52,10 +55,14 @@ export function AdminPathProvider({ children }: { children: ReactNode }) {
         setPath(null);
       })
       .finally(() => {
+        window.clearTimeout(timer);
         if (!cancelled) setReady(true);
       });
+
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
+      ac.abort();
     };
   }, []);
 

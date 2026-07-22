@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { authClient, type AuthUser } from "../lib/auth";
+import { authClient, getAccessToken, type AuthUser } from "../lib/auth";
 import { adminFetch } from "../lib/adminApi";
 
 type AdminAuthState = {
@@ -33,7 +33,12 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      // Confirm with API (server ADMIN_EMAILS) — no client allowlist
+      const token = await getAccessToken();
+      if (!token) {
+        setUser(null);
+        return;
+      }
+
       try {
         const me = await adminFetch<{ email: string }>("/api/admin/me");
         if (me.email) {

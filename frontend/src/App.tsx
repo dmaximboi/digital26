@@ -26,14 +26,6 @@ import { AdminPathProvider, useAdminPath } from "./lib/adminPath";
 function AppRoutes() {
   const { path: adminPath, ready } = useAdminPath();
 
-  if (!ready) {
-    return (
-      <section className="panel">
-        <p className="muted">Loading…</p>
-      </section>
-    );
-  }
-
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
@@ -65,23 +57,34 @@ function AppRoutes() {
       ) : null}
 
       <Route path="/admin/*" element={<Navigate to="/" replace />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route
+        path="*"
+        element={
+          !ready ? (
+            <section className="panel">
+              <p className="muted">Loading…</p>
+            </section>
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
+      />
     </Routes>
   );
 }
 
 export function App() {
   return (
-    <div className="app-shell">
-      <SiteHeader />
-      <main>
-        <AdminPathProvider>
+    <AdminPathProvider>
+      <div className="app-shell">
+        <SiteHeader />
+        <main>
           <AdminAuthProvider>
             <AppRoutes />
           </AdminAuthProvider>
-        </AdminPathProvider>
-      </main>
-      <SiteFooter />
-    </div>
+        </main>
+        <SiteFooter />
+      </div>
+    </AdminPathProvider>
   );
 }
