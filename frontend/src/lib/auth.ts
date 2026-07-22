@@ -37,7 +37,7 @@ function neonErrorMessage(data: Record<string, unknown>, status: number): string
     return "Wrong email or password. Try again, or use Forgot password.";
   }
   if (code === "MISSING_ORIGIN") {
-    return "Auth rejected this browser origin. Ensure Neon Auth allows localhost.";
+    return "Auth rejected this browser origin. Add https://digital26.online in Neon Auth allowed origins.";
   }
 
   return message || `Auth request failed (${status})`;
