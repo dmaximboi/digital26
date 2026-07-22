@@ -15,6 +15,7 @@ type InviteResult = {
   status: string;
   inviteEmail: string;
   emailDelivered?: boolean;
+  emailError?: string | null;
   message: string;
 };
 
@@ -119,7 +120,9 @@ export function AdminIssueCertificatePage() {
           <p>{result.message}</p>
           {result.emailDelivered === false && (
             <p className="status error">
-              Email was not delivered. Share the claim link with the student yourself.
+              Email was not delivered
+              {result.emailError ? `: ${result.emailError}` : "."} Share the claim link with the
+              student yourself.
             </p>
           )}
           <dl>

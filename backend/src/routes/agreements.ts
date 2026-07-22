@@ -112,6 +112,7 @@ agreementsRouter.post(
         link,
         passkey,
         emailDelivered: mail.delivered,
+        emailError: mail.error ?? null,
         linkExpiresAt,
         hoursValid: 24,
         afterSignPublicPattern: publicPreviewNote,

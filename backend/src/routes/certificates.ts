@@ -133,6 +133,7 @@ certificatesRouter.post(
         status: "PENDING",
         inviteEmail,
         emailDelivered: mail.delivered,
+        emailError: mail.error ?? null,
         message: mail.delivered
           ? "Certificate claim link created and emailed (valid 24 hours)."
           : "Certificate claim link created, but email could not be sent. Copy the link below and share it manually.",

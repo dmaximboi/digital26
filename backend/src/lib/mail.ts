@@ -10,15 +10,26 @@ type SendArgs = {
 
 const SMTP_TIMEOUT_MS = 12_000;
 
+export function isResendConfigured(): boolean {
+  return Boolean(env.RESEND_API_KEY?.trim());
+}
+
 export function isSmtpConfigured(): boolean {
   return Boolean(env.SMTP_USER && env.SMTP_PASS && env.SMTP_HOST);
+}
+
+export function mailTransportLabel(): string {
+  if (isResendConfigured()) return `resend`;
+  if (isSmtpConfigured()) return `smtp:${env.SMTP_HOST}`;
+  return "none";
 }
 
 const transporter = isSmtpConfigured()
   ? nodemailer.createTransport({
       host: env.SMTP_HOST,
       port: env.SMTP_PORT ?? 587,
-      secure: false,
+      secure: (env.SMTP_PORT ?? 587) === 465,
+      requireTLS: (env.SMTP_PORT ?? 587) === 587,
       auth: {
         user: env.SMTP_USER,
         pass: env.SMTP_PASS,
@@ -45,26 +56,73 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
-export async function sendMail(
-  args: SendArgs,
-): Promise<{ delivered: boolean; mode: "smtp" | "console" }> {
-  const from = env.EMAIL_FROM || "The Digital 26 <noreply@digital26.online>";
+function defaultFrom(): string {
+  if (env.EMAIL_FROM?.trim()) return env.EMAIL_FROM.trim();
+  if (isResendConfigured()) return "The Digital 26 <onboarding@resend.dev>";
+  return "The Digital 26 <noreply@digital26.online>";
+}
 
+function friendlyMailError(raw: string): string {
+  const msg = raw.toLowerCase();
+  if (
+    msg.includes("timed out") ||
+    msg.includes("etimedout") ||
+    msg.includes("econnrefused") ||
+    msg.includes("enetunreach") ||
+    msg.includes("esocket")
+  ) {
+    return "SMTP is blocked on Render free tier. Add RESEND_API_KEY (https://resend.com) and redeploy.";
+  }
+  if (msg.includes("smtp is not configured") || msg.includes("no email transport")) {
+    return "Email is not configured. Set RESEND_API_KEY on Render (recommended) or use a paid host with SMTP.";
+  }
+  return raw;
+}
+
+async function sendViaResend(args: SendArgs): Promise<void> {
+  const key = env.RESEND_API_KEY!.trim();
+  const res = await withTimeout(
+    fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${key}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        from: defaultFrom(),
+        to: [args.to],
+        subject: args.subject,
+        text: args.text,
+        html:
+          args.html ??
+          `<pre style="font-family:sans-serif;white-space:pre-wrap">${args.text}</pre>`,
+      }),
+    }),
+    15_000,
+    "Resend API",
+  );
+
+  const body = (await res.json().catch(() => ({}))) as {
+    message?: string;
+    name?: string;
+    error?: { message?: string };
+  };
+
+  if (!res.ok) {
+    throw new Error(
+      body.error?.message || body.message || body.name || `Resend failed (${res.status})`,
+    );
+  }
+}
+
+async function sendViaSmtp(args: SendArgs): Promise<void> {
   if (!transporter) {
-    if (env.isProd) {
-      throw new Error("SMTP is not configured");
-    }
-    console.log("\n========== EMAIL (dev console - set SMTP_USER/SMTP_PASS) ==========");
-    console.log(`To: ${args.to}`);
-    console.log(`Subject: ${args.subject}`);
-    console.log(args.text);
-    console.log("===================================================================\n");
-    return { delivered: true, mode: "console" };
+    throw new Error("SMTP is not configured");
   }
 
   await withTimeout(
     transporter.sendMail({
-      from,
+      from: defaultFrom(),
       to: args.to,
       subject: args.subject,
       text: args.text,
@@ -75,18 +133,45 @@ export async function sendMail(
     SMTP_TIMEOUT_MS + 2_000,
     "SMTP send",
   );
+}
 
-  return { delivered: true, mode: "smtp" };
+export async function sendMail(
+  args: SendArgs,
+): Promise<{ delivered: boolean; mode: "resend" | "smtp" | "console" }> {
+  if (isResendConfigured()) {
+    await sendViaResend(args);
+    return { delivered: true, mode: "resend" };
+  }
+
+  if (transporter) {
+    await sendViaSmtp(args);
+    return { delivered: true, mode: "smtp" };
+  }
+
+  if (env.isProd) {
+    throw new Error("No email transport configured");
+  }
+
+  console.log("\n========== EMAIL (dev console - set RESEND_API_KEY or SMTP_*) ==========");
+  console.log(`To: ${args.to}`);
+  console.log(`Subject: ${args.subject}`);
+  console.log(args.text);
+  console.log("========================================================================\n");
+  return { delivered: true, mode: "console" };
 }
 
 export async function trySendMail(
   args: SendArgs,
-): Promise<{ delivered: boolean; mode: "smtp" | "console" | "failed"; error?: string }> {
+): Promise<{
+  delivered: boolean;
+  mode: "resend" | "smtp" | "console" | "failed";
+  error?: string;
+}> {
   try {
     const result = await sendMail(args);
     return result;
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Email failed";
+    const message = friendlyMailError(err instanceof Error ? err.message : "Email failed");
     console.error("[mail]", message);
     return { delivered: false, mode: "failed", error: message };
   }

@@ -8,6 +8,7 @@ type CreateResult = {
   link: string;
   passkey?: string;
   emailDelivered?: boolean;
+  emailError?: string | null;
   linkExpiresAt: string;
   message: string;
 };
@@ -82,7 +83,9 @@ export function AdminCreateAgreementPage() {
           <p>{result.message}</p>
           {result.emailDelivered === false && (
             <p className="status error">
-              Email was not delivered. Share the link and passkey with the client yourself.
+              Email was not delivered
+              {result.emailError ? `: ${result.emailError}` : "."} Share the link and passkey with
+              the client yourself.
             </p>
           )}
           <dl>

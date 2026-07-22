@@ -31,6 +31,10 @@ Frontend (Vercel) needs only:
 - `VITE_PUBLIC_SITE_URL`
 - Optional: `VITE_CONSOLE_PATH` (same value as server `CONSOLE_PATH`; if unset, the client checks `/api/public/gate`)
 
+Email on Render free tier: set `RESEND_API_KEY` from https://resend.com (SMTP ports 587/465 are blocked on free Render). Until you verify `digital26.online` in Resend, use:
+
+`EMAIL_FROM=The Digital 26 <onboarding@resend.dev>`
+
 ## Security notes
 
 - Public verify/agreement APIs read public tables only
