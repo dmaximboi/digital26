@@ -81,12 +81,6 @@ export function AdminCreateAgreementPage() {
       {result && (
         <article className="result-card">
           <p>{result.message}</p>
-          {result.emailDelivered && (
-            <p className="muted">
-              Ask the client to check Spam / Junk if needed, mark Not spam in Gmail, and add the
-              sender to Contacts.
-            </p>
-          )}
           {result.emailDelivered === false && (
             <p className="status error">
               Email was not delivered

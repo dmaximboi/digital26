@@ -50,15 +50,13 @@ function fromAddressOnly(): string {
 function deliveryHints(): string {
   const sender = fromAddressOnly();
   return [
-    "—",
-    "If you do not see this email in your inbox, check Spam / Junk / Promotions.",
-    "Gmail: open the message → mark Not spam, and add this sender to Contacts so later mail stays in Primary:",
-    sender,
+    "Important: if you do not see this message in your inbox, check Spam, Junk, or Promotions.",
+    `If you use Gmail, open this email, tap Not spam, and add ${sender} to Contacts so future Digital 26 mail stays in Primary.`,
   ].join("\n");
 }
 
 function withDeliveryHints(text: string): string {
-  if (text.includes("check Spam / Junk")) return text;
+  if (/check Spam|Not spam|add .+ to Contacts/i.test(text)) return text;
   return `${text.trim()}\n\n${deliveryHints()}`;
 }
 
@@ -158,6 +156,7 @@ export async function sendPasskeyEmail(opts: {
   expiresAt: Date;
 }): Promise<{ delivered: boolean; error?: string }> {
   const expires = opts.expiresAt.toUTCString();
+  const sender = fromAddressOnly();
   const result = await trySendMail({
     to: opts.to,
     subject: "The Digital 26 agreement passkey",
@@ -170,19 +169,27 @@ export async function sendPasskeyEmail(opts: {
       `One-time passkey: ${opts.passkey}`,
       "",
       "This passkey works once. Do not share it.",
+      "",
+      "Important: if you do not see this message in your inbox, check Spam, Junk, or Promotions.",
+      `If you use Gmail, open this email, tap Not spam, and add ${sender} to Contacts so future Digital 26 mail stays in Primary.`,
     ].join("\n"),
   });
   return { delivered: result.delivered, error: result.error };
 }
 
 export async function sendOtpEmail(opts: { to: string; code: string }): Promise<void> {
+  const sender = fromAddressOnly();
   const result = await trySendMail({
     to: opts.to,
     subject: "The Digital 26 verification code",
     text: [
-      `Your verification code is: ${opts.code}`,
+      `Your Digital 26 verification code is: ${opts.code}`,
       "",
-      "It expires in 10 minutes. If you did not request this, ignore this email.",
+      "Enter this 6-digit code on the website. It expires in 10 minutes.",
+      "If you did not request this, ignore this email.",
+      "",
+      "Important: if you do not see this message in your inbox, check Spam, Junk, or Promotions.",
+      `If you use Gmail, open this email, tap Not spam, and add ${sender} to Contacts so future Digital 26 mail stays in Primary.`,
     ].join("\n"),
   });
   if (!result.delivered) {
@@ -194,6 +201,7 @@ export async function sendCertificateClaimEmail(opts: {
   to: string;
   claimLink: string;
 }): Promise<{ delivered: boolean; error?: string }> {
+  const sender = fromAddressOnly();
   const result = await trySendMail({
     to: opts.to,
     subject: "Your Digital 26 certificate claim link",
@@ -206,6 +214,9 @@ export async function sendCertificateClaimEmail(opts: {
       "Use this same email address when claiming. You will confirm with a code,",
       "enter your name and phone, and upload your photo.",
       "After you submit, the link expires and your certificate becomes public.",
+      "",
+      "Important: if you do not see this message in your inbox, check Spam, Junk, or Promotions.",
+      `If you use Gmail, open this email, tap Not spam, and add ${sender} to Contacts so future Digital 26 mail stays in Primary.`,
     ].join("\n"),
   });
   return { delivered: result.delivered, error: result.error };

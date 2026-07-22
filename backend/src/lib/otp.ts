@@ -18,7 +18,7 @@ function otpHashesEqual(a: string, b: string): boolean {
 }
 
 export function generateOtpCode(): string {
-  return String(randomInt(0, 100_000_000)).padStart(8, "0");
+  return String(randomInt(0, 1_000_000)).padStart(6, "0");
 }
 
 export async function issueEmailOtp(opts: {

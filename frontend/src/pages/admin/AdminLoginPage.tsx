@@ -45,9 +45,7 @@ export function AdminLoginPage() {
           setBusy(false);
           return;
         }
-        setInfo(
-          "If that account exists, a reset link was sent. Check inbox and Spam / Junk. In Gmail, mark Not spam and add the sender to Contacts.",
-        );
+        setInfo("If that account exists, a reset link was sent. Check your inbox.");
         setBusy(false);
         return;
       }
