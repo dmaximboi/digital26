@@ -12,7 +12,7 @@ import { writeAudit } from "../lib/audit.js";
 import { buildCertificatePdf } from "../lib/pdf.js";
 import { generateSessionId } from "../lib/crypto.js";
 import { issueEmailOtp, verifyEmailOtp } from "../lib/otp.js";
-import { sendOtpEmail, sendMail } from "../lib/mail.js";
+import { sendOtpEmail, trySendMail } from "../lib/mail.js";
 import { requireAdmin } from "../middleware/requireAdmin.js";
 import { authLimiter } from "../middleware/security.js";
 import type { AuthedRequest } from "../middleware/adminAuth.js";
@@ -57,78 +57,90 @@ certificatesRouter.post(
   authLimiter,
   requireAdmin,
   async (req: AuthedRequest, res) => {
-    const parsed = inviteSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Invalid payload" });
-      return;
-    }
+    try {
+      const parsed = inviteSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid payload" });
+        return;
+      }
 
-    const data = parsed.data;
-    const issueDate = new Date(data.issueDate);
-    if (Number.isNaN(issueDate.getTime())) {
-      res.status(400).json({ error: "Invalid issueDate" });
-      return;
-    }
+      const data = parsed.data;
+      const issueDate = new Date(data.issueDate);
+      if (Number.isNaN(issueDate.getTime())) {
+        res.status(400).json({ error: "Invalid issueDate" });
+        return;
+      }
 
-    const inviteEmail = data.studentEmail.toLowerCase();
-    const claimSessionId = generateSessionId();
-    const claimExpiresAt = new Date(Date.now() + CLAIM_TTL_MS);
+      const inviteEmail = data.studentEmail.toLowerCase();
+      const claimSessionId = generateSessionId();
+      const claimExpiresAt = new Date(Date.now() + CLAIM_TTL_MS);
 
-    const cert = await prisma.certificate.create({
-      data: {
-        type: data.type,
-        course: data.course,
-        issueDate,
-        status: CertificateStatus.PENDING,
-        inviteEmail,
-        claimSessionId,
-        claimExpiresAt,
-      },
-    });
+      const cert = await prisma.certificate.create({
+        data: {
+          type: data.type,
+          course: data.course,
+          issueDate,
+          status: CertificateStatus.PENDING,
+          inviteEmail,
+          claimSessionId,
+          claimExpiresAt,
+        },
+      });
 
-    const claimLink = `${env.APP_URL}/claim-cert/${claimSessionId}`;
+      const claimLink = `${env.APP_URL}/claim-cert/${claimSessionId}`;
 
-    await sendMail({
-      to: inviteEmail,
-      subject: "Your Digital 26 certificate claim link",
-      text: [
-        "You have a Digital 26 certificate waiting for your acknowledgement.",
-        "",
-        `Open this link within 24 hours:`,
-        claimLink,
-        "",
-        "Use this same email address when claiming. You will confirm with a code,",
-        "enter your name and phone, and upload your photo.",
-        "After you submit, the link expires and your certificate becomes public.",
-      ].join("\n"),
-    });
+      const mail = await trySendMail({
+        to: inviteEmail,
+        subject: "Your Digital 26 certificate claim link",
+        text: [
+          "You have a Digital 26 certificate waiting for your acknowledgement.",
+          "",
+          `Open this link within 24 hours:`,
+          claimLink,
+          "",
+          "Use this same email address when claiming. You will confirm with a code,",
+          "enter your name and phone, and upload your photo.",
+          "After you submit, the link expires and your certificate becomes public.",
+        ].join("\n"),
+      });
 
-    await writeAudit({
-      adminEmail: req.adminEmail!,
-      action: "certificate.invite",
-      targetId: cert.id,
-      metadata: {
-        claimSessionId,
+      try {
+        await writeAudit({
+          adminEmail: req.adminEmail!,
+          action: "certificate.invite",
+          targetId: cert.id,
+          metadata: {
+            claimSessionId,
+            type: cert.type,
+            inviteEmail,
+            claimExpiresAt: claimExpiresAt.toISOString(),
+            emailDelivered: mail.delivered,
+          },
+        });
+      } catch (err) {
+        console.warn("[certificate.invite] audit failed:", err);
+      }
+
+      res.status(201).json({
+        id: cert.id,
         type: cert.type,
+        course: cert.course,
+        issueDate: cert.issueDate,
+        claimSessionId,
+        claimLink,
+        claimExpiresAt,
+        hoursValid: 24,
+        status: "PENDING",
         inviteEmail,
-        claimExpiresAt: claimExpiresAt.toISOString(),
-      },
-    });
-
-    res.status(201).json({
-      id: cert.id,
-      type: cert.type,
-      course: cert.course,
-      issueDate: cert.issueDate,
-      claimSessionId,
-      claimLink,
-      claimExpiresAt,
-      hoursValid: 24,
-      status: "PENDING",
-      inviteEmail,
-      message:
-        "Certificate claim link created (valid 24 hours). Student must use the same email to claim.",
-    });
+        emailDelivered: mail.delivered,
+        message: mail.delivered
+          ? "Certificate claim link created and emailed (valid 24 hours)."
+          : "Certificate claim link created, but email could not be sent. Copy the link below and share it manually.",
+      });
+    } catch (err) {
+      console.error("[certificate.invite]", err);
+      res.status(500).json({ error: "Failed to create certificate invite" });
+    }
   },
 );
 

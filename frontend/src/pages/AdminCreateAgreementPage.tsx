@@ -6,6 +6,8 @@ type CreateResult = {
   id: string;
   sessionId: string;
   link: string;
+  passkey?: string;
+  emailDelivered?: boolean;
   linkExpiresAt: string;
   message: string;
 };
@@ -57,11 +59,16 @@ export function AdminCreateAgreementPage() {
             value={clientEmail}
             onChange={(e) => setClientEmail(e.target.value)}
             required
+            disabled={loading}
           />
         </label>
         <label>
           Client name
-          <input value={clientName} onChange={(e) => setClientName(e.target.value)} />
+          <input
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+            disabled={loading}
+          />
         </label>
         <button className="btn primary" type="submit" disabled={loading}>
           {loading ? "Creating…" : "Create & email passkey"}
@@ -73,6 +80,11 @@ export function AdminCreateAgreementPage() {
       {result && (
         <article className="result-card">
           <p>{result.message}</p>
+          {result.emailDelivered === false && (
+            <p className="status error">
+              Email was not delivered. Share the link and passkey with the client yourself.
+            </p>
+          )}
           <dl>
             <div>
               <dt>Link</dt>
@@ -80,6 +92,14 @@ export function AdminCreateAgreementPage() {
                 <a href={result.link}>{result.link}</a>
               </dd>
             </div>
+            {result.passkey && (
+              <div>
+                <dt>Passkey</dt>
+                <dd>
+                  <code>{result.passkey}</code>
+                </dd>
+              </div>
+            )}
             <div>
               <dt>Expires</dt>
               <dd>{new Date(result.linkExpiresAt).toLocaleString()}</dd>

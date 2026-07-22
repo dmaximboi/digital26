@@ -14,6 +14,7 @@ type InviteResult = {
   hoursValid: number;
   status: string;
   inviteEmail: string;
+  emailDelivered?: boolean;
   message: string;
 };
 
@@ -116,6 +117,11 @@ export function AdminIssueCertificatePage() {
       {result && (
         <article className="result-card">
           <p>{result.message}</p>
+          {result.emailDelivered === false && (
+            <p className="status error">
+              Email was not delivered. Share the claim link with the student yourself.
+            </p>
+          )}
           <dl>
             <div>
               <dt>Locked email</dt>

@@ -42,73 +42,87 @@ agreementsRouter.post(
   authLimiter,
   requireAdmin,
   async (req: AuthedRequest, res) => {
-    const parsed = createSchema.safeParse(req.body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "Invalid payload" });
-      return;
-    }
+    try {
+      const parsed = createSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid payload" });
+        return;
+      }
 
-    const data = parsed.data;
-    const email = data.clientEmail.toLowerCase();
-    const sessionId = generateSessionId();
-    const passkey = generatePasskey(18);
-    const passkeyHash = hashPasskey(passkey);
-    const linkExpiresAt = new Date(Date.now() + LINK_TTL_MS);
+      const data = parsed.data;
+      const email = data.clientEmail.toLowerCase();
+      const sessionId = generateSessionId();
+      const passkey = generatePasskey(18);
+      const passkeyHash = hashPasskey(passkey);
+      const linkExpiresAt = new Date(Date.now() + LINK_TTL_MS);
 
-    const person = await prisma.person.upsert({
-      where: { email },
-      create: {
-        name: data.clientName?.trim() || email.split("@")[0] || "Client",
-        email,
-        phone: data.clientPhone,
-      },
-      update: {
-        ...(data.clientName ? { name: data.clientName.trim() } : {}),
-        ...(data.clientPhone ? { phone: data.clientPhone } : {}),
-      },
-    });
+      const person = await prisma.person.upsert({
+        where: { email },
+        create: {
+          name: data.clientName?.trim() || email.split("@")[0] || "Client",
+          email,
+          phone: data.clientPhone,
+        },
+        update: {
+          ...(data.clientName ? { name: data.clientName.trim() } : {}),
+          ...(data.clientPhone ? { phone: data.clientPhone } : {}),
+        },
+      });
 
-    const agreement = await prisma.agreement.create({
-      data: {
-        personId: person.id,
-        dealType: DealType.OTHER,
-        otherDealText: null,
-        termsSnapshot: AGREEMENT_TERMS,
-        passkeyHash,
+      const agreement = await prisma.agreement.create({
+        data: {
+          personId: person.id,
+          dealType: DealType.OTHER,
+          otherDealText: null,
+          termsSnapshot: AGREEMENT_TERMS,
+          passkeyHash,
+          sessionId,
+          linkExpiresAt,
+        },
+      });
+
+      const link = `${env.APP_URL}/sign/${sessionId}`;
+      const publicPreviewNote = `${env.PUBLIC_SITE_URL}/a/{publicId}`;
+      const mail = await sendPasskeyEmail({
+        to: email,
+        passkey,
+        link,
+        expiresAt: linkExpiresAt,
+      });
+
+      try {
+        await writeAudit({
+          adminEmail: req.adminEmail!,
+          action: "agreement.create",
+          targetId: agreement.id,
+          metadata: {
+            sessionId,
+            clientEmail: email,
+            linkExpiresAt: linkExpiresAt.toISOString(),
+            emailDelivered: mail.delivered,
+          },
+        });
+      } catch (err) {
+        console.warn("[agreement.create] audit failed:", err);
+      }
+
+      res.status(201).json({
+        id: agreement.id,
         sessionId,
+        link,
+        passkey,
+        emailDelivered: mail.delivered,
         linkExpiresAt,
-      },
-    });
-
-    const link = `${env.APP_URL}/sign/${sessionId}`;
-    const publicPreviewNote = `${env.PUBLIC_SITE_URL}/a/{publicId}`;
-    await sendPasskeyEmail({
-      to: email,
-      passkey,
-      link,
-      expiresAt: linkExpiresAt,
-    });
-
-    await writeAudit({
-      adminEmail: req.adminEmail!,
-      action: "agreement.create",
-      targetId: agreement.id,
-      metadata: {
-        sessionId,
-        clientEmail: email,
-        linkExpiresAt: linkExpiresAt.toISOString(),
-      },
-    });
-
-    res.status(201).json({
-      id: agreement.id,
-      sessionId,
-      link,
-      linkExpiresAt,
-      hoursValid: 24,
-      afterSignPublicPattern: publicPreviewNote,
-      message: "Agreement letter link created (valid 24 hours). Passkey emailed to client.",
-    });
+        hoursValid: 24,
+        afterSignPublicPattern: publicPreviewNote,
+        message: mail.delivered
+          ? "Agreement letter link created (valid 24 hours). Passkey emailed to client."
+          : "Agreement letter link created, but email could not be sent. Copy the link and passkey below and share them manually.",
+      });
+    } catch (err) {
+      console.error("[agreement.create]", err);
+      res.status(500).json({ error: "Failed to create agreement" });
+    }
   },
 );
 
