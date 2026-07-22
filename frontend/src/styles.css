@@ -65,8 +65,7 @@ main {
   padding: 0.85rem 0;
   padding-top: max(0.85rem, env(safe-area-inset-top));
   gap: 1rem;
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.92);
   border-bottom: 1px solid transparent;
 }
 
@@ -161,16 +160,16 @@ main {
 
 .site-nav-desktop {
   display: flex;
-  min-width: 0;
-}
-
-.site-nav-desktop .site-nav {
-  display: flex;
   flex-wrap: nowrap;
   align-items: center;
   gap: 0.15rem;
   justify-content: flex-end;
   white-space: nowrap;
+  min-width: 0;
+}
+
+.site-nav-drawer {
+  /* desktop: acts as the inline nav row */
 }
 
 .site-nav__link {
@@ -191,10 +190,6 @@ main {
 .site-nav__link.is-active {
   color: var(--accent);
   font-weight: 600;
-}
-
-.site-nav-drawer {
-  display: none;
 }
 
 .brand-mark {
@@ -942,15 +937,11 @@ dd {
     margin-left: auto;
   }
 
-  .site-nav-desktop {
-    display: none;
-  }
-
   .nav-backdrop {
     display: block;
   }
 
-  .site-nav-drawer {
+  .site-nav-desktop.site-nav-drawer {
     display: flex;
     position: fixed;
     top: 0;
@@ -975,7 +966,7 @@ dd {
     overflow-y: auto;
   }
 
-  .site-nav-drawer.is-open {
+  .site-nav-desktop.site-nav-drawer.is-open {
     transform: translateX(0);
     pointer-events: auto;
   }

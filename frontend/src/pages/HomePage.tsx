@@ -2,17 +2,10 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BrandMark } from "../components/BrandMark";
 import { CodingLaptop } from "../components/CodingLaptop";
-import { orgWebsiteJsonLd, setJsonLd, setPageMeta } from "../lib/seo";
 
 export function HomePage() {
   useEffect(() => {
-    setPageMeta({
-      title: undefined,
-      description:
-        "The Digital 26: a flexible 3-month Vibe Coding masterclass, client websites and apps under structured agreements, and publicly verifiable certificates.",
-      path: "/",
-    });
-    setJsonLd("d26-jsonld-home", orgWebsiteJsonLd());
+    document.title = "The Digital 26 · Vibe Coding Masterclass";
   }, []);
 
   return (
@@ -23,8 +16,8 @@ export function HomePage() {
       </div>
       <h1>The Digital 26</h1>
       <p className="lede">
-        Flexible 3‑month Vibe Coding. We build websites and apps with clear agreements
-        and plans. Verify certificates in public.
+        Flexible 3-month Vibe Coding. We build websites and apps with clear agreements and plans.
+        Verify certificates in public.
       </p>
       <div className="cta-row">
         <Link className="btn primary" to="/verify">

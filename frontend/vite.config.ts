@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: "auto",
+      injectRegister: false,
       includeAssets: ["logo.png", "robots.txt", "sitemap.xml", "llms.txt"],
       manifest: false,
       workbox: {
