@@ -16,14 +16,14 @@ function safeResolveUnderRoot(root: string, ...parts: string[]): string | null {
   return resolved;
 }
 
-/** Public file access: student portraits only. PDFs are admin-only. */
+
 filesRouter.get("/files/:kind/:filename", (req, res) => {
   const kind = String(req.params.kind ?? "");
   const filename = String(req.params.filename ?? "");
 
   if (kind !== "students") {
     res.status(403).json({
-      error: "Agreement and certificate PDFs are available in the admin console only.",
+      error: "Agreement and certificate PDFs require an authenticated console session.",
     });
     return;
   }

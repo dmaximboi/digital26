@@ -147,7 +147,7 @@ export async function buildAgreementPdf(opts: {
   return {
     bytes,
     filePath,
-    publicUrl: `${env.API_URL}/api/admin/files/agreements/${opts.publicId}.pdf`,
+    publicUrl: `${env.API_URL}/api/ops/files/agreements/${opts.publicId}.pdf`,
   };
 }
 
@@ -191,7 +191,7 @@ export async function buildCertificatePdf(opts: {
   });
 
   if (logo) {
-    // Round logo treatment: draw image then gold ring
+    
     const lx = 72;
     const ly = height - 100;
     const ls = 64;
@@ -224,7 +224,7 @@ export async function buildCertificatePdf(opts: {
         });
       }
     } catch {
-      // photo optional in PDF if embed fails
+      
     }
   }
 
@@ -396,7 +396,7 @@ export async function buildCertificatePdf(opts: {
   return {
     bytes,
     filePath,
-    publicUrl: `${env.API_URL}/api/admin/files/certificates/${opts.publicId}.pdf`,
+    publicUrl: `${env.API_URL}/api/ops/files/certificates/${opts.publicId}.pdf`,
   };
 }
 

@@ -36,15 +36,15 @@ const createSchema = z.object({
   clientPhone: z.string().max(32).optional(),
 });
 
-/** Admin: create agreement session + email one-time passkey */
+
 agreementsRouter.post(
-  "/admin/agreements",
+  "/ops/agreements",
   authLimiter,
   requireAdmin,
   async (req: AuthedRequest, res) => {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+      res.status(400).json({ error: "Invalid payload" });
       return;
     }
 
@@ -107,13 +107,12 @@ agreementsRouter.post(
       linkExpiresAt,
       hoursValid: 24,
       afterSignPublicPattern: publicPreviewNote,
-      passkeyDevOnly: env.isProd ? undefined : passkey,
       message: "Agreement letter link created (valid 24 hours). Passkey emailed to client.",
     });
   },
 );
 
-/** Public: session status (no sensitive fields) */
+
 agreementsRouter.get("/sign/:sessionId/status", async (req, res) => {
   const sessionId = String(req.params.sessionId ?? "");
   const agreement = await prisma.agreement.findUnique({
@@ -124,7 +123,7 @@ agreementsRouter.get("/sign/:sessionId/status", async (req, res) => {
       lockedUntil: true,
       dealType: true,
       otherDealText: true,
-      person: { select: { name: true, email: true } },
+      person: { select: { name: true } },
     },
   });
 
@@ -160,7 +159,7 @@ const unlockSchema = z.object({
   passkey: z.string().min(8).max(128),
 });
 
-/** Public: unlock with one-time passkey (rate-limited) */
+
 agreementsRouter.post(
   "/sign/:sessionId/unlock",
   authLimiter,
@@ -214,12 +213,11 @@ agreementsRouter.post(
       res.status(401).json({
         error: "invalid_passkey",
         message: "Incorrect passkey",
-        attemptsRemaining: Math.max(0, MAX_PASSKEY_ATTEMPTS - attempts),
       });
       return;
     }
 
-    // Reset attempt counter on success (session still single-use until submit)
+    
     await prisma.agreement.update({
       where: { id: agreement.id },
       data: { passkeyAttempts: 0, lockedUntil: null },
@@ -233,7 +231,7 @@ agreementsRouter.post(
       terms: agreement.termsSnapshot,
       person: {
         name: agreement.person.name,
-        // email/phone not returned — client must type invite email; contact is private
+        
       },
       emailLocked: true,
       expiresAt: agreement.linkExpiresAt,
@@ -272,7 +270,7 @@ agreementsRouter.post(
     const locked = agreement.data.person.email?.toLowerCase();
     if (!locked) {
       res.status(400).json({
-        error: "This agreement has no locked invite email. Ask admin to recreate the link.",
+        error: "This agreement invite is misconfigured. Request a new link.",
       });
       return;
     }
@@ -283,12 +281,16 @@ agreementsRouter.post(
       return;
     }
 
-    const { code } = await issueEmailOtp({
+    const issued = await issueEmailOtp({
       email,
       purpose: "agreement_email",
       sessionId,
     });
-    await sendOtpEmail({ to: email, code });
+    if ("error" in issued) {
+      res.status(429).json({ error: issued.error });
+      return;
+    }
+    await sendOtpEmail({ to: email, code: issued.code });
 
     res.json({
       ok: true,
@@ -316,7 +318,7 @@ agreementsRouter.post(
     const sessionId = String(req.params.sessionId ?? "");
     const parsed = submitSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid payload", details: parsed.error.flatten() });
+      res.status(400).json({ error: "Invalid payload" });
       return;
     }
 

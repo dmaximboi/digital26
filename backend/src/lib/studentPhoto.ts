@@ -5,7 +5,7 @@ import ImageKit, { toFile } from "@imagekit/nodejs";
 import sharp from "sharp";
 import { env } from "../config/env.js";
 
-/** Relative public path (local fallback when ImageKit is not configured). */
+
 export function studentPhotoPublicPath(filename: string): string {
   return `/api/public/files/students/${filename}`;
 }
@@ -26,10 +26,7 @@ function getImageKit() {
   return new ImageKit({ privateKey: env.IMAGEKIT_PRIVATE_KEY });
 }
 
-/**
- * Compress + store student portrait.
- * Prefers ImageKit when credentials are set; otherwise local disk + sharp.
- */
+
 export async function compressAndStoreStudentPhoto(
   tempPath: string,
   uploadDir: string,
@@ -44,7 +41,7 @@ export async function compressAndStoreStudentPhoto(
   try {
     await unlink(tempPath);
   } catch {
-    // temp cleanup best-effort
+    
   }
 
   if (imagekitEnabled()) {
@@ -79,7 +76,7 @@ export async function compressAndStoreStudentPhoto(
   };
 }
 
-/** Load portrait bytes for PDF embed (local path or remote ImageKit URL). */
+
 export async function loadPhotoBytes(opts: {
   photoPath?: string;
   photoUrl?: string;
@@ -107,7 +104,7 @@ export async function loadPhotoBytes(opts: {
   }
 }
 
-/** Optional helper if you need a stream of a local file (tests / legacy). */
+
 export function openLocalPhotoStream(diskPath: string) {
   return createReadStream(diskPath);
 }

@@ -38,7 +38,7 @@ const SNIPPETS: string[][] = [
 ];
 
 function colorize(line: string) {
-  // Simple highlight: strings, keywords, punctuation left as text spans
+  
   const parts: { t: string; c?: string }[] = [];
   const re =
     /(\bconst\b|\bawait\b|\bfn\b|\breturn\b)|("[^"]*")|(\b\w+(?=\())|([{}();=→])/g;

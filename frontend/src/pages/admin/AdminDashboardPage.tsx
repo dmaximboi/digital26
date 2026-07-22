@@ -19,7 +19,7 @@ export function AdminDashboardPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    adminFetch<Dash>("/api/admin/dashboard")
+    adminFetch<Dash>("/api/ops/dashboard")
       .then(setData)
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed to load"),
@@ -30,13 +30,13 @@ export function AdminDashboardPage() {
   if (!data) return <p>Loading dashboard…</p>;
 
   return (
-    <div className="admin-page">
-      <div className="admin-page__head">
+    <div className="ops-page">
+      <div className="ops-page__head">
         <div>
           <h2>Dashboard</h2>
           <p className="muted">Overview of letters, certs, and inbox</p>
         </div>
-        <div className="admin-page__actions">
+        <div className="ops-page__actions">
           <Link className="btn primary" to={`/${ADMIN_BASE}/agreements/new`}>
             New agreement
           </Link>

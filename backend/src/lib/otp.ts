@@ -4,6 +4,7 @@ import { hashPasskey } from "./crypto.js";
 
 const OTP_TTL_MS = 10 * 60 * 1000;
 const MAX_OTP_ATTEMPTS = 5;
+const ISSUE_COOLDOWN_MS = 60 * 1000;
 
 export function hashOtp(code: string): string {
   return createHash("sha256").update(code).digest("hex");
@@ -17,20 +18,44 @@ function otpHashesEqual(a: string, b: string): boolean {
 }
 
 export function generateOtpCode(): string {
-  return String(randomInt(0, 1_000_000)).padStart(6, "0");
+  return String(randomInt(0, 100_000_000)).padStart(8, "0");
 }
 
 export async function issueEmailOtp(opts: {
   email: string;
   purpose: string;
   sessionId?: string;
-}): Promise<{ code: string; expiresAt: Date }> {
+}): Promise<{ code: string; expiresAt: Date } | { error: string }> {
+  const email = opts.email.toLowerCase();
+  const recent = await prisma.emailOtp.findFirst({
+    where: {
+      email,
+      purpose: opts.purpose,
+      ...(opts.sessionId ? { sessionId: opts.sessionId } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (recent && Date.now() - recent.createdAt.getTime() < ISSUE_COOLDOWN_MS) {
+    return { error: "Wait a minute before requesting another code." };
+  }
+
+  await prisma.emailOtp.updateMany({
+    where: {
+      email,
+      purpose: opts.purpose,
+      consumedAt: null,
+      ...(opts.sessionId ? { sessionId: opts.sessionId } : {}),
+    },
+    data: { consumedAt: new Date() },
+  });
+
   const code = generateOtpCode();
   const expiresAt = new Date(Date.now() + OTP_TTL_MS);
 
   await prisma.emailOtp.create({
     data: {
-      email: opts.email.toLowerCase(),
+      email,
       codeHash: hashOtp(code),
       purpose: opts.purpose,
       sessionId: opts.sessionId,
@@ -71,7 +96,7 @@ export async function verifyEmailOtp(opts: {
     return { ok: false, error: "Too many invalid code attempts. Request a new one." };
   }
 
-  const incoming = hashOtp(opts.code);
+  const incoming = hashOtp(opts.code.trim());
   const match = otpHashesEqual(incoming, latest.codeHash);
 
   if (!match) {

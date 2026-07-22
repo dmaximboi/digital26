@@ -9,7 +9,7 @@ import {
 } from "node:crypto";
 import { env } from "../config/env.js";
 
-/** Hash one-time passkeys - never store plaintext */
+
 export function hashPasskey(passkey: string): string {
   if (!env.FIELD_ENCRYPTION_KEY) {
     if (env.isProd) {

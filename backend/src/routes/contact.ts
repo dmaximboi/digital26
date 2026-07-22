@@ -6,7 +6,7 @@ import { contactLimiter } from "../middleware/security.js";
 import { writeAudit } from "../lib/audit.js";
 import type { AuthedRequest } from "../middleware/adminAuth.js";
 
-/** Public contact form only */
+
 export const contactPublicRouter = Router();
 
 const contactSchema = z.object({
@@ -42,10 +42,10 @@ contactPublicRouter.post("/contact", contactLimiter, async (req, res) => {
   });
 });
 
-/** Admin inbox */
+
 export const contactAdminRouter = Router();
 
-contactAdminRouter.get("/admin/messages", requireAdmin, async (_req, res) => {
+contactAdminRouter.get("/ops/messages", requireAdmin, async (_req, res) => {
   const items = await prisma.contactMessage.findMany({
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -66,7 +66,7 @@ contactAdminRouter.get("/admin/messages", requireAdmin, async (_req, res) => {
 });
 
 contactAdminRouter.post(
-  "/admin/messages/:id/read",
+  "/ops/messages/:id/read",
   requireAdmin,
   async (req: AuthedRequest, res) => {
     const id = String(req.params.id ?? "");
@@ -89,7 +89,7 @@ contactAdminRouter.post(
 );
 
 contactAdminRouter.delete(
-  "/admin/messages/:id",
+  "/ops/messages/:id",
   requireAdmin,
   async (req: AuthedRequest, res) => {
     const id = String(req.params.id ?? "");

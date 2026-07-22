@@ -51,18 +51,15 @@ const inviteSchema = z.object({
   studentEmail: z.string().email(),
 });
 
-/**
- * Admin: create a 24h claim link (pending cert).
- * studentEmail is locked - OTP and submit must use the same address.
- */
+
 certificatesRouter.post(
-  "/admin/certificates",
+  "/ops/certificates",
   authLimiter,
   requireAdmin,
   async (req: AuthedRequest, res) => {
     const parsed = inviteSchema.safeParse(req.body);
     if (!parsed.success) {
-      res.status(400).json({ error: "Invalid payload — student email is required", details: parsed.error.flatten() });
+      res.status(400).json({ error: "Invalid payload" });
       return;
     }
 
@@ -204,7 +201,7 @@ certificatesRouter.post(
       return;
     }
     if (!cert.inviteEmail) {
-      res.status(400).json({ error: "This claim link has no locked invite email. Ask admin to recreate it." });
+      res.status(400).json({ error: "This claim invite is misconfigured. Request a new link." });
       return;
     }
     if (!emailsEqual(email, cert.inviteEmail)) {
@@ -214,12 +211,16 @@ certificatesRouter.post(
       return;
     }
 
-    const { code } = await issueEmailOtp({
+    const issued = await issueEmailOtp({
       email,
       purpose: "cert_claim",
       sessionId,
     });
-    await sendOtpEmail({ to: email, code });
+    if ("error" in issued) {
+      res.status(429).json({ error: issued.error });
+      return;
+    }
+    await sendOtpEmail({ to: email, code: issued.code });
     res.json({ ok: true, message: "Verification code sent" });
   },
 );
@@ -373,7 +374,7 @@ certificatesRouter.post(
 );
 
 certificatesRouter.post(
-  "/admin/certificates/:publicId/revoke",
+  "/ops/certificates/:publicId/revoke",
   authLimiter,
   requireAdmin,
   async (req: AuthedRequest, res) => {

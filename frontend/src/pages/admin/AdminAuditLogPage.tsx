@@ -14,7 +14,7 @@ export function AdminAuditLogPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    adminFetch<{ items: Item[] }>("/api/admin/audit")
+    adminFetch<{ items: Item[] }>("/api/ops/audit")
       .then((d) => setItems(d.items))
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed"),
@@ -25,11 +25,11 @@ export function AdminAuditLogPage() {
     <div>
       {error && <p className="status error">{error}</p>}
       <div className="table-wrap">
-        <table className="admin-table">
+        <table className="ops-table">
           <thead>
             <tr>
               <th>When</th>
-              <th>Admin</th>
+              <th>Actor</th>
               <th>Action</th>
               <th>Target</th>
             </tr>

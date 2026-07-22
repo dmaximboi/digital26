@@ -20,7 +20,7 @@ export function AdminMessagesPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   async function load() {
-    const data = await adminFetch<{ items: Msg[]; unread: number }>("/api/admin/messages");
+    const data = await adminFetch<{ items: Msg[]; unread: number }>("/api/ops/messages");
     setItems(data.items);
     setUnread(data.unread);
   }
@@ -34,7 +34,7 @@ export function AdminMessagesPage() {
   async function markRead(id: string) {
     setBusy(id);
     try {
-      await adminFetch(`/api/admin/messages/${encodeURIComponent(id)}/read`, {
+      await adminFetch(`/api/ops/messages/${encodeURIComponent(id)}/read`, {
         method: "POST",
         body: "{}",
       });
@@ -50,7 +50,7 @@ export function AdminMessagesPage() {
     if (!window.confirm("Delete this message?")) return;
     setBusy(id);
     try {
-      await adminFetch(`/api/admin/messages/${encodeURIComponent(id)}`, {
+      await adminFetch(`/api/ops/messages/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
       if (openId === id) setOpenId(null);
@@ -69,8 +69,8 @@ export function AdminMessagesPage() {
   }
 
   return (
-    <div className="admin-page">
-      <div className="admin-page__head">
+    <div className="ops-page">
+      <div className="ops-page__head">
         <div>
           <h2>Messages</h2>
           <p className="muted">

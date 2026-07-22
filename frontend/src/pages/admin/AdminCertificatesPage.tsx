@@ -26,7 +26,7 @@ export function AdminCertificatesPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   async function load() {
-    const data = await adminFetch<{ items: Item[] }>("/api/admin/certificates");
+    const data = await adminFetch<{ items: Item[] }>("/api/ops/certificates");
     setItems(data.items);
   }
 
@@ -39,7 +39,7 @@ export function AdminCertificatesPage() {
   async function revoke(publicId: string) {
     setBusyId(`revoke:${publicId}`);
     try {
-      await adminFetch(`/api/admin/certificates/${encodeURIComponent(publicId)}/revoke`, {
+      await adminFetch(`/api/ops/certificates/${encodeURIComponent(publicId)}/revoke`, {
         method: "POST",
         body: "{}",
       });
@@ -67,7 +67,7 @@ export function AdminCertificatesPage() {
     <div>
       {error && <p className="status error">{error}</p>}
       <div className="table-wrap">
-        <table className="admin-table">
+        <table className="ops-table">
           <thead>
             <tr>
               <th>Student</th>

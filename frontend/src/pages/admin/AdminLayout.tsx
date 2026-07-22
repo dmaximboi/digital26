@@ -43,13 +43,13 @@ export function AdminLayout() {
   }
 
   return (
-    <section className="panel admin-shell">
-      <header className="admin-top">
-        <div className="admin-top__brand">
+    <section className="panel ops-shell">
+      <header className="ops-top">
+        <div className="ops-top__brand">
           <BrandMark size="sm" showText />
           <div>
             <p className="eyebrow">Private console</p>
-            <p className="muted admin-top__email">{user.email}</p>
+            <p className="muted ops-top__email">{user.email}</p>
           </div>
         </div>
         <button type="button" className="btn" onClick={() => void signOut()}>
@@ -57,14 +57,14 @@ export function AdminLayout() {
         </button>
       </header>
 
-      <nav className="admin-nav" aria-label="Admin">
+      <nav className="ops-nav" aria-label="Console">
         {links.map((l) => (
           <NavLink
             key={l.to}
             to={l.to}
             end={"end" in l ? l.end : false}
             className={({ isActive }) =>
-              isActive ? "admin-nav__link is-active" : "admin-nav__link"
+              isActive ? "ops-nav__link is-active" : "ops-nav__link"
             }
           >
             {l.label}
@@ -72,7 +72,7 @@ export function AdminLayout() {
         ))}
       </nav>
 
-      <div className="admin-outlet">
+      <div className="ops-outlet">
         <Outlet />
       </div>
     </section>

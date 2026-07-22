@@ -24,7 +24,7 @@ const transporter = isSmtpConfigured()
     })
   : null;
 
-/** Prefer SMTP; fall back to console in development only */
+
 export async function sendMail(
   args: SendArgs,
 ): Promise<{ delivered: boolean; mode: "smtp" | "console" }> {

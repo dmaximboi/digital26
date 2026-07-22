@@ -245,7 +245,7 @@ export function SignPage() {
     <section className="panel claim-layout">
       <DocBrandHeader title="Sign service agreement" />
       <p className="lede">
-        Use the same email the admin invited. Tag the deal (max 50 characters), confirm details, and
+        Use the same email you were invited with. Tag the deal (max 50 characters), confirm details, and
         sign.
       </p>
 
@@ -318,7 +318,7 @@ export function SignPage() {
                 placeholder="000000"
                 inputMode="numeric"
                 pattern="\d{6}"
-                maxLength={6}
+                maxLength={8}
                 required
                 disabled={submitBusy}
               />

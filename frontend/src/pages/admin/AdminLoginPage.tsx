@@ -3,33 +3,25 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { authClient } from "../../lib/auth";
 import { useAdminAuth } from "../../auth/AdminAuthContext";
 import { DocBrandHeader } from "../../components/BrandMark";
-import { useAdminPath } from "../../lib/adminPath";
+import { useConsolePath } from "../../lib/adminPath";
 
 export function AdminLoginPage() {
-  const { path: adminPath, ready } = useAdminPath();
+  const { path: consolePath } = useConsolePath();
   const { user, loading, refresh } = useAdminAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [mode, setMode] = useState<"signin" | "signup" | "reset">("signin");
+  const [mode, setMode] = useState<"signin" | "reset">("signin");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  if (!ready) {
-    return (
-      <section className="panel">
-        <p className="muted">Loading…</p>
-      </section>
-    );
-  }
-
-  if (!adminPath) {
+  if (!consolePath) {
     return <Navigate to="/" replace />;
   }
 
   if (!loading && user) {
-    return <Navigate to={`/${adminPath}`} replace />;
+    return <Navigate to={`/${consolePath}`} replace />;
   }
 
   async function onSubmit(e: FormEvent) {
@@ -58,31 +50,21 @@ export function AdminLoginPage() {
         return;
       }
 
-      const result =
-        mode === "signup"
-          ? await authClient.signUp.email({
-              name: normalized.split("@")[0] || "Admin",
-              email: normalized,
-              password,
-            })
-          : await authClient.signIn.email({
-              email: normalized,
-              password,
-            });
+      const result = await authClient.signIn.email({
+        email: normalized,
+        password,
+      });
 
       if (result.error) {
         setError(result.error.message);
-        if (result.error.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL") {
-          setMode("signin");
-        }
         setBusy(false);
         return;
       }
 
       await refresh();
-      navigate(`/${adminPath}`);
+      navigate(`/${consolePath}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Auth failed");
+      setError(err instanceof Error ? err.message : "Sign-in failed");
     } finally {
       setBusy(false);
     }
@@ -90,11 +72,8 @@ export function AdminLoginPage() {
 
   return (
     <section className="panel">
-      <DocBrandHeader title="Admin login" />
-      <p className="lede">
-        Sign in with Neon Auth. Access is enforced on the server. Passwords are never stored in
-        this app.
-      </p>
+      <DocBrandHeader title="Console" />
+      <p className="lede">Sign in to continue.</p>
 
       <form className="sign-form" onSubmit={onSubmit}>
         <label>
@@ -105,7 +84,6 @@ export function AdminLoginPage() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="username"
             required
-            placeholder="you@example.com"
           />
         </label>
         {mode !== "reset" && (
@@ -117,49 +95,24 @@ export function AdminLoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
-              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              autoComplete="current-password"
             />
           </label>
         )}
         <button className="btn primary" type="submit" disabled={busy}>
-          {busy
-            ? "Please wait…"
-            : mode === "signup"
-              ? "Create account"
-              : mode === "reset"
-                ? "Send reset link"
-                : "Sign in"}
+          {busy ? "Please wait…" : mode === "reset" ? "Send reset link" : "Sign in"}
         </button>
       </form>
 
       <p className="lede">
-        {mode === "signin" && (
-          <>
-            First time?{" "}
-            <button type="button" className="linkish" onClick={() => setMode("signup")}>
-              Sign up
-            </button>
-            {" · "}
-            <button type="button" className="linkish" onClick={() => setMode("reset")}>
-              Forgot password
-            </button>
-          </>
-        )}
-        {mode === "signup" && (
-          <>
-            Already registered?{" "}
-            <button type="button" className="linkish" onClick={() => setMode("signin")}>
-              Sign in
-            </button>
-          </>
-        )}
-        {mode === "reset" && (
-          <>
-            Remembered it?{" "}
-            <button type="button" className="linkish" onClick={() => setMode("signin")}>
-              Sign in
-            </button>
-          </>
+        {mode === "signin" ? (
+          <button type="button" className="linkish" onClick={() => setMode("reset")}>
+            Forgot password
+          </button>
+        ) : (
+          <button type="button" className="linkish" onClick={() => setMode("signin")}>
+            Back to sign in
+          </button>
         )}
       </p>
 

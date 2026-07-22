@@ -7,7 +7,6 @@ type CreateResult = {
   sessionId: string;
   link: string;
   linkExpiresAt: string;
-  passkeyDevOnly?: string;
   message: string;
 };
 
@@ -19,7 +18,7 @@ export function AdminCreateAgreementPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    document.title = "Admin: Create agreement | The Digital 26";
+    document.title = "Create agreement | The Digital 26";
   }, []);
 
   async function onSubmit(e: FormEvent) {
@@ -29,7 +28,7 @@ export function AdminCreateAgreementPage() {
     setError(null);
     setResult(null);
     try {
-      const data = await adminFetch<CreateResult>("/api/admin/agreements", {
+      const data = await adminFetch<CreateResult>("/api/ops/agreements", {
         method: "POST",
         body: JSON.stringify({ clientEmail, clientName }),
       });
@@ -85,14 +84,6 @@ export function AdminCreateAgreementPage() {
               <dt>Expires</dt>
               <dd>{new Date(result.linkExpiresAt).toLocaleString()}</dd>
             </div>
-            {result.passkeyDevOnly && (
-              <div>
-                <dt>Passkey (dev)</dt>
-                <dd>
-                  <code>{result.passkeyDevOnly}</code>
-                </dd>
-              </div>
-            )}
           </dl>
         </article>
       )}

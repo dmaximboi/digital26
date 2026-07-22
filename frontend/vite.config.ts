@@ -28,7 +28,7 @@ export default defineConfig({
           },
           {
             urlPattern: ({ url }) =>
-              url.pathname.startsWith("/api/admin") ||
+              url.pathname.startsWith("/api/ops") ||
               url.pathname.includes("/otp") ||
               url.pathname.includes("/unlock") ||
               url.pathname.includes("/claim-cert") ||

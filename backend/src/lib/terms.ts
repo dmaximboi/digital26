@@ -17,7 +17,7 @@ throughout the whole service process — Inshallah.
 A typed full name on this letter is the Client’s digital signature and acknowledgement.
 `.trim();
 
-/** Always use OTHER + dealTag (≤50 chars) for business/service engagements */
+
 export const DEAL_TYPE_LABELS = {
   BUY_PRODUCT: "Digital product",
   LEARN_SKILLS: "Skills / collaboration",

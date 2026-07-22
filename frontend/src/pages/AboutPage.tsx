@@ -81,7 +81,7 @@ export function AboutPage() {
           </p>
           <p>
             Signed letters stay publicly checkable by ID. Phone and email stay private. Full PDFs
-            stay in the admin console only.
+            stay in the private console only.
           </p>
         </article>
 

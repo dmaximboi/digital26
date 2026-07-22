@@ -4,21 +4,7 @@ import { env } from "../config/env.js";
 import { isValidPublicId } from "../lib/publicId.js";
 import { publicLookupLimiter } from "../middleware/security.js";
 
-/**
- * Public certificate verification - reads ONLY certificates_public.
- * Portrait photoUrl is public (shown on the certificate); phone/email stay private.
- * Open to search engines and AI agents (JSON + optional markdown/plaintext).
- */
 export const publicRouter = Router();
-
-/**
- * Admin console path from backend env only (ADMIN_CONSOLE_PATH).
- * Frontend fetches this at boot — nothing hardcoded in the client bundle.
- */
-publicRouter.get("/console-route", publicLookupLimiter, (_req, res) => {
-  res.setHeader("Cache-Control", "private, no-store");
-  res.json({ path: env.ADMIN_CONSOLE_PATH });
-});
 
 function verifyUrl(publicId: string): string {
   const base = (env.PUBLIC_SITE_URL || env.APP_URL).replace(/\/$/, "");
@@ -43,9 +29,6 @@ function certMarkdown(record: {
     `- **Status:** ${record.status}`,
     `- **Issue date:** ${record.issueDate.toISOString().slice(0, 10)}`,
     `- **Verify:** ${verifyUrl(record.publicId)}`,
-    ``,
-    `Contact details (phone/email) are private and not included.`,
-    `Issued by The Digital 26 — Vibe Coding masterclass.`,
   ].join("\n");
 }
 
@@ -107,9 +90,6 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
   });
 });
 
-/**
- * Public agreement card - reads ONLY agreements_public.
- */
 publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
   const publicId = String(req.params.publicId ?? "").trim();
 

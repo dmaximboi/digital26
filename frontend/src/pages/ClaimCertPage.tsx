@@ -181,7 +181,7 @@ export function ClaimCertPage() {
     <section className="panel claim-layout">
       <DocBrandHeader title="Acknowledge certificate" />
       <p className="lede">
-        Use the same email the admin invited. Link expires{" "}
+        Use the same email you were invited with. Link expires{" "}
         {new Date(status.expiresAt).toLocaleString()}.
       </p>
       <p className="muted">
@@ -243,7 +243,7 @@ export function ClaimCertPage() {
                 placeholder="000000"
                 inputMode="numeric"
                 pattern="\d{6}"
-                maxLength={6}
+                maxLength={8}
                 required
                 disabled={submitBusy}
               />

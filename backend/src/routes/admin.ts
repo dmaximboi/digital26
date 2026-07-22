@@ -10,14 +10,14 @@ import { writeAudit } from "../lib/audit.js";
 
 export const adminRouter = Router();
 
-adminRouter.get("/admin/me", authLimiter, requireAdmin, async (req: AuthedRequest, res) => {
+adminRouter.get("/ops/me", authLimiter, requireAdmin, async (req: AuthedRequest, res) => {
   res.json({
     email: req.adminEmail,
     userId: req.adminUserId ?? null,
   });
 });
 
-adminRouter.get("/admin/dashboard", requireAdmin, async (req: AuthedRequest, res) => {
+adminRouter.get("/ops/dashboard", requireAdmin, async (req: AuthedRequest, res) => {
   const now = new Date();
   const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
@@ -64,7 +64,7 @@ adminRouter.get("/admin/dashboard", requireAdmin, async (req: AuthedRequest, res
   });
 });
 
-adminRouter.get("/admin/agreements", requireAdmin, async (req: AuthedRequest, res) => {
+adminRouter.get("/ops/agreements", requireAdmin, async (req: AuthedRequest, res) => {
   const q = String(req.query.q ?? "").trim();
   const rows = await prisma.agreement.findMany({
     where: q
@@ -101,7 +101,7 @@ adminRouter.get("/admin/agreements", requireAdmin, async (req: AuthedRequest, re
   });
 });
 
-adminRouter.get("/admin/agreements/:id", requireAdmin, async (req: AuthedRequest, res) => {
+adminRouter.get("/ops/agreements/:id", requireAdmin, async (req: AuthedRequest, res) => {
   const id = String(req.params.id ?? "");
   const a = await prisma.agreement.findUnique({
     where: { id },
@@ -142,9 +142,9 @@ adminRouter.get("/admin/agreements/:id", requireAdmin, async (req: AuthedRequest
   });
 });
 
-/** Explicit reveal of private contact — audited */
+
 adminRouter.post(
-  "/admin/people/:id/reveal-contact",
+  "/ops/people/:id/reveal-contact",
   requireAdmin,
   async (req: AuthedRequest, res) => {
     const id = String(req.params.id ?? "");
@@ -167,7 +167,7 @@ adminRouter.post(
   },
 );
 
-adminRouter.get("/admin/certificates", requireAdmin, async (_req, res) => {
+adminRouter.get("/ops/certificates", requireAdmin, async (_req, res) => {
   const rows = await prisma.certificate.findMany({
     include: {
       person: { select: { id: true, name: true, email: true } },
@@ -193,7 +193,7 @@ adminRouter.get("/admin/certificates", requireAdmin, async (_req, res) => {
   });
 });
 
-adminRouter.get("/admin/clients", requireAdmin, async (_req, res) => {
+adminRouter.get("/ops/clients", requireAdmin, async (_req, res) => {
   const people = await prisma.person.findMany({
     select: {
       id: true,
@@ -227,7 +227,7 @@ adminRouter.get("/admin/clients", requireAdmin, async (_req, res) => {
   res.json({ items: people });
 });
 
-adminRouter.get("/admin/audit", requireAdmin, async (_req, res) => {
+adminRouter.get("/ops/audit", requireAdmin, async (_req, res) => {
   const items = await prisma.adminAuditLog.findMany({
     orderBy: { createdAt: "desc" },
     take: 150,
@@ -235,8 +235,8 @@ adminRouter.get("/admin/audit", requireAdmin, async (_req, res) => {
   res.json({ items });
 });
 
-/** Admin-only PDF download (agreement letter + both cert types). Not public. */
-adminRouter.get("/admin/files/:kind/:filename", requireAdmin, async (req, res) => {
+
+adminRouter.get("/ops/files/:kind/:filename", requireAdmin, async (req, res) => {
   const kind = String(req.params.kind ?? "");
   const filename = String(req.params.filename ?? "");
 
@@ -244,7 +244,7 @@ adminRouter.get("/admin/files/:kind/:filename", requireAdmin, async (req, res) =
     res.status(400).json({ error: "Invalid kind" });
     return;
   }
-  // New: D26xxxxxxxx.pdf — Legacy: D2600001cert.pdf etc.
+  
   if (!/^D26[A-Za-z0-9\-_~.]+(?:agr|cert)?\.pdf$/i.test(filename)) {
     res.status(400).json({ error: "Invalid filename" });
     return;

@@ -31,13 +31,13 @@ function neonErrorMessage(data: Record<string, unknown>, status: number): string
     (typeof data.error === "string" ? data.error : null);
 
   if (code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL" || /already exists/i.test(message || "")) {
-    return "An account already exists for this email. Switch to Sign in, or use Forgot password.";
+    return "Unable to continue with this email.";
   }
   if (code === "INVALID_EMAIL_OR_PASSWORD") {
-    return "Wrong email or password. Try again, or use Forgot password.";
+    return "Wrong email or password.";
   }
   if (code === "MISSING_ORIGIN") {
-    return "Auth rejected this browser origin. Add https://digital26.online in Neon Auth allowed origins.";
+    return "This site origin is not allowed for sign-in.";
   }
 
   return message || `Auth request failed (${status})`;
@@ -99,7 +99,7 @@ async function refreshJwt(): Promise<string | null> {
       return body.token;
     }
   } catch {
-    // ignore
+    
   }
   return sessionStorage.getItem("d26_access_token");
 }

@@ -21,18 +21,10 @@ import { AdminCertificatesPage } from "./pages/admin/AdminCertificatesPage";
 import { AdminClientsPage } from "./pages/admin/AdminClientsPage";
 import { AdminAuditLogPage } from "./pages/admin/AdminAuditLogPage";
 import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
-import { AdminPathProvider, useAdminPath } from "./lib/adminPath";
-
-function BootLoading() {
-  return (
-    <section className="panel">
-      <p className="muted">Loading…</p>
-    </section>
-  );
-}
+import { ConsolePathProvider, useConsolePath } from "./lib/adminPath";
 
 function AppRoutes() {
-  const { path: adminPath, ready } = useAdminPath();
+  const { path: consolePath } = useConsolePath();
 
   return (
     <Routes>
@@ -47,14 +39,12 @@ function AppRoutes() {
       <Route path="/sign/:sessionId" element={<SignPage />} />
       <Route path="/claim-cert/:sessionId" element={<ClaimCertPage />} />
       <Route path="/admin/*" element={<Navigate to="/" replace />} />
+      <Route path="/ops/*" element={<Navigate to="/" replace />} />
 
-      {/* Wait for console-route — do NOT bounce /d26-ops to home while loading */}
-      {!ready ? <Route path="*" element={<BootLoading />} /> : null}
-
-      {ready && adminPath ? (
+      {consolePath ? (
         <>
           <Route
-            path={`/${adminPath}/login`}
+            path={`/${consolePath}/login`}
             element={
               <AdminAuthProvider>
                 <AdminLoginPage />
@@ -62,7 +52,7 @@ function AppRoutes() {
             }
           />
           <Route
-            path={`/${adminPath}`}
+            path={`/${consolePath}`}
             element={
               <AdminAuthProvider>
                 <AdminLayout />
@@ -82,15 +72,14 @@ function AppRoutes() {
         </>
       ) : null}
 
-      {ready ? <Route path="*" element={<Navigate to="/" replace />} /> : null}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
-/** Public site never waits on admin/auth. Admin mounts only after path loads. */
 export function App() {
   return (
-    <AdminPathProvider>
+    <ConsolePathProvider>
       <div className="app-shell">
         <SiteHeader />
         <main>
@@ -98,6 +87,6 @@ export function App() {
         </main>
         <SiteFooter />
       </div>
-    </AdminPathProvider>
+    </ConsolePathProvider>
   );
 }

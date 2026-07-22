@@ -29,7 +29,7 @@ export function AdminClientsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
-    adminFetch<{ items: Person[] }>("/api/admin/clients")
+    adminFetch<{ items: Person[] }>("/api/ops/clients")
       .then((d) => setItems(d.items))
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed"),
@@ -42,7 +42,7 @@ export function AdminClientsPage() {
     setError(null);
     try {
       const c = await adminFetch<Contact & { id: string }>(
-        `/api/admin/people/${encodeURIComponent(id)}/reveal-contact`,
+        `/api/ops/people/${encodeURIComponent(id)}/reveal-contact`,
         { method: "POST", body: "{}" },
       );
       setRevealed((prev) => ({ ...prev, [id]: { email: c.email, phone: c.phone } }));
@@ -54,8 +54,8 @@ export function AdminClientsPage() {
   }
 
   return (
-    <div className="admin-page">
-      <div className="admin-page__head">
+    <div className="ops-page">
+      <div className="ops-page__head">
         <div>
           <h2>Clients</h2>
           <p className="muted">Email and phone stay hidden until you reveal them</p>

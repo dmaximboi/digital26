@@ -28,8 +28,7 @@ async function emailFromNeonAuthUser(userId: string): Promise<string | null> {
     `;
     const email = rows[0]?.email;
     return email ? email.toLowerCase() : null;
-  } catch (err) {
-    console.error("neon_auth.user lookup failed", err);
+  } catch {
     return null;
   }
 }
@@ -40,7 +39,7 @@ async function verifyNeonJwt(token: string): Promise<{
   payload: JWTPayload;
 }> {
   if (!JWKS || !env.NEON_AUTH_URL) {
-    throw new Error("NEON_AUTH_NOT_CONFIGURED");
+    throw new Error("AUTH_NOT_CONFIGURED");
   }
 
   const issuerCandidates = [
@@ -53,7 +52,10 @@ async function verifyNeonJwt(token: string): Promise<{
 
   for (const issuer of issuerCandidates) {
     try {
-      const verified = await jwtVerify(token, JWKS, { issuer });
+      const verified = await jwtVerify(token, JWKS, {
+        issuer,
+        clockTolerance: 30,
+      });
       payload = verified.payload;
       break;
     } catch (err) {
@@ -77,10 +79,6 @@ async function verifyNeonJwt(token: string): Promise<{
   return { email, userId, payload };
 }
 
-/**
- * Admin gate: Neon Auth JWT only. Email must be in server ADMIN_EMAILS.
- * No bootstrap / shared secret bypass.
- */
 export async function requireAdmin(
   req: AuthedRequest,
   res: Response,
@@ -96,7 +94,7 @@ export async function requireAdmin(
   }
 
   if (!JWKS || !env.NEON_AUTH_URL) {
-    res.status(503).json({ error: "Admin auth is not configured" });
+    res.status(503).json({ error: "Auth is not configured" });
     return;
   }
 
@@ -109,8 +107,7 @@ export async function requireAdmin(
     req.adminEmail = email;
     req.adminUserId = userId;
     next();
-  } catch (err) {
-    console.error("Admin JWT verify failed", err instanceof Error ? err.message : err);
+  } catch {
     res.status(401).json({ error: "Invalid or expired session" });
   }
 }

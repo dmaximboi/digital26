@@ -4,9 +4,36 @@ import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { env } from "../config/env.js";
 
+const neonOrigin = (() => {
+  try {
+    return env.NEON_AUTH_URL ? new URL(env.NEON_AUTH_URL).origin : null;
+  } catch {
+    return null;
+  }
+})();
+
+const imageKitOrigin = (() => {
+  try {
+    return env.IMAGEKIT_URL_ENDPOINT ? new URL(env.IMAGEKIT_URL_ENDPOINT).origin : null;
+  } catch {
+    return null;
+  }
+})();
+
 export function applySecurity(app: Express): void {
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
+
+  const connectSrc = ["'self'", ...env.corsOrigins];
+  if (neonOrigin) connectSrc.push(neonOrigin);
+  if (imageKitOrigin) connectSrc.push(imageKitOrigin);
+  if (env.API_URL) {
+    try {
+      connectSrc.push(new URL(env.API_URL).origin);
+    } catch {
+      /* ignore */
+    }
+  }
 
   app.use(
     helmet({
@@ -19,7 +46,7 @@ export function applySecurity(app: Express): void {
               styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
               fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
               scriptSrc: ["'self'"],
-              connectSrc: ["'self'", ...env.corsOrigins, "https:"],
+              connectSrc,
               frameAncestors: ["'none'"],
               objectSrc: ["'none'"],
               baseUri: ["'self'"],
@@ -41,6 +68,10 @@ export function applySecurity(app: Express): void {
     cors({
       origin(origin, callback) {
         if (!origin) {
+          if (env.isProd) {
+            callback(null, false);
+            return;
+          }
           callback(null, true);
           return;
         }
@@ -48,7 +79,7 @@ export function applySecurity(app: Express): void {
           callback(null, true);
           return;
         }
-        callback(new Error(`CORS blocked for origin: ${origin}`));
+        callback(new Error("CORS blocked"));
       },
       credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -75,7 +106,6 @@ export function applySecurity(app: Express): void {
     next();
   });
 
-  /** Reject suspicious path traversal probes early */
   app.use((req: Request, res: Response, next: NextFunction) => {
     const raw = req.url || "";
     if (raw.includes("..") || raw.includes("%2e%2e") || raw.includes("\\")) {
@@ -110,7 +140,6 @@ export const publicLookupLimiter = rateLimit({
   message: { error: "Too many lookup requests. Try again later." },
 });
 
-/** Extra-tight limit for contact form spam */
 export const contactLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: env.isProd ? 8 : 40,

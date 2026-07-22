@@ -7,20 +7,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
+const pathSegment = z
+  .string()
+  .min(3)
+  .max(64)
+  .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/);
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   DIRECT_URL: z.string().min(1).optional(),
   FIELD_ENCRYPTION_KEY: z.string().min(1).optional(),
-  /** Comma-separated admin emails (server only). No hardcoded defaults. */
-  ADMIN_EMAILS: z.string().min(1, "ADMIN_EMAILS is required"),
-  /** Secret URL segment for admin SPA (e.g. d26-ops). Not committed; live env only. */
-  ADMIN_CONSOLE_PATH: z
-    .string()
-    .min(3)
-    .max(64)
-    .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/, "ADMIN_CONSOLE_PATH must be URL-safe"),
+  STAFF_EMAILS: z.string().optional(),
+  ADMIN_EMAILS: z.string().optional(),
+  CONSOLE_PATH: pathSegment.optional(),
+  ADMIN_CONSOLE_PATH: pathSegment.optional(),
   CORS_ORIGINS: z
     .string()
     .default("https://digital26.online,http://localhost:5173"),
@@ -40,15 +42,13 @@ const envSchema = z.object({
   IMAGEKIT_PRIVATE_KEY: z.string().optional(),
   IMAGEKIT_URL_ENDPOINT: z.string().url().optional(),
   IMAGEKIT_FOLDER: z.string().default("digital26/students"),
-  /** Max JSON body (bytes) — defense in depth */
   JSON_BODY_LIMIT: z.string().default("100kb"),
 });
 
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
-  console.error("Invalid environment configuration:");
-  console.error(parsed.error.flatten().fieldErrors);
+  console.error("Invalid environment configuration");
   process.exit(1);
 }
 
@@ -65,19 +65,30 @@ if (isProd && (!data.NEON_AUTH_URL || !data.NEON_AUTH_JWKS_URL)) {
   process.exit(1);
 }
 
-const adminEmails = data.ADMIN_EMAILS.split(",")
+const staffEmailSource = data.STAFF_EMAILS || data.ADMIN_EMAILS || "";
+const adminEmails = staffEmailSource
+  .split(",")
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
 if (adminEmails.length === 0) {
-  console.error("ADMIN_EMAILS must list at least one admin email");
+  console.error("STAFF_EMAILS is required");
+  process.exit(1);
+}
+
+const consolePath = data.CONSOLE_PATH || data.ADMIN_CONSOLE_PATH;
+if (!consolePath) {
+  console.error("CONSOLE_PATH is required");
   process.exit(1);
 }
 
 export const env = {
   ...data,
   isProd,
+  ADMIN_EMAILS: staffEmailSource,
+  ADMIN_CONSOLE_PATH: consolePath,
   adminEmails,
+  consolePath,
   corsOrigins: data.CORS_ORIGINS.split(",")
     .map((o) => o.trim())
     .filter(Boolean),

@@ -5,7 +5,7 @@ import { App } from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./styles.css";
 
-// Kill any stuck service worker from earlier PWA builds (common cause of blank screens)
+
 if ("serviceWorker" in navigator) {
   void navigator.serviceWorker.getRegistrations().then((regs) => {
     for (const reg of regs) void reg.unregister();

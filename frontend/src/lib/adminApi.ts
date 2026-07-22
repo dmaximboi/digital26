@@ -48,7 +48,7 @@ export async function adminFetch<T>(path: string, init?: RequestInit): Promise<T
   return data as T;
 }
 
-/** Download agreement / certificate PDF (admin auth). */
+
 export async function adminDownloadPdf(
   kind: "agreements" | "certificates",
   publicId: string,
@@ -56,7 +56,7 @@ export async function adminDownloadPdf(
   const filename = publicId.endsWith(".pdf") ? publicId : `${publicId}.pdf`;
   const headers = await authHeaders();
   const h = headers as Record<string, string>;
-  const res = await fetch(`${API_BASE}/api/admin/files/${kind}/${encodeURIComponent(filename)}`, {
+  const res = await fetch(`${API_BASE}/api/ops/files/${kind}/${encodeURIComponent(filename)}`, {
     headers: {
       Authorization: h.Authorization ?? "",
       Accept: "application/pdf",

@@ -546,7 +546,7 @@ dd {
   text-decoration: underline;
 }
 
-.admin-top {
+.ops-top {
   display: flex;
   justify-content: space-between;
   gap: 1rem;
@@ -584,22 +584,22 @@ dd {
   -webkit-overflow-scrolling: touch;
 }
 
-.admin-table {
+.ops-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.92rem;
   min-width: 520px;
 }
 
-.admin-table th,
-.admin-table td {
+.ops-table th,
+.ops-table td {
   text-align: left;
   padding: 0.7rem 0.5rem;
   border-bottom: 1px solid var(--line);
   vertical-align: top;
 }
 
-.admin-table th {
+.ops-table th {
   color: var(--muted);
   font-weight: 500;
 }
@@ -629,22 +629,22 @@ dd {
   min-height: 120px;
 }
 
-.admin-shell {
+.ops-shell {
   padding-bottom: 3rem;
 }
 
-.admin-top__brand {
+.ops-top__brand {
   display: flex;
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
 }
 
-.admin-top__email {
+.ops-top__email {
   margin: 0.15rem 0 0;
 }
 
-.admin-nav {
+.ops-nav {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
@@ -655,7 +655,7 @@ dd {
   background: rgba(255, 255, 255, 0.02);
 }
 
-.admin-nav__link {
+.ops-nav__link {
   color: var(--muted);
   font-size: 0.82rem;
   padding: 0.45rem 0.75rem;
@@ -664,23 +664,23 @@ dd {
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
 }
 
-.admin-nav__link:hover {
+.ops-nav__link:hover {
   color: var(--accent);
   border-color: var(--line);
 }
 
-.admin-nav__link.is-active {
+.ops-nav__link.is-active {
   color: var(--accent-ink);
   background: linear-gradient(135deg, var(--accent), var(--accent-deep));
   font-weight: 700;
   border-color: transparent;
 }
 
-.admin-outlet {
+.ops-outlet {
   min-width: 0;
 }
 
-.admin-page__head {
+.ops-page__head {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -689,13 +689,13 @@ dd {
   margin-bottom: 1.25rem;
 }
 
-.admin-page__head h2 {
+.ops-page__head h2 {
   margin: 0;
   font-family: var(--font-display);
   font-size: clamp(1.2rem, 3vw, 1.5rem);
 }
 
-.admin-page__actions {
+.ops-page__actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
@@ -1017,13 +1017,13 @@ dd {
     gap: 0.2rem;
   }
 
-  .admin-nav {
+  .ops-nav {
     gap: 0.35rem;
     padding: 0.5rem;
     max-height: none;
   }
 
-  .admin-nav__link {
+  .ops-nav__link {
     font-size: 0.78rem;
     padding: 0.5rem 0.7rem;
     min-height: 40px;
@@ -1031,12 +1031,12 @@ dd {
     align-items: center;
   }
 
-  .admin-table {
+  .ops-table {
     font-size: 0.82rem;
   }
 
-  .admin-table th,
-  .admin-table td {
+  .ops-table th,
+  .ops-table td {
     padding: 0.55rem 0.35rem;
   }
 

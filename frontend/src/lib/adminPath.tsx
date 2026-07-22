@@ -1,75 +1,74 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
-  useState,
   type ReactNode,
 } from "react";
-import { apiGet } from "./api";
+import { useLocation } from "react-router-dom";
 
-/** Normalize + validate admin URL segment from backend. */
-export function normalizeAdminPath(raw: string): string | null {
+const RESERVED = new Set([
+  "verify",
+  "check-agreement",
+  "contact",
+  "about",
+  "a",
+  "sign",
+  "claim-cert",
+  "ops",
+  "admin",
+  "api",
+  "health",
+  "assets",
+  "manifest.webmanifest",
+  "robots.txt",
+  "sitemap.xml",
+  "llms.txt",
+  "sw.js",
+  "workbox",
+]);
+
+export function normalizeConsolePath(raw: string): string | null {
   const v = raw.trim().replace(/^\/+|\/+$/g, "");
   if (!v) return null;
   if (!/^[a-zA-Z0-9][a-zA-Z0-9_-]{2,64}$/.test(v)) return null;
+  if (RESERVED.has(v.toLowerCase())) return null;
   return v;
 }
 
-let cachedPath: string | null = null;
-
-/** Sync read after AdminPathProvider has loaded (or null). */
-export function getAdminPath(): string | null {
-  return cachedPath;
-}
-
-type AdminPathState = {
+type ConsolePathState = {
   path: string | null;
   ready: boolean;
 };
 
-const AdminPathContext = createContext<AdminPathState>({
+const ConsolePathContext = createContext<ConsolePathState>({
   path: null,
-  ready: false,
+  ready: true,
 });
 
-export function AdminPathProvider({ children }: { children: ReactNode }) {
-  const [path, setPath] = useState<string | null>(cachedPath);
-  const [ready, setReady] = useState(Boolean(cachedPath));
+export function ConsolePathProvider({ children }: { children: ReactNode }) {
+  const { pathname } = useLocation();
+  const path = useMemo(() => {
+    const seg = pathname.split("/").filter(Boolean)[0] ?? "";
+    return normalizeConsolePath(seg);
+  }, [pathname]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const ac = new AbortController();
-    const timer = window.setTimeout(() => ac.abort(), 8000);
-
-    apiGet<{ path: string }>("/api/public/console-route")
-      .then((data) => {
-        if (cancelled) return;
-        const next = normalizeAdminPath(data.path || "");
-        cachedPath = next;
-        setPath(next);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        cachedPath = null;
-        setPath(null);
-      })
-      .finally(() => {
-        window.clearTimeout(timer);
-        if (!cancelled) setReady(true);
-      });
-
-    return () => {
-      cancelled = true;
-      window.clearTimeout(timer);
-      ac.abort();
-    };
-  }, []);
-
-  const value = useMemo(() => ({ path, ready }), [path, ready]);
-  return <AdminPathContext.Provider value={value}>{children}</AdminPathContext.Provider>;
+  const value = useMemo(() => ({ path, ready: true }), [path]);
+  return (
+    <ConsolePathContext.Provider value={value}>{children}</ConsolePathContext.Provider>
+  );
 }
 
-export function useAdminPath(): AdminPathState {
-  return useContext(AdminPathContext);
+export function useConsolePath(): ConsolePathState {
+  return useContext(ConsolePathContext);
 }
+
+export function getConsolePath(): string | null {
+  if (typeof window === "undefined") return null;
+  const seg = window.location.pathname.split("/").filter(Boolean)[0] ?? "";
+  return normalizeConsolePath(seg);
+}
+
+export const AdminPathProvider = ConsolePathProvider;
+export const useAdminPath = useConsolePath;
+export const getAdminPath = getConsolePath;
+export const normalizeAdminPath = normalizeConsolePath;

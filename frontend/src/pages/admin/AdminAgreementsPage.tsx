@@ -26,7 +26,7 @@ export function AdminAgreementsPage() {
 
   useEffect(() => {
     const params = q ? `?q=${encodeURIComponent(q)}` : "";
-    adminFetch<{ items: Item[] }>(`/api/admin/agreements${params}`)
+    adminFetch<{ items: Item[] }>(`/api/ops/agreements${params}`)
       .then((d) => setItems(d.items))
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed"),
@@ -56,7 +56,7 @@ export function AdminAgreementsPage() {
       </div>
       {error && <p className="status error">{error}</p>}
       <div className="table-wrap">
-        <table className="admin-table">
+        <table className="ops-table">
           <thead>
             <tr>
               <th>Client</th>

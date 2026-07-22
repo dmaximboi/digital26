@@ -40,7 +40,7 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
       }
 
       try {
-        const me = await adminFetch<{ email: string }>("/api/admin/me");
+        const me = await adminFetch<{ email: string }>("/api/ops/me");
         if (me.email) {
           setUser({ id: u.id, email: me.email, name: u.name });
           return;

@@ -42,7 +42,7 @@ export function AdminIssueCertificatePage() {
     setResult(null);
     try {
       const iso = new Date(`${issueDate}T12:00:00`).toISOString();
-      const data = await adminFetch<InviteResult>("/api/admin/certificates", {
+      const data = await adminFetch<InviteResult>("/api/ops/certificates", {
         method: "POST",
         body: JSON.stringify({
           studentEmail: studentEmail.trim(),

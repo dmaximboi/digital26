@@ -27,7 +27,7 @@ export function AdminAgreementDetailPage() {
   const [revealBusy, setRevealBusy] = useState(false);
 
   useEffect(() => {
-    adminFetch<Detail>(`/api/admin/agreements/${id}`)
+    adminFetch<Detail>(`/api/ops/agreements/${id}`)
       .then(setData)
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed"),
@@ -53,7 +53,7 @@ export function AdminAgreementDetailPage() {
     setError(null);
     try {
       const c = await adminFetch<Contact & { id: string; name: string }>(
-        `/api/admin/people/${encodeURIComponent(data.person.id)}/reveal-contact`,
+        `/api/ops/people/${encodeURIComponent(data.person.id)}/reveal-contact`,
         { method: "POST", body: "{}" },
       );
       setContact({ email: c.email, phone: c.phone });
