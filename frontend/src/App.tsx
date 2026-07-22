@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes, useParams } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { AdminAuthProvider } from "./auth/AdminAuthContext";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
@@ -22,15 +22,19 @@ import { AdminClientsPage } from "./pages/admin/AdminClientsPage";
 import { AdminAuditLogPage } from "./pages/admin/AdminAuditLogPage";
 import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
 import { AdminVisitsPage } from "./pages/admin/AdminVisitsPage";
-import {
-  ConsolePathProvider,
-  normalizeConsolePath,
-} from "./lib/adminPath";
+import { ConsolePathProvider, useConsolePath } from "./lib/adminPath";
 import { useVisitorBeacon } from "./lib/visitorBeacon";
 
 function ConsoleSegmentGate({ children }: { children: React.ReactNode }) {
-  const { seg } = useParams();
-  if (!seg || !normalizeConsolePath(seg)) {
+  const { path, ready } = useConsolePath();
+  if (!ready) {
+    return (
+      <section className="panel" aria-busy="true">
+        <p className="muted">Loading…</p>
+      </section>
+    );
+  }
+  if (!path) {
     return <Navigate to="/" replace />;
   }
   return <AdminAuthProvider>{children}</AdminAuthProvider>;

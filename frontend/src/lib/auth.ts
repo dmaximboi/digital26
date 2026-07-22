@@ -1,6 +1,17 @@
 import { getAdminPath } from "./adminPath";
 
-const AUTH_URL = (import.meta.env.VITE_NEON_AUTH_URL || "").replace(/\/$/, "");
+function resolveAuthBase(raw: string): string {
+  let u = raw.trim().replace(/\/$/, "");
+  if (!u) return "";
+
+  u = u.replace(/\/(sign-in|sign-up|sign-out|get-session|forget-password|request-password-reset|token)(\/.*)?$/i, "");
+  u = u.replace(/\/$/, "");
+
+  if (u.endsWith("/auth")) return u;
+  return `${u}/auth`;
+}
+
+const AUTH_URL = resolveAuthBase(import.meta.env.VITE_NEON_AUTH_URL || "");
 
 const SITE_ORIGIN =
   typeof window !== "undefined" ? window.location.origin : "http://localhost:5173";
@@ -37,7 +48,10 @@ function neonErrorMessage(data: Record<string, unknown>, status: number): string
     return "Wrong email or password.";
   }
   if (code === "MISSING_ORIGIN") {
-    return "This site origin is not allowed for sign-in.";
+    return "This site origin is not allowed for sign-in. Add digital26.online in Neon Auth trusted origins.";
+  }
+  if (/route\s+post:/i.test(message || "") || /not found/i.test(message || "")) {
+    return "Sign-in endpoint not found. Set VITE_NEON_AUTH_URL to your Neon Auth base ending in /auth (for example …/neondb/auth).";
   }
 
   return message || `Auth request failed (${status})`;

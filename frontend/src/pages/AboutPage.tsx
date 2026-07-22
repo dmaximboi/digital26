@@ -8,7 +8,7 @@ export function AboutPage() {
     setPageMeta({
       title: "About Us",
       description:
-        "Who The Digital 26 is: Adewuyi Ayuba (Maxim), a flexible 3-month Vibe Coding masterclass, and client websites and apps under clear agreements.",
+        "Who The Digital 26 is: Adewuyi Ayuba (Maxim), a Vibe Coding studio and classroom, and client digital presence under clear agreements.",
       path: "/about",
     });
     setJsonLd("d26-jsonld-about", {
@@ -17,7 +17,7 @@ export function AboutPage() {
       name: "About The Digital 26",
       url: siteUrl("/about"),
       description:
-        "The Digital 26 builds learners and ships real products: Vibe Coding education plus websites and apps with structured agreements.",
+        "The Digital 26 builds learners and ships real products: Vibe Coding studio and classroom plus websites and apps with structured agreements.",
       mainEntity: {
         "@type": "Organization",
         name: "The Digital 26",
@@ -59,11 +59,11 @@ export function AboutPage() {
         </article>
 
         <article className="about-card">
-          <p className="about-card__eyebrow">Masterclass</p>
-          <h2>3-month Vibe Coding</h2>
+          <p className="about-card__eyebrow">Studio & classroom</p>
+          <h2>Vibe Coding</h2>
           <p>
-            A flexible program of about three months. The structure can bend to suit your goals,
-            while you still learn by shipping real projects, not slides alone.
+            Learn by shipping in a studio and classroom setting. Build real projects, grow your
+            digital presence, and leave with work you can show.
           </p>
           <p>
             Completers can receive a public Certificate of Participation or Completion that Google

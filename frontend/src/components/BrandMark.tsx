@@ -25,7 +25,7 @@ export function BrandMark({ size = "md", showText = false, className = "" }: Bra
       {showText && (
         <div className="brand-mark__text">
           <span className="brand-mark__name">The Digital 26</span>
-          <span className="brand-mark__tag">Vibe Coding Masterclass</span>
+          <span className="brand-mark__tag">Vibe Coding Studio</span>
         </div>
       )}
     </div>

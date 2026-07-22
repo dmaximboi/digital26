@@ -1,7 +1,9 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
+  useState,
   type ReactNode,
 } from "react";
 import { useLocation } from "react-router-dom";
@@ -27,6 +29,10 @@ const RESERVED = new Set([
   "workbox",
 ]);
 
+const VERIFIED_KEY = "d26_console_path";
+
+const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+
 export function normalizeConsolePath(raw: string): string | null {
   const v = raw.trim().replace(/^\/+|\/+$/g, "");
   if (!v) return null;
@@ -42,19 +48,74 @@ type ConsolePathState = {
 
 const ConsolePathContext = createContext<ConsolePathState>({
   path: null,
-  ready: true,
+  ready: false,
 });
+
+function envConsolePath(): string | null {
+  return normalizeConsolePath(import.meta.env.VITE_CONSOLE_PATH || "");
+}
+
+async function verifyConsolePath(candidate: string): Promise<boolean> {
+  const fromEnv = envConsolePath();
+  if (fromEnv) return candidate === fromEnv;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/public/gate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ path: candidate }),
+    });
+    if (!res.ok) return false;
+    const data = (await res.json().catch(() => ({}))) as { ok?: unknown };
+    return data.ok === true;
+  } catch {
+    return false;
+  }
+}
 
 export function ConsolePathProvider({ children }: { children: ReactNode }) {
   const { pathname } = useLocation();
-  const path = useMemo(() => {
+  const candidate = useMemo(() => {
     const seg = pathname.split("/").filter(Boolean)[0] ?? "";
     return normalizeConsolePath(seg);
   }, [pathname]);
 
-  const value = useMemo(() => ({ path, ready: true }), [path]);
+  const [state, setState] = useState<ConsolePathState>({
+    path: null,
+    ready: false,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function run() {
+      if (!candidate) {
+        if (!cancelled) setState({ path: null, ready: true });
+        return;
+      }
+
+      const ok = await verifyConsolePath(candidate);
+      if (cancelled) return;
+
+      if (ok) {
+        sessionStorage.setItem(VERIFIED_KEY, candidate);
+        setState({ path: candidate, ready: true });
+      } else {
+        const prev = sessionStorage.getItem(VERIFIED_KEY);
+        if (prev === candidate) sessionStorage.removeItem(VERIFIED_KEY);
+        setState({ path: null, ready: true });
+      }
+    }
+
+    setState((s) => ({ ...s, ready: false }));
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [candidate]);
+
   return (
-    <ConsolePathContext.Provider value={value}>{children}</ConsolePathContext.Provider>
+    <ConsolePathContext.Provider value={state}>{children}</ConsolePathContext.Provider>
   );
 }
 
@@ -65,7 +126,14 @@ export function useConsolePath(): ConsolePathState {
 export function getConsolePath(): string | null {
   if (typeof window === "undefined") return null;
   const seg = window.location.pathname.split("/").filter(Boolean)[0] ?? "";
-  return normalizeConsolePath(seg);
+  const candidate = normalizeConsolePath(seg);
+  if (!candidate) return null;
+
+  const fromEnv = envConsolePath();
+  if (fromEnv) return candidate === fromEnv ? candidate : null;
+
+  const verified = sessionStorage.getItem(VERIFIED_KEY);
+  return verified === candidate ? candidate : null;
 }
 
 export const AdminPathProvider = ConsolePathProvider;

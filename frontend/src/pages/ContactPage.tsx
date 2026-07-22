@@ -17,7 +17,7 @@ export function ContactPage() {
     setPageMeta({
       title: "Contact",
       description:
-        "Contact The Digital 26 about the 3-month Vibe Coding masterclass, websites, apps, or agreements.",
+        "Contact The Digital 26 about the Vibe Coding studio and classroom, websites, apps, or agreements.",
       path: "/contact",
     });
   }, []);
@@ -51,7 +51,7 @@ export function ContactPage() {
     <section className="panel">
       <DocBrandHeader title="Contact" />
       <p className="lede">
-        Websites, collaboration, masterclass questions — send a message. It goes straight to The
+        Websites, collaboration, studio questions — send a message. It goes straight to The
         Digital 26 inbox.
       </p>
 

@@ -3,7 +3,7 @@ const SITE = (
 ).replace(/\/$/, "");
 
 const DEFAULT_DESC =
-  "The Digital 26: a flexible 3-month Vibe Coding masterclass, client websites and apps under structured agreements, and publicly verifiable certificates.";
+  "The Digital 26: a Vibe Coding studio and classroom, digital presence for clients under structured agreements, and publicly verifiable certificates.";
 
 export function siteUrl(path = "/"): string {
   if (!path || path === "/") return `${SITE}/`;
@@ -19,7 +19,7 @@ export function setPageMeta(opts: {
 }): void {
   const title = opts.title
     ? `${opts.title} · The Digital 26`
-    : "The Digital 26 · Vibe Coding Masterclass";
+    : "The Digital 26 · Vibe Coding Studio";
   const description = opts.description || DEFAULT_DESC;
   const url = siteUrl(opts.path || "/");
   const image = opts.image?.startsWith("http")
@@ -85,17 +85,16 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
     {
       "@context": "https://schema.org",
       "@type": "Course",
-      name: "Vibe Coding Masterclass",
+      name: "Vibe Coding Studio & Classroom",
       description:
-        "A flexible 3-month Vibe Coding program. Structure bends to learner goals. Build real websites and apps with The Digital 26.",
+        "Hands-on Vibe Coding at The Digital 26: learn in a studio and classroom setting, build real websites and apps, and grow a digital presence.",
       provider: {
         "@type": "Organization",
         name: "The Digital 26",
         url: siteUrl("/"),
       },
-      timeRequired: "P3M",
       educationalLevel: "Beginner to intermediate",
-      teaches: "Vibe Coding, web development, shipping products",
+      teaches: "Vibe Coding, web development, shipping products, digital presence",
       url: siteUrl("/"),
     },
     {
@@ -103,8 +102,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
       "@type": "EducationalOccupationalProgram",
       name: "The Digital 26 Vibe Coding Program",
       description:
-        "Hands-on Vibe Coding over about 3 months. Curriculum can adapt to student requests while keeping structured delivery.",
-      timeToComplete: "P3M",
+        "Studio and classroom Vibe Coding with The Digital 26. Learn by shipping, build digital presence, and verify credentials in public.",
       provider: {
         "@type": "Organization",
         name: "The Digital 26",
@@ -146,7 +144,7 @@ export function certificateJsonLd(cert: {
   };
 }
 
-function upsertMeta(attr: "name" | "property", key: string, content: string): void {
+function upsertMeta(attr: "name" | "property", key: string, content: string) {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`) as HTMLMetaElement | null;
   if (!el) {
     el = document.createElement("meta");
@@ -156,7 +154,7 @@ function upsertMeta(attr: "name" | "property", key: string, content: string): vo
   el.content = content;
 }
 
-function upsertLink(rel: string, href: string): void {
+function upsertLink(rel: string, href: string) {
   let el = document.head.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
   if (!el) {
     el = document.createElement("link");

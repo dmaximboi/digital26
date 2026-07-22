@@ -4,6 +4,7 @@
 interface ImportMetaEnv {
   readonly VITE_API_URL?: string;
   readonly VITE_NEON_AUTH_URL?: string;
+  readonly VITE_CONSOLE_PATH?: string;
   readonly VITE_PUBLIC_SITE_URL?: string;
 }
 

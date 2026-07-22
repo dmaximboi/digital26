@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db/prisma.js";
@@ -14,6 +15,30 @@ function clientIp(req: { headers: Record<string, unknown>; ip?: string }): strin
   }
   return req.ip || "unknown";
 }
+
+function safeEqualStr(a: string, b: string): boolean {
+  const left = Buffer.from(a);
+  const right = Buffer.from(b);
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
+const gateSchema = z.object({
+  path: z
+    .string()
+    .min(3)
+    .max(64)
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/),
+});
+
+publicRouter.post("/gate", publicLookupLimiter, (req, res) => {
+  const parsed = gateSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    res.status(200).json({ ok: false });
+    return;
+  }
+  res.status(200).json({ ok: safeEqualStr(parsed.data.path, env.consolePath) });
+});
 
 const hitSchema = z.object({
   path: z.string().min(1).max(300),
