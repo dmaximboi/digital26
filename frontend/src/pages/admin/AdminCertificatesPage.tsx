@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { adminDownloadPdf, adminFetch } from "../../lib/adminApi";
-import { getAdminPath } from "../../lib/adminPath";
+import { useAdminPath } from "../../lib/adminPath";
 
-const ADMIN_BASE = getAdminPath() ?? "";
 const APP_ORIGIN = typeof window !== "undefined" ? window.location.origin : "";
 
 type Item = {
@@ -20,6 +19,8 @@ type Item = {
 };
 
 export function AdminCertificatesPage() {
+  const { path: adminPath } = useAdminPath();
+  const ADMIN_BASE = adminPath ?? "";
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);

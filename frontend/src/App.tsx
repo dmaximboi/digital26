@@ -21,49 +21,65 @@ import { AdminCertificatesPage } from "./pages/admin/AdminCertificatesPage";
 import { AdminClientsPage } from "./pages/admin/AdminClientsPage";
 import { AdminAuditLogPage } from "./pages/admin/AdminAuditLogPage";
 import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
-import { getAdminPath } from "./lib/adminPath";
+import { AdminPathProvider, useAdminPath } from "./lib/adminPath";
+
+function AppRoutes() {
+  const { path: adminPath, ready } = useAdminPath();
+
+  if (!ready) {
+    return (
+      <section className="panel">
+        <p className="muted">Loading…</p>
+      </section>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/verify" element={<VerifyPage />} />
+      <Route path="/verify/:publicId" element={<VerifyPage />} />
+      <Route path="/check-agreement" element={<CheckAgreementPage />} />
+      <Route path="/check-agreement/:publicId" element={<CheckAgreementPage />} />
+      <Route path="/contact" element={<ContactPage />} />
+      <Route path="/about" element={<AboutPage />} />
+      <Route path="/a/:publicId" element={<AgreementPublicPage />} />
+      <Route path="/sign/:sessionId" element={<SignPage />} />
+      <Route path="/claim-cert/:sessionId" element={<ClaimCertPage />} />
+
+      {adminPath ? (
+        <>
+          <Route path={`/${adminPath}/login`} element={<AdminLoginPage />} />
+          <Route path={`/${adminPath}`} element={<AdminLayout />}>
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="messages" element={<AdminMessagesPage />} />
+            <Route path="agreements" element={<AdminAgreementsPage />} />
+            <Route path="agreements/new" element={<AdminCreateAgreementPage />} />
+            <Route path="agreements/:id" element={<AdminAgreementDetailPage />} />
+            <Route path="certificates" element={<AdminCertificatesPage />} />
+            <Route path="certificates/new" element={<AdminIssueCertificatePage />} />
+            <Route path="clients" element={<AdminClientsPage />} />
+            <Route path="audit" element={<AdminAuditLogPage />} />
+          </Route>
+        </>
+      ) : null}
+
+      <Route path="/admin/*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
 
 export function App() {
-  const adminPath = getAdminPath();
-
   return (
     <div className="app-shell">
       <SiteHeader />
       <main>
-        <AdminAuthProvider>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/verify" element={<VerifyPage />} />
-            <Route path="/verify/:publicId" element={<VerifyPage />} />
-            <Route path="/check-agreement" element={<CheckAgreementPage />} />
-            <Route path="/check-agreement/:publicId" element={<CheckAgreementPage />} />
-            <Route path="/contact" element={<ContactPage />} />
-            <Route path="/about" element={<AboutPage />} />
-            <Route path="/a/:publicId" element={<AgreementPublicPage />} />
-            <Route path="/sign/:sessionId" element={<SignPage />} />
-            <Route path="/claim-cert/:sessionId" element={<ClaimCertPage />} />
-
-            {adminPath ? (
-              <>
-                <Route path={`/${adminPath}/login`} element={<AdminLoginPage />} />
-                <Route path={`/${adminPath}`} element={<AdminLayout />}>
-                  <Route index element={<AdminDashboardPage />} />
-                  <Route path="messages" element={<AdminMessagesPage />} />
-                  <Route path="agreements" element={<AdminAgreementsPage />} />
-                  <Route path="agreements/new" element={<AdminCreateAgreementPage />} />
-                  <Route path="agreements/:id" element={<AdminAgreementDetailPage />} />
-                  <Route path="certificates" element={<AdminCertificatesPage />} />
-                  <Route path="certificates/new" element={<AdminIssueCertificatePage />} />
-                  <Route path="clients" element={<AdminClientsPage />} />
-                  <Route path="audit" element={<AdminAuditLogPage />} />
-                </Route>
-              </>
-            ) : null}
-
-            <Route path="/admin/*" element={<Navigate to="/" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </AdminAuthProvider>
+        <AdminPathProvider>
+          <AdminAuthProvider>
+            <AppRoutes />
+          </AdminAuthProvider>
+        </AdminPathProvider>
       </main>
       <SiteFooter />
     </div>

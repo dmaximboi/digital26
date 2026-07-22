@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { adminFetch } from "../../lib/adminApi";
-import { getAdminPath } from "../../lib/adminPath";
-
-const ADMIN_BASE = getAdminPath() ?? "";
+import { useAdminPath } from "../../lib/adminPath";
 
 type Dash = {
   agreementsThisMonth: number;
@@ -15,6 +13,8 @@ type Dash = {
 };
 
 export function AdminDashboardPage() {
+  const { path: adminPath } = useAdminPath();
+  const ADMIN_BASE = adminPath ?? "";
   const [data, setData] = useState<Dash | null>(null);
   const [error, setError] = useState<string | null>(null);
 

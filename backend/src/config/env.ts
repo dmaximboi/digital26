@@ -15,10 +15,16 @@ const envSchema = z.object({
   FIELD_ENCRYPTION_KEY: z.string().min(1).optional(),
   /** Comma-separated admin emails (server only). No hardcoded defaults. */
   ADMIN_EMAILS: z.string().min(1, "ADMIN_EMAILS is required"),
+  /** Secret URL segment for admin SPA (e.g. d26-ops). Not committed; live env only. */
+  ADMIN_CONSOLE_PATH: z
+    .string()
+    .min(3)
+    .max(64)
+    .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/, "ADMIN_CONSOLE_PATH must be URL-safe"),
   CORS_ORIGINS: z
     .string()
-    .default("http://localhost:5173,https://digital26.online"),
-  APP_URL: z.string().url().default("http://localhost:5173"),
+    .default("https://digital26.online,http://localhost:5173"),
+  APP_URL: z.string().url().default("https://digital26.online"),
   PUBLIC_SITE_URL: z.string().url().default("https://digital26.online"),
   API_URL: z.string().url().default("http://localhost:4000"),
   NEON_AUTH_URL: z.string().url().optional(),

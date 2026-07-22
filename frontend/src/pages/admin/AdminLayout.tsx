@@ -1,11 +1,19 @@
 import { NavLink, Navigate, Outlet } from "react-router-dom";
 import { useAdminAuth } from "../../auth/AdminAuthContext";
 import { BrandMark } from "../../components/BrandMark";
-import { getAdminPath } from "../../lib/adminPath";
+import { useAdminPath } from "../../lib/adminPath";
 
 export function AdminLayout() {
-  const adminPath = getAdminPath();
+  const { path: adminPath, ready } = useAdminPath();
   const { user, loading, signOut } = useAdminAuth();
+
+  if (!ready) {
+    return (
+      <section className="panel">
+        <p className="muted">Loading…</p>
+      </section>
+    );
+  }
 
   if (!adminPath) {
     return <Navigate to="/" replace />;

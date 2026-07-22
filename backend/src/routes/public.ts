@@ -11,6 +11,15 @@ import { publicLookupLimiter } from "../middleware/security.js";
  */
 export const publicRouter = Router();
 
+/**
+ * Admin console path from backend env only (ADMIN_CONSOLE_PATH).
+ * Frontend fetches this at boot — nothing hardcoded in the client bundle.
+ */
+publicRouter.get("/console-route", publicLookupLimiter, (_req, res) => {
+  res.setHeader("Cache-Control", "private, no-store");
+  res.json({ path: env.ADMIN_CONSOLE_PATH });
+});
+
 function verifyUrl(publicId: string): string {
   return `${env.PUBLIC_SITE_URL.replace(/\/$/, "")}/verify/${encodeURIComponent(publicId)}`;
 }

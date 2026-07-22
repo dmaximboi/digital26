@@ -3,10 +3,10 @@ import { Navigate, useNavigate } from "react-router-dom";
 import { authClient } from "../../lib/auth";
 import { useAdminAuth } from "../../auth/AdminAuthContext";
 import { DocBrandHeader } from "../../components/BrandMark";
-import { getAdminPath } from "../../lib/adminPath";
+import { useAdminPath } from "../../lib/adminPath";
 
 export function AdminLoginPage() {
-  const adminPath = getAdminPath();
+  const { path: adminPath, ready } = useAdminPath();
   const { user, loading, refresh } = useAdminAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -15,6 +15,14 @@ export function AdminLoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  if (!ready) {
+    return (
+      <section className="panel">
+        <p className="muted">Loading…</p>
+      </section>
+    );
+  }
 
   if (!adminPath) {
     return <Navigate to="/" replace />;

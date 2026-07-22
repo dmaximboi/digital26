@@ -1,9 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { adminDownloadPdf, adminFetch } from "../../lib/adminApi";
-import { getAdminPath } from "../../lib/adminPath";
-
-const ADMIN_BASE = getAdminPath() ?? "";
+import { useAdminPath } from "../../lib/adminPath";
 
 type Item = {
   id: string;
@@ -19,6 +17,8 @@ type Item = {
 };
 
 export function AdminAgreementsPage() {
+  const { path: adminPath } = useAdminPath();
+  const ADMIN_BASE = adminPath ?? "";
   const [q, setQ] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState<string | null>(null);
