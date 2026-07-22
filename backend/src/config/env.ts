@@ -25,7 +25,9 @@ const envSchema = z.object({
   ADMIN_CONSOLE_PATH: pathSegment.optional(),
   CORS_ORIGINS: z
     .string()
-    .default("https://digital26.online,http://localhost:5173"),
+    .default(
+      "https://digital26.online,https://www.digital26.online,http://localhost:5173",
+    ),
   APP_URL: z.string().url().default("https://digital26.online"),
   PUBLIC_SITE_URL: z.string().url().default("https://digital26.online"),
   API_URL: z.string().url().default("http://localhost:4000"),
@@ -82,6 +84,28 @@ if (!consolePath) {
   process.exit(1);
 }
 
+function withWwwVariants(origins: string[]): string[] {
+  const out = new Set<string>();
+  for (const origin of origins) {
+    out.add(origin);
+    try {
+      const u = new URL(origin);
+      if (u.hostname === "localhost" || u.hostname === "127.0.0.1") {
+        continue;
+      }
+      if (u.hostname.startsWith("www.")) {
+        u.hostname = u.hostname.slice(4);
+      } else {
+        u.hostname = `www.${u.hostname}`;
+      }
+      out.add(u.origin);
+    } catch {
+      /* ignore */
+    }
+  }
+  return [...out];
+}
+
 export const env = {
   ...data,
   isProd,
@@ -89,7 +113,9 @@ export const env = {
   ADMIN_CONSOLE_PATH: consolePath,
   adminEmails,
   consolePath,
-  corsOrigins: data.CORS_ORIGINS.split(",")
-    .map((o) => o.trim())
-    .filter(Boolean),
+  corsOrigins: withWwwVariants(
+    data.CORS_ORIGINS.split(",")
+      .map((o) => o.trim())
+      .filter(Boolean),
+  ),
 };

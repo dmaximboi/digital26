@@ -48,7 +48,7 @@ function neonErrorMessage(data: Record<string, unknown>, status: number): string
     return "Wrong email or password.";
   }
   if (code === "MISSING_ORIGIN") {
-    return "This site origin is not allowed for sign-in. Add digital26.online in Neon Auth trusted origins.";
+    return "This site origin is not allowed for sign-in. Add https://digital26.online and https://www.digital26.online in Neon Auth trusted origins.";
   }
   if (/route\s+post:/i.test(message || "") || /not found/i.test(message || "")) {
     return "Sign-in endpoint not found. Set VITE_NEON_AUTH_URL to your Neon Auth base ending in /auth (for example …/neondb/auth).";
