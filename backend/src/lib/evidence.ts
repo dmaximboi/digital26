@@ -58,16 +58,20 @@ export async function storeEvidenceFiles(opts: {
       tags: ["evidence", opts.kind.toLowerCase()],
       folder: "digital26/evidence",
     });
-    await prisma.evidenceImage.create({
-      data: {
-        kind: opts.kind,
-        url: stored.publicPath,
-        uploadedBy: opts.uploadedBy,
-        agreementId: opts.agreementId,
-        certificateId: opts.certificateId,
-        phoneHint: opts.phoneHint?.trim() || null,
-      },
-    });
+    try {
+      await prisma.evidenceImage.create({
+        data: {
+          kind: opts.kind,
+          url: stored.publicPath,
+          uploadedBy: opts.uploadedBy,
+          agreementId: opts.agreementId,
+          certificateId: opts.certificateId,
+          phoneHint: opts.phoneHint?.trim() || null,
+        },
+      });
+    } catch (err) {
+      console.warn("[evidence] evidence_images table not ready — image stored but not tracked:", err);
+    }
     count += 1;
   }
   return count;

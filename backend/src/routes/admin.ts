@@ -133,100 +133,157 @@ adminRouter.get("/ops/visits", requireAdmin, async (_req, res) => {
 });
 
 adminRouter.get("/ops/agreements", requireAdmin, async (req: AuthedRequest, res) => {
-  const q = String(req.query.q ?? "").trim();
-  const rows = await prisma.agreement.findMany({
-    where: q
+  try {
+    const q = String(req.query.q ?? "").trim();
+
+    // Try with evidence count; fall back without if the table doesn't exist yet
+    let rows: Array<{
+      id: string;
+      publicId: string | null;
+      dealType: string;
+      otherDealText: string | null;
+      signedAt: Date | null;
+      consumedAt: Date | null;
+      linkExpiresAt: Date;
+      pdfUrl: string | null;
+      person: { id: string; name: string };
+      public: { publicId: string } | null;
+      _count?: { evidence: number };
+    }>;
+
+    const where = q
       ? {
           OR: [
-            { publicId: { contains: q, mode: "insensitive" } },
-            { sessionId: { contains: q, mode: "insensitive" } },
-            { person: { name: { contains: q, mode: "insensitive" } } },
-            { person: { email: { contains: q, mode: "insensitive" } } },
+            { publicId: { contains: q, mode: "insensitive" as const } },
+            { sessionId: { contains: q, mode: "insensitive" as const } },
+            { person: { name: { contains: q, mode: "insensitive" as const } } },
+            { person: { email: { contains: q, mode: "insensitive" as const } } },
           ],
         }
-      : undefined,
-    include: {
-      person: { select: { id: true, name: true, email: true, phone: true } },
-      public: { select: { publicId: true } },
-      _count: { select: { evidence: true } },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+      : undefined;
 
-  res.json({
-    items: rows.map((a) => ({
-      id: a.id,
-      publicId: a.publicId,
-      dealType: a.dealType,
-      dealTag: a.otherDealText,
-      signedAt: a.signedAt,
-      consumedAt: a.consumedAt,
-      linkExpiresAt: a.linkExpiresAt,
-      pdfUrl: a.pdfUrl,
-      canDownloadPdf: Boolean(a.publicId && a.consumedAt),
-      evidenceCount: a._count.evidence,
-      person: { id: a.person.id, name: a.person.name },
-      hasPublicCard: Boolean(a.public),
-    })),
-  });
+    try {
+      rows = await prisma.agreement.findMany({
+        where,
+        include: {
+          person: { select: { id: true, name: true, email: true, phone: true } },
+          public: { select: { publicId: true } },
+          _count: { select: { evidence: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      });
+    } catch {
+      rows = await prisma.agreement.findMany({
+        where,
+        include: {
+          person: { select: { id: true, name: true, email: true, phone: true } },
+          public: { select: { publicId: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      });
+    }
+
+    res.json({
+      items: rows.map((a) => ({
+        id: a.id,
+        publicId: a.publicId,
+        dealType: a.dealType,
+        dealTag: a.otherDealText,
+        signedAt: a.signedAt,
+        consumedAt: a.consumedAt,
+        linkExpiresAt: a.linkExpiresAt,
+        pdfUrl: a.pdfUrl,
+        canDownloadPdf: Boolean(a.publicId && a.consumedAt),
+        evidenceCount: a._count?.evidence ?? 0,
+        person: { id: a.person.id, name: a.person.name },
+        hasPublicCard: Boolean(a.public),
+      })),
+    });
+  } catch (err) {
+    console.error("[agreements.list]", err);
+    res.status(500).json({ error: "Failed to load agreements" });
+  }
 });
 
 adminRouter.get("/ops/agreements/:id", requireAdmin, async (req: AuthedRequest, res) => {
-  const id = String(req.params.id ?? "");
-  const a = await prisma.agreement.findUnique({
-    where: { id },
-    include: {
-      person: true,
-      public: true,
-      evidence: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          kind: true,
-          url: true,
-          phoneHint: true,
-          uploadedBy: true,
-          createdAt: true,
+  try {
+    const id = String(req.params.id ?? "");
+
+    type EvidenceRow = { id: string; kind: string; url: string; phoneHint: string | null; uploadedBy: string; createdAt: Date };
+
+    let result: {
+      id: string; publicId: string | null; dealType: string; otherDealText: string | null;
+      signatureName: string | null; signedAt: Date | null; consumedAt: Date | null;
+      linkExpiresAt: Date; requestingIp: string | null; pdfUrl: string | null;
+      photoUrl: string | null; ninEncrypted: string | null;
+      person: { id: string; name: string };
+      public: unknown;
+      evidence: EvidenceRow[];
+    } | null = null;
+
+    try {
+      const a = await prisma.agreement.findUnique({
+        where: { id },
+        include: {
+          person: true,
+          public: true,
+          evidence: {
+            orderBy: { createdAt: "asc" },
+            select: { id: true, kind: true, url: true, phoneHint: true, uploadedBy: true, createdAt: true },
+          },
         },
-      },
-    },
-  });
-  if (!a) {
-    res.status(404).json({ error: "Not found" });
-    return;
-  }
+      });
+      if (a) {
+        result = { ...a, evidence: a.evidence as EvidenceRow[] };
+      }
+    } catch {
+      const a = await prisma.agreement.findUnique({
+        where: { id },
+        include: { person: true, public: true },
+      });
+      if (a) {
+        result = { ...a, evidence: [] };
+      }
+    }
 
-  await writeAudit({
-    adminEmail: req.adminEmail!,
-    action: "agreement.view",
-    targetId: a.id,
-  });
+    if (!result) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
 
-  res.json({
-    id: a.id,
-    publicId: a.publicId,
-    dealType: a.dealType,
-    otherDealText: a.otherDealText,
-    signatureName: a.signatureName,
-    signedAt: a.signedAt,
-    consumedAt: a.consumedAt,
-    linkExpiresAt: a.linkExpiresAt,
-    requestingIp: a.requestingIp,
-    pdfUrl: a.pdfUrl,
-    canDownloadPdf: Boolean(a.publicId && a.consumedAt),
-    photoUrl: a.photoUrl,
-    hasNin: Boolean(a.ninEncrypted),
-    person: {
-      id: a.person.id,
-      name: a.person.name,
-    },
-    publicCard: a.public,
-    evidence: a.evidence.map((e) => ({
+    try {
+      await writeAudit({ adminEmail: req.adminEmail!, action: "agreement.view", targetId: result.id });
+    } catch { /* audit table may not exist */ }
+
+    const evidence = result.evidence.map((e) => ({
       ...e,
       url: e.url.startsWith("http") ? e.url : studentPhotoAbsoluteUrl(e.url),
-    })),
-  });
+    }));
+
+    res.json({
+      id: result.id,
+      publicId: result.publicId,
+      dealType: result.dealType,
+      otherDealText: result.otherDealText,
+      signatureName: result.signatureName,
+      signedAt: result.signedAt,
+      consumedAt: result.consumedAt,
+      linkExpiresAt: result.linkExpiresAt,
+      requestingIp: result.requestingIp,
+      pdfUrl: result.pdfUrl,
+      canDownloadPdf: Boolean(result.publicId && result.consumedAt),
+      photoUrl: result.photoUrl,
+      hasNin: Boolean(result.ninEncrypted),
+      person: { id: result.person.id, name: result.person.name },
+      publicCard: result.public,
+      evidence,
+    });
+  } catch (err) {
+    console.error("[agreements.detail]", err);
+    res.status(500).json({ error: "Failed to load agreement" });
+  }
 });
 
 
@@ -256,89 +313,122 @@ adminRouter.post(
 );
 
 adminRouter.get("/ops/certificates", requireAdmin, async (_req, res) => {
-  const rows = await prisma.certificate.findMany({
-    include: {
-      person: { select: { id: true, name: true, email: true } },
-      evidence: {
-        orderBy: { createdAt: "asc" },
-        select: {
-          id: true,
-          kind: true,
-          url: true,
-          phoneHint: true,
-          uploadedBy: true,
-          createdAt: true,
-        },
-      },
-      _count: { select: { evidence: true } },
-    },
-    orderBy: { issueDate: "desc" },
-    take: 100,
-  });
+  try {
+    let rows: Array<{
+      id: string;
+      publicId: string | null;
+      type: string;
+      course: string;
+      issueDate: Date;
+      status: string;
+      pdfUrl: string | null;
+      claimSessionId: string | null;
+      claimExpiresAt: Date | null;
+      claimedAt: Date | null;
+      person: { id: string; name: string } | null;
+      evidence?: Array<{ id: string; kind: string; url: string; phoneHint: string | null; uploadedBy: string; createdAt: Date }>;
+      _count?: { evidence: number };
+    }>;
 
-  res.json({
-    items: rows.map((c) => ({
-      id: c.id,
-      publicId: c.publicId,
-      type: c.type,
-      course: c.course,
-      issueDate: c.issueDate,
-      status: c.status,
-      pdfUrl: c.pdfUrl,
-      canDownloadPdf: Boolean(c.publicId && c.status === "VALID"),
-      claimSessionId: c.claimSessionId,
-      claimExpiresAt: c.claimExpiresAt,
-      claimedAt: c.claimedAt,
-      evidenceCount: c._count.evidence,
-      evidence: c.evidence.map((e) => ({
-        ...e,
-        url: e.url.startsWith("http") ? e.url : studentPhotoAbsoluteUrl(e.url),
+    try {
+      rows = await prisma.certificate.findMany({
+        include: {
+          person: { select: { id: true, name: true, email: true } },
+          evidence: {
+            orderBy: { createdAt: "asc" },
+            select: { id: true, kind: true, url: true, phoneHint: true, uploadedBy: true, createdAt: true },
+          },
+          _count: { select: { evidence: true } },
+        },
+        orderBy: { issueDate: "desc" },
+        take: 100,
+      });
+    } catch {
+      rows = await prisma.certificate.findMany({
+        include: {
+          person: { select: { id: true, name: true, email: true } },
+        },
+        orderBy: { issueDate: "desc" },
+        take: 100,
+      });
+    }
+
+    res.json({
+      items: rows.map((c) => ({
+        id: c.id,
+        publicId: c.publicId,
+        type: c.type,
+        course: c.course,
+        issueDate: c.issueDate,
+        status: c.status,
+        pdfUrl: c.pdfUrl,
+        canDownloadPdf: Boolean(c.publicId && c.status === "VALID"),
+        claimSessionId: c.claimSessionId,
+        claimExpiresAt: c.claimExpiresAt,
+        claimedAt: c.claimedAt,
+        evidenceCount: c._count?.evidence ?? 0,
+        evidence: (c.evidence ?? []).map((e) => ({
+          ...e,
+          url: e.url.startsWith("http") ? e.url : studentPhotoAbsoluteUrl(e.url),
+        })),
+        person: c.person ? { id: c.person.id, name: c.person.name } : null,
       })),
-      person: c.person ? { id: c.person.id, name: c.person.name } : null,
-    })),
-  });
+    });
+  } catch (err) {
+    console.error("[certificates.list]", err);
+    res.status(500).json({ error: "Failed to load certificates" });
+  }
 });
 
 adminRouter.get("/ops/clients", requireAdmin, async (_req, res) => {
-  const people = await prisma.person.findMany({
-    select: {
-      id: true,
-      name: true,
-      createdAt: true,
-      agreements: {
-        select: {
-          id: true,
-          publicId: true,
-          dealType: true,
-          signedAt: true,
-          consumedAt: true,
+  try {
+    const people = await prisma.person.findMany({
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        agreements: {
+          select: {
+            id: true,
+            publicId: true,
+            dealType: true,
+            signedAt: true,
+            consumedAt: true,
+          },
+          orderBy: { createdAt: "desc" },
         },
-        orderBy: { createdAt: "desc" },
-      },
-      certificates: {
-        select: {
-          id: true,
-          publicId: true,
-          type: true,
-          issueDate: true,
-          status: true,
+        certificates: {
+          select: {
+            id: true,
+            publicId: true,
+            type: true,
+            issueDate: true,
+            status: true,
+          },
+          orderBy: { issueDate: "desc" },
         },
-        orderBy: { issueDate: "desc" },
       },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
-
-  res.json({ items: people });
+      orderBy: { createdAt: "desc" },
+      take: 100,
+    });
+    res.json({ items: people });
+  } catch (err) {
+    console.error("[clients.list]", err);
+    res.status(500).json({ error: "Failed to load clients" });
+  }
 });
 
 adminRouter.get("/ops/audit", requireAdmin, async (_req, res) => {
-  const items = await prisma.adminAuditLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 150,
-  });
-  res.json({ items });
+  try {
+    const items = await prisma.adminAuditLog.findMany({
+      orderBy: { createdAt: "desc" },
+      take: 150,
+    });
+    res.json({ items });
+  } catch (err) {
+    console.error("[audit.list]", err);
+    res.status(500).json({ error: "Audit log not available" });
+  }
 });
 
 
