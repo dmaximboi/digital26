@@ -63,6 +63,7 @@ model Agreement {
 
   person Person           @relation(fields: [personId], references: [id], onDelete: Restrict)
   public AgreementPublic?
+  evidence EvidenceImage[]
 
   @@index([sessionId])
   @@index([linkExpiresAt])
@@ -106,6 +107,7 @@ model Certificate {
 
   person Person?             @relation(fields: [personId], references: [id], onDelete: Restrict)
   public CertificatePublic?
+  evidence EvidenceImage[]
 
   @@index([claimSessionId])
   @@index([publicId])
@@ -175,6 +177,8 @@ model AdminAllowlist {
   id        String   @id @default(cuid())
   email     String   @unique
   active    Boolean  @default(true)
+  /// FULL = mutate + reveal; READONLY = view/download only
+  role      String   @default("FULL")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -209,4 +213,33 @@ model SiteVisit {
   @@index([ip])
   @@index([path])
   @@map("site_visits")
+}
+
+enum EvidenceKind {
+  AGREEMENT_ADMIN_PROOF
+  AGREEMENT_CLIENT_PROOF
+  CERT_ADMIN_SOLO
+  CERT_STUDENT_SOLO
+  CERT_ADMIN_STUDENT
+  CERT_STUDENT_EVIDENCE
+}
+
+/// Private deal/cert evidence images — never exposed on public verify routes
+model EvidenceImage {
+  id            String       @id @default(cuid())
+  kind          EvidenceKind
+  url           String
+  phoneHint     String?      @map("phone_hint")
+  agreementId   String?      @map("agreement_id")
+  certificateId String?      @map("certificate_id")
+  uploadedBy    String       @map("uploaded_by")
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  agreement   Agreement?   @relation(fields: [agreementId], references: [id], onDelete: Cascade)
+  certificate Certificate? @relation(fields: [certificateId], references: [id], onDelete: Cascade)
+
+  @@index([agreementId])
+  @@index([certificateId])
+  @@index([kind])
+  @@map("evidence_images")
 }

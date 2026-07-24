@@ -12,6 +12,8 @@ type Item = {
   consumedAt: string | null;
   linkExpiresAt: string;
   pdfUrl: string | null;
+  canDownloadPdf?: boolean;
+  evidenceCount?: number;
   person: { id: string; name: string };
   hasPublicCard: boolean;
 };
@@ -47,6 +49,19 @@ export function AdminAgreementsPage() {
 
   return (
     <div>
+      <div className="ops-page-head">
+        <div>
+          <h2 className="ops-page-title">Agreements</h2>
+          <p className="muted">
+            Create links from <strong>New agreement</strong> — you must upload 3 proof images
+            first.
+          </p>
+        </div>
+        <Link className="btn primary" to={`/${ADMIN_BASE}/agreements/new`}>
+          New agreement + proofs
+        </Link>
+      </div>
+
       <div className="lookup-row" style={{ marginBottom: "1rem" }}>
         <input
           value={q}
@@ -62,6 +77,7 @@ export function AdminAgreementsPage() {
               <th>Client</th>
               <th>Deal</th>
               <th>Public ID</th>
+              <th>Proofs</th>
               <th>Status</th>
               <th>PDF</th>
             </tr>
@@ -74,9 +90,10 @@ export function AdminAgreementsPage() {
                 </td>
                 <td>{a.dealTag || a.dealType}</td>
                 <td>{a.publicId ?? "n/a"}</td>
+                <td>{a.evidenceCount ?? 0}</td>
                 <td>{a.consumedAt ? "signed" : "open"}</td>
                 <td>
-                  {a.publicId && a.pdfUrl ? (
+                  {(a.canDownloadPdf || (a.publicId && a.consumedAt)) ? (
                     <button
                       type="button"
                       className="btn"

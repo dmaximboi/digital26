@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { adminDownloadPdf, adminFetch } from "../../lib/adminApi";
+import { EvidenceGallery } from "../../components/EvidenceGallery";
+
+type EvidenceItem = {
+  id: string;
+  kind: string;
+  url: string;
+  phoneHint?: string | null;
+  uploadedBy: string;
+};
 
 type Detail = {
   id: string;
@@ -9,11 +18,14 @@ type Detail = {
   otherDealText: string | null;
   signatureName: string | null;
   signedAt: string | null;
+  consumedAt?: string | null;
   requestingIp: string | null;
   pdfUrl: string | null;
+  canDownloadPdf?: boolean;
   hasNin: boolean;
   person: { id: string; name: string };
   publicCard: { publicId: string } | null;
+  evidence?: EvidenceItem[];
 };
 
 type Contact = { email: string | null; phone: string | null };
@@ -67,6 +79,9 @@ export function AdminAgreementDetailPage() {
   if (error && !data) return <p className="status error">{error}</p>;
   if (!data) return <p>Loading…</p>;
 
+  const canDownload =
+    data.canDownloadPdf || Boolean(data.publicId && (data.consumedAt || data.signedAt));
+
   return (
     <article className="result-card">
       <h2>{data.person.name}</h2>
@@ -109,16 +124,25 @@ export function AdminAgreementDetailPage() {
         <div>
           <dt>PDF</dt>
           <dd>
-            {data.publicId && data.pdfUrl ? (
+            {canDownload && data.publicId ? (
               <button type="button" className="btn" disabled={busy} onClick={() => void download()}>
                 {busy ? "Downloading…" : "Download agreement PDF"}
               </button>
             ) : (
-              "n/a"
+              "n/a — not signed yet"
             )}
           </dd>
         </div>
       </dl>
+
+      <section className="evidence-panel">
+        <h3>Deal evidence photos</h3>
+        <p className="muted">
+          Admin uploads 3 before the link; client uploads 2 when signing. Tied to phone where
+          available.
+        </p>
+        <EvidenceGallery items={data.evidence ?? []} />
+      </section>
     </article>
   );
 }

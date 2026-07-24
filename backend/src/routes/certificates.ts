@@ -1,5 +1,4 @@
 import { Router } from "express";
-import multer from "multer";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 import { z } from "zod";
@@ -13,11 +12,14 @@ import { buildCertificatePdf } from "../lib/pdf.js";
 import { generateSessionId } from "../lib/crypto.js";
 import { issueEmailOtp, verifyEmailOtp } from "../lib/otp.js";
 import { sendOtpEmail, sendCertificateClaimEmail } from "../lib/mail.js";
-import { requireAdmin } from "../middleware/requireAdmin.js";
+import { requireAdmin, requireAdminWrite } from "../middleware/requireAdmin.js";
 import { authLimiter } from "../middleware/security.js";
 import type { AuthedRequest } from "../middleware/adminAuth.js";
 import { emailsEqual } from "../lib/safeEqual.js";
 import { compressAndStoreStudentPhoto } from "../lib/studentPhoto.js";
+import { EvidenceKind } from "@prisma/client";
+import { evidenceUpload, storeEvidenceFiles } from "../lib/evidence.js";
+import { buildCertificatePng4k } from "../lib/certPng.js";
 
 export const certificatesRouter = Router();
 
@@ -25,24 +27,6 @@ const CLAIM_TTL_MS = 24 * 60 * 60 * 1000;
 
 const uploadDir = path.resolve(process.cwd(), "uploads", "students");
 mkdirSync(uploadDir, { recursive: true });
-
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadDir),
-    filename: (_req, file, cb) => {
-      const safe = file.originalname.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
-      cb(null, `${Date.now()}-${safe}`);
-    },
-  }),
-  limits: { fileSize: 3 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    if (!file.mimetype.startsWith("image/")) {
-      cb(new Error("Only image uploads are allowed"));
-      return;
-    }
-    cb(null, true);
-  },
-});
 
 const inviteSchema = z.object({
   type: z.nativeEnum(CertificateType),
@@ -55,12 +39,38 @@ const inviteSchema = z.object({
 certificatesRouter.post(
   "/ops/certificates",
   authLimiter,
-  requireAdmin,
+  requireAdminWrite,
+  (req, res, next) => {
+    evidenceUpload.fields([
+      { name: "adminSolo", maxCount: 1 },
+      { name: "studentSolo", maxCount: 1 },
+      { name: "together", maxCount: 1 },
+    ])(req, res, (err: unknown) => {
+      if (err) {
+        res.status(400).json({
+          error: err instanceof Error ? err.message : "Evidence upload failed",
+        });
+        return;
+      }
+      next();
+    });
+  },
   async (req: AuthedRequest, res) => {
     try {
       const parsed = inviteSchema.safeParse(req.body);
       if (!parsed.success) {
         res.status(400).json({ error: "Invalid payload" });
+        return;
+      }
+
+      const bag = req.files as Record<string, Express.Multer.File[]> | undefined;
+      const adminSolo = bag?.adminSolo?.[0];
+      const studentSolo = bag?.studentSolo?.[0];
+      const together = bag?.together?.[0];
+      if (!adminSolo || !studentSolo || !together) {
+        res.status(400).json({
+          error: "Upload 3 evidence images: admin only, student only, and admin+student together",
+        });
         return;
       }
 
@@ -85,6 +95,25 @@ certificatesRouter.post(
           claimSessionId,
           claimExpiresAt,
         },
+      });
+
+      await storeEvidenceFiles({
+        files: [adminSolo],
+        kind: EvidenceKind.CERT_ADMIN_SOLO,
+        uploadedBy: "admin",
+        certificateId: cert.id,
+      });
+      await storeEvidenceFiles({
+        files: [studentSolo],
+        kind: EvidenceKind.CERT_STUDENT_SOLO,
+        uploadedBy: "admin",
+        certificateId: cert.id,
+      });
+      await storeEvidenceFiles({
+        files: [together],
+        kind: EvidenceKind.CERT_ADMIN_STUDENT,
+        uploadedBy: "admin",
+        certificateId: cert.id,
       });
 
       const claimLink = `${env.APP_URL}/claim-cert/${claimSessionId}`;
@@ -232,7 +261,10 @@ certificatesRouter.post(
   "/claim-cert/:sessionId/submit",
   authLimiter,
   (req, res, next) => {
-    upload.single("photo")(req, res, (err: unknown) => {
+    evidenceUpload.fields([
+      { name: "photo", maxCount: 1 },
+      { name: "evidence", maxCount: 1 },
+    ])(req, res, (err: unknown) => {
       if (err) {
         const message =
           err instanceof Error ? err.message : "Photo upload failed";
@@ -265,8 +297,15 @@ certificatesRouter.post(
       }
       const body = parsed.data;
 
-      if (!req.file) {
-        res.status(400).json({ error: "Student photo is required" });
+      const bag = req.files as Record<string, Express.Multer.File[]> | undefined;
+      const photoFile = bag?.photo?.[0];
+      const evidenceFile = bag?.evidence?.[0];
+      if (!photoFile) {
+        res.status(400).json({ error: "Student passport/portrait photo is required" });
+        return;
+      }
+      if (!evidenceFile) {
+        res.status(400).json({ error: "Upload 1 evidence image (chat, receipt, or classroom proof)" });
         return;
       }
 
@@ -307,7 +346,7 @@ certificatesRouter.post(
         return;
       }
 
-      const stored = await compressAndStoreStudentPhoto(req.file.path, uploadDir);
+      const stored = await compressAndStoreStudentPhoto(photoFile.path, uploadDir);
       const photoUrl = stored.publicPath;
       const claimedAt = new Date();
 
@@ -368,6 +407,14 @@ certificatesRouter.post(
         };
       });
 
+      await storeEvidenceFiles({
+        files: [evidenceFile],
+        kind: EvidenceKind.CERT_STUDENT_EVIDENCE,
+        uploadedBy: "student",
+        certificateId: result.certificateId,
+        phoneHint: phone.format("E.164"),
+      });
+
       const pdf = await buildCertificatePdf({
         publicId: result.publicId,
         displayName: body.fullName.trim(),
@@ -401,10 +448,43 @@ certificatesRouter.post(
   },
 );
 
+certificatesRouter.get(
+  "/ops/certificates/:publicId/png",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const publicId = String(req.params.publicId ?? "").trim();
+      const row = await prisma.certificatePublic.findUnique({ where: { publicId } });
+      if (!row || row.status !== CertificateStatus.VALID) {
+        res.status(404).json({ error: "Certificate not found" });
+        return;
+      }
+      const png = await buildCertificatePng4k({
+        publicId: row.publicId,
+        displayName: row.displayName,
+        course: row.course,
+        type: row.type,
+        issueDate: row.issueDate,
+        status: row.status,
+        photoUrl: row.photoUrl,
+      });
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${publicId}-4k.png"`,
+      );
+      res.send(png);
+    } catch (err) {
+      console.error("[cert.png]", err);
+      res.status(500).json({ error: "Failed to render 4K PNG" });
+    }
+  },
+);
+
 certificatesRouter.post(
   "/ops/certificates/:publicId/revoke",
   authLimiter,
-  requireAdmin,
+  requireAdminWrite,
   async (req: AuthedRequest, res) => {
     const publicId = String(req.params.publicId ?? "");
     const cert = await prisma.certificate.findUnique({ where: { publicId } });

@@ -31,6 +31,7 @@ export function ClaimCertPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [evidence, setEvidence] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<{ publicId: string; publicUrl: string } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -94,7 +95,11 @@ export function ClaimCertPage() {
     if (submitBusy) return;
     setError(null);
     if (!photo) {
-      setError("Upload your student photo.");
+      setError("Upload your student passport/portrait photo.");
+      return;
+    }
+    if (!evidence) {
+      setError("Upload 1 evidence image (chat, receipt, or classroom proof).");
       return;
     }
     setSubmitBusy(true);
@@ -105,6 +110,7 @@ export function ClaimCertPage() {
       form.append("phone", phone);
       form.append("otpCode", otpCode);
       form.append("photo", photo);
+      form.append("evidence", evidence);
 
       const data = await apiPostForm<{ publicId: string; publicUrl: string }>(
         `/api/claim-cert/${encodeURIComponent(sessionId)}/submit`,
@@ -250,7 +256,7 @@ export function ClaimCertPage() {
           </div>
 
           <div className="photo-field">
-            <p className="photo-field__label">Student photo</p>
+            <p className="photo-field__label">Passport / portrait (on certificate)</p>
             <label className="photo-drop">
               {photoUrl ? (
                 <img src={photoUrl} alt="Your upload" />
@@ -269,6 +275,26 @@ export function ClaimCertPage() {
               />
             </label>
           </div>
+
+          <label className="evidence-field">
+            Evidence image (1) — separate from passport
+            <input
+              type="file"
+              accept="image/*"
+              required
+              disabled={submitBusy}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                if (!f) {
+                  setEvidence(null);
+                  return;
+                }
+                void compressImage(f).then(setEvidence).catch((err: unknown) => {
+                  setError(err instanceof Error ? err.message : "Could not process evidence");
+                });
+              }}
+            />
+          </label>
 
           <label className="check-row">
             <input type="checkbox" required disabled={submitBusy} />

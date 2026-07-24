@@ -3,7 +3,7 @@ const SITE = (
 ).replace(/\/$/, "");
 
 const DEFAULT_DESC =
-  "The Digital 26: a Vibe Coding studio and classroom, digital presence for clients under structured agreements, and publicly verifiable certificates.";
+  "The Digital 26 is a world-class Vibe Coding studio and classroom. Learn low-code web development on a flexible any-month programme (about 6 months recommended), ship real digital presence, and verify certificates in public.";
 
 export function siteUrl(path = "/"): string {
   if (!path || path === "/") return `${SITE}/`;
@@ -19,7 +19,7 @@ export function setPageMeta(opts: {
 }): void {
   const title = opts.title
     ? `${opts.title} · The Digital 26`
-    : "The Digital 26 · Vibe Coding Studio";
+    : "The Digital 26 · Best Vibe Coding Studio";
   const description = opts.description || DEFAULT_DESC;
   const url = siteUrl(opts.path || "/");
   const image = opts.image?.startsWith("http")
@@ -29,6 +29,11 @@ export function setPageMeta(opts: {
   document.title = title;
   upsertMeta("name", "description", description);
   upsertMeta("name", "theme-color", "#ff9e00");
+  upsertMeta(
+    "name",
+    "keywords",
+    "vibe coding, low code, web development, digital26, Adewuyi Ayuba, Maxim, coding studio, verifiable certificate, Nigeria tech education",
+  );
   upsertLink("canonical", url);
 
   upsertMeta("property", "og:type", opts.type || "website");
@@ -37,6 +42,7 @@ export function setPageMeta(opts: {
   upsertMeta("property", "og:description", description);
   upsertMeta("property", "og:url", url);
   upsertMeta("property", "og:image", image);
+  upsertMeta("property", "og:locale", "en_NG");
 
   upsertMeta("name", "twitter:card", "summary_large_image");
   upsertMeta("name", "twitter:title", title);
@@ -65,10 +71,26 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
       "@context": "https://schema.org",
       "@type": "Organization",
       name: "The Digital 26",
+      alternateName: ["Digital 26", "D26 Vibe Coding Studio"],
       url: siteUrl("/"),
       logo: siteUrl("/logo.png"),
+      image: siteUrl("/logo.png"),
       description: DEFAULT_DESC,
-      sameAs: ["https://dmaximboi.vercel.app"],
+      foundingDate: "2024",
+      founder: {
+        "@type": "Person",
+        name: "Adewuyi Ayuba",
+        alternateName: "Maxim",
+        url: "https://dmaximboi.vercel.app",
+      },
+      sameAs: ["https://dmaximboi.vercel.app", "https://github.com/dmaximboi"],
+      areaServed: "Worldwide",
+      knowsAbout: [
+        "Vibe Coding",
+        "Low-code web development",
+        "Digital presence",
+        "Verifiable credentials",
+      ],
     },
     {
       "@context": "https://schema.org",
@@ -76,6 +98,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
       name: "The Digital 26",
       url: siteUrl("/"),
       description: DEFAULT_DESC,
+      inLanguage: "en",
       potentialAction: {
         "@type": "SearchAction",
         target: `${siteUrl("/verify")}?q={search_term_string}`,
@@ -85,29 +108,123 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
     {
       "@context": "https://schema.org",
       "@type": "Course",
-      name: "Vibe Coding Studio & Classroom",
+      name: "Vibe Coding Studio & Classroom — Low-code Web Development",
       description:
-        "Hands-on Vibe Coding at The Digital 26: learn in a studio and classroom setting, build real websites and apps, and grow a digital presence.",
+        "Hands-on Vibe Coding and low-code web development at The Digital 26. Flexible any-month structure with a recommended ~6-month pathway. Learn by shipping websites, apps, and digital presence under mentor guidance.",
       provider: {
         "@type": "Organization",
         name: "The Digital 26",
         url: siteUrl("/"),
       },
       educationalLevel: "Beginner to intermediate",
-      teaches: "Vibe Coding, web development, shipping products, digital presence",
-      url: siteUrl("/"),
+      teaches: [
+        "Vibe Coding",
+        "Low-code web development",
+        "Shipping products",
+        "Digital presence",
+      ],
+      timeRequired: "P6M",
+      coursePrerequisites: "Curiosity and a laptop",
+      url: siteUrl("/about"),
+      offers: {
+        "@type": "Offer",
+        category: "Education",
+        availability: "https://schema.org/InStock",
+        url: siteUrl("/contact"),
+      },
     },
     {
       "@context": "https://schema.org",
       "@type": "EducationalOccupationalProgram",
-      name: "The Digital 26 Vibe Coding Program",
+      name: "The Digital 26 Flexible Vibe Coding Programme",
       description:
-        "Studio and classroom Vibe Coding with The Digital 26. Learn by shipping, build digital presence, and verify credentials in public.",
+        "Any-month programme structure (no longer locked to 3 months). Recommended completion path about 6 months. Studio + classroom delivery with publicly verifiable certificates.",
+      timeToComplete: "P6M",
+      occupationalCategory: "15-1254.00",
       provider: {
         "@type": "Organization",
         name: "The Digital 26",
       },
+      url: siteUrl("/about"),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: [
+        {
+          "@type": "Question",
+          name: "What is The Digital 26?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "The Digital 26 is a Vibe Coding studio and classroom led by Adewuyi Ayuba (Maxim). We teach low-code web development, ship client digital presence under clear agreements, and issue publicly verifiable certificates.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "How long is the programme?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "The structure is flexible (any-month). A recommended pathway is about 6 months of low-code web development and Vibe Coding practice.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "How do I verify a Digital 26 certificate?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Open digital26.online/verify and enter the public certificate ID, or scan the QR code on the certificate PDF/PNG. Only published public IDs are visible — private evidence and contact details are never exposed.",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Why choose The Digital 26 for Vibe Coding?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "We combine a real studio/classroom with client delivery: low-code web development, shipping digital presence, clear service agreements, and credentials anyone can verify online. Founded by Adewuyi Ayuba (Maxim).",
+          },
+        },
+        {
+          "@type": "Question",
+          name: "Is digital26.online a legitimate business site?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Yes. The Digital 26 operates at digital26.online with public certificate verification, agreement checks, founder profile at dmaximboi.vercel.app, and open GitHub presence. Trust comes from verifiable records and consistent brand identity — not from the TLD alone.",
+          },
+        },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      name: "The Digital 26",
       url: siteUrl("/"),
+      image: siteUrl("/logo.png"),
+      description: DEFAULT_DESC,
+      priceRange: "$$",
+      founder: {
+        "@type": "Person",
+        name: "Adewuyi Ayuba",
+        alternateName: "Maxim",
+      },
+      sameAs: ["https://dmaximboi.vercel.app", "https://github.com/dmaximboi"],
+      makesOffer: [
+        {
+          "@type": "Offer",
+          itemOffered: {
+            "@type": "Service",
+            name: "Vibe Coding Studio & Classroom",
+            description: "Low-code web development training on a flexible any-month path (~6 months recommended).",
+          },
+        },
+        {
+          "@type": "Offer",
+          itemOffered: {
+            "@type": "Service",
+            name: "Digital presence & web delivery",
+            description: "Websites and apps under clear service agreements with public verification.",
+          },
+        },
+      ],
     },
   ];
 }
@@ -144,7 +261,7 @@ export function certificateJsonLd(cert: {
   };
 }
 
-function upsertMeta(attr: "name" | "property", key: string, content: string) {
+function upsertMeta(attr: "name" | "property", key: string, content: string): void {
   let el = document.head.querySelector(`meta[${attr}="${key}"]`) as HTMLMetaElement | null;
   if (!el) {
     el = document.createElement("meta");
@@ -154,7 +271,7 @@ function upsertMeta(attr: "name" | "property", key: string, content: string) {
   el.content = content;
 }
 
-function upsertLink(rel: string, href: string) {
+function upsertLink(rel: string, href: string): void {
   let el = document.head.querySelector(`link[rel="${rel}"]`) as HTMLLinkElement | null;
   if (!el) {
     el = document.createElement("link");

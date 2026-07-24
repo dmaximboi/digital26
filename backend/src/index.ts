@@ -1,5 +1,6 @@
 import { createApp } from "./app.js";
 import { env } from "./config/env.js";
+import { bootstrapStaffAllowlist } from "./lib/admins.js";
 import { isResendConfigured, mailTransportLabel } from "./lib/mail.js";
 
 const app = createApp();
@@ -21,4 +22,8 @@ app.listen(env.PORT, () => {
   } else {
     console.warn("[mail] set RESEND_API_KEY — all app email uses Resend (SMTP is not used)");
   }
+
+  void bootstrapStaffAllowlist()
+    .then(() => console.log("[auth] staff allowlist bootstrapped"))
+    .catch((err) => console.warn("[auth] allowlist bootstrap failed:", err));
 });

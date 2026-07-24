@@ -1,19 +1,22 @@
 import { Router } from "express";
-import path from "node:path";
-import { createReadStream, existsSync } from "node:fs";
 import { prisma } from "../db/prisma.js";
-import { env } from "../config/env.js";
-import { requireAdmin } from "../middleware/requireAdmin.js";
+import { requireAdmin, requireAdminWrite } from "../middleware/requireAdmin.js";
 import { authLimiter } from "../middleware/security.js";
 import type { AuthedRequest } from "../middleware/adminAuth.js";
 import { writeAudit } from "../lib/audit.js";
+import { buildAgreementPdf, buildCertificatePdf } from "../lib/pdf.js";
+import { isValidPublicId } from "../lib/publicId.js";
+import { studentPhotoAbsoluteUrl } from "../lib/studentPhoto.js";
+import { canWriteOps } from "../lib/admins.js";
 
 export const adminRouter = Router();
 
 adminRouter.get("/ops/me", authLimiter, requireAdmin, async (req: AuthedRequest, res) => {
+  const email = req.adminEmail!;
   res.json({
-    email: req.adminEmail,
+    email,
     userId: req.adminUserId ?? null,
+    canWrite: await canWriteOps(email),
   });
 });
 
@@ -145,6 +148,7 @@ adminRouter.get("/ops/agreements", requireAdmin, async (req: AuthedRequest, res)
     include: {
       person: { select: { id: true, name: true, email: true, phone: true } },
       public: { select: { publicId: true } },
+      _count: { select: { evidence: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 100,
@@ -160,6 +164,8 @@ adminRouter.get("/ops/agreements", requireAdmin, async (req: AuthedRequest, res)
       consumedAt: a.consumedAt,
       linkExpiresAt: a.linkExpiresAt,
       pdfUrl: a.pdfUrl,
+      canDownloadPdf: Boolean(a.publicId && a.consumedAt),
+      evidenceCount: a._count.evidence,
       person: { id: a.person.id, name: a.person.name },
       hasPublicCard: Boolean(a.public),
     })),
@@ -173,6 +179,17 @@ adminRouter.get("/ops/agreements/:id", requireAdmin, async (req: AuthedRequest, 
     include: {
       person: true,
       public: true,
+      evidence: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          kind: true,
+          url: true,
+          phoneHint: true,
+          uploadedBy: true,
+          createdAt: true,
+        },
+      },
     },
   });
   if (!a) {
@@ -197,6 +214,7 @@ adminRouter.get("/ops/agreements/:id", requireAdmin, async (req: AuthedRequest, 
     linkExpiresAt: a.linkExpiresAt,
     requestingIp: a.requestingIp,
     pdfUrl: a.pdfUrl,
+    canDownloadPdf: Boolean(a.publicId && a.consumedAt),
     photoUrl: a.photoUrl,
     hasNin: Boolean(a.ninEncrypted),
     person: {
@@ -204,13 +222,18 @@ adminRouter.get("/ops/agreements/:id", requireAdmin, async (req: AuthedRequest, 
       name: a.person.name,
     },
     publicCard: a.public,
+    evidence: a.evidence.map((e) => ({
+      ...e,
+      url: e.url.startsWith("http") ? e.url : studentPhotoAbsoluteUrl(e.url),
+    })),
   });
 });
 
 
 adminRouter.post(
   "/ops/people/:id/reveal-contact",
-  requireAdmin,
+  authLimiter,
+  requireAdminWrite,
   async (req: AuthedRequest, res) => {
     const id = String(req.params.id ?? "");
     const person = await prisma.person.findUnique({ where: { id } });
@@ -236,6 +259,18 @@ adminRouter.get("/ops/certificates", requireAdmin, async (_req, res) => {
   const rows = await prisma.certificate.findMany({
     include: {
       person: { select: { id: true, name: true, email: true } },
+      evidence: {
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          kind: true,
+          url: true,
+          phoneHint: true,
+          uploadedBy: true,
+          createdAt: true,
+        },
+      },
+      _count: { select: { evidence: true } },
     },
     orderBy: { issueDate: "desc" },
     take: 100,
@@ -250,9 +285,15 @@ adminRouter.get("/ops/certificates", requireAdmin, async (_req, res) => {
       issueDate: c.issueDate,
       status: c.status,
       pdfUrl: c.pdfUrl,
+      canDownloadPdf: Boolean(c.publicId && c.status === "VALID"),
       claimSessionId: c.claimSessionId,
       claimExpiresAt: c.claimExpiresAt,
       claimedAt: c.claimedAt,
+      evidenceCount: c._count.evidence,
+      evidence: c.evidence.map((e) => ({
+        ...e,
+        url: e.url.startsWith("http") ? e.url : studentPhotoAbsoluteUrl(e.url),
+      })),
       person: c.person ? { id: c.person.id, name: c.person.name } : null,
     })),
   });
@@ -309,21 +350,89 @@ adminRouter.get("/ops/files/:kind/:filename", requireAdmin, async (req, res) => 
     res.status(400).json({ error: "Invalid kind" });
     return;
   }
-  
-  if (!/^D26[A-Za-z0-9\-_~.]+(?:agr|cert)?\.pdf$/i.test(filename)) {
+
+  if (!filename.toLowerCase().endsWith(".pdf")) {
     res.status(400).json({ error: "Invalid filename" });
     return;
   }
 
-  const root = path.resolve(env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads"));
-  const filePath = path.resolve(root, kind, filename);
-  const rel = path.relative(root, filePath);
-  if (rel.startsWith("..") || path.isAbsolute(rel) || !existsSync(filePath)) {
-    res.status(404).json({ error: "File not found" });
+  const publicId = filename.replace(/\.pdf$/i, "");
+  if (!isValidPublicId(publicId)) {
+    res.status(400).json({ error: "Invalid public ID" });
     return;
   }
 
-  res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
-  createReadStream(filePath).pipe(res);
+  try {
+    // Always rebuild from DB — Render disk is ephemeral, so stored files often 404.
+    if (kind === "agreements") {
+      const record = await prisma.agreementPublic.findUnique({
+        where: { publicId },
+        include: {
+          agreement: {
+            select: {
+              termsSnapshot: true,
+              signatureName: true,
+              signedAt: true,
+            },
+          },
+        },
+      });
+      if (!record) {
+        res.status(404).json({ error: "Agreement not found" });
+        return;
+      }
+      const signedAt = record.signedAt ?? record.agreement?.signedAt;
+      if (!signedAt) {
+        res.status(404).json({ error: "Agreement not signed yet" });
+        return;
+      }
+      const pdf = await buildAgreementPdf({
+        publicId: record.publicId,
+        displayName: record.displayName,
+        dealType: record.dealType,
+        dealTag: record.dealTag,
+        signatureName:
+          record.signatureName ||
+          record.agreement?.signatureName ||
+          record.displayName,
+        signedAt,
+        terms: record.agreement?.termsSnapshot || "",
+      });
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+      res.send(Buffer.from(pdf.bytes));
+      return;
+    }
+
+    const cert = await prisma.certificatePublic.findUnique({
+      where: { publicId },
+      include: {
+        certificate: {
+          select: {
+            photoUrl: true,
+            status: true,
+          },
+        },
+      },
+    });
+    if (!cert) {
+      res.status(404).json({ error: "Certificate not found" });
+      return;
+    }
+    const pdf = await buildCertificatePdf({
+      publicId: cert.publicId,
+      displayName: cert.displayName,
+      course: cert.course,
+      type: cert.type,
+      issueDate: cert.issueDate,
+      status: cert.status,
+      photoUrl: cert.photoUrl || cert.certificate?.photoUrl || undefined,
+    });
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.send(Buffer.from(pdf.bytes));
+  } catch (err) {
+    console.error("[ops.files]", err);
+    res.status(500).json({ error: "Failed to build PDF" });
+  }
 });

@@ -5,7 +5,7 @@ import { CodingLaptop } from "../components/CodingLaptop";
 
 export function HomePage() {
   useEffect(() => {
-    document.title = "The Digital 26 · Vibe Coding Studio";
+    document.title = "The Digital 26 · Best Vibe Coding Studio";
   }, []);
 
   return (
@@ -16,8 +16,9 @@ export function HomePage() {
       </div>
       <h1>The Digital 26</h1>
       <p className="lede">
-        Vibe Coding studio and classroom. Digital presence for clients with clear agreements.
-        Verify certificates in public.
+        World-class Vibe Coding studio and classroom. Low-code web development on a flexible
+        any-month path (about 6 months recommended). Digital presence with clear agreements —
+        verify certificates in public.
       </p>
       <div className="cta-row">
         <Link className="btn primary" to="/verify">

@@ -30,6 +30,7 @@ function getImageKit() {
 export async function compressAndStoreStudentPhoto(
   tempPath: string,
   uploadDir: string,
+  opts?: { folder?: string; tags?: string[]; publicKind?: "students" | "evidence" },
 ): Promise<{ filename: string; diskPath?: string; publicPath: string }> {
   const filename = `${Date.now()}-portrait.jpg`;
   const compressed = await sharp(tempPath)
@@ -46,13 +47,14 @@ export async function compressAndStoreStudentPhoto(
 
   if (imagekitEnabled()) {
     const client = getImageKit();
-    const folder = (env.IMAGEKIT_FOLDER || "digital26/students").replace(/\/$/, "");
+    const defaultFolder = opts?.publicKind === "evidence" ? "digital26/evidence" : "digital26/students";
+    const folder = (opts?.folder || env.IMAGEKIT_FOLDER || defaultFolder).replace(/\/$/, "");
     const result = await client.files.upload({
       file: await toFile(compressed, filename),
       fileName: filename,
       folder,
       useUniqueFileName: true,
-      tags: ["student", "certificate"],
+      tags: opts?.tags || ["student", "certificate"],
     });
 
     const url = result.url;
@@ -69,10 +71,15 @@ export async function compressAndStoreStudentPhoto(
   const diskPath = path.join(uploadDir, filename);
   await writeFile(diskPath, compressed);
 
+  const publicPath =
+    opts?.publicKind === "evidence"
+      ? `/api/public/files/students/${filename}`
+      : studentPhotoPublicPath(filename);
+
   return {
     filename,
     diskPath,
-    publicPath: studentPhotoPublicPath(filename),
+    publicPath,
   };
 }
 

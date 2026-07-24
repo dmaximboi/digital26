@@ -51,11 +51,14 @@ function neonErrorMessage(data: Record<string, unknown>, status: number): string
   if (code === "INVALID_EMAIL_OR_PASSWORD") {
     return "Wrong email or password.";
   }
-  if (code === "MISSING_ORIGIN") {
-    return "This site origin is not allowed for sign-in. Add https://digital26.online and https://www.digital26.online in Neon Auth trusted origins.";
+  if (code === "MISSING_ORIGIN" || /invalid\s*origin/i.test(message || "")) {
+    return "This site origin is not allowed. In Neon Console → Auth → Configuration → Domains, add https://digital26.online and https://www.digital26.online (no trailing slash), then try again.";
   }
   if (/route\s+post:/i.test(message || "") || status === 404) {
     return "Sign-in endpoint not found. On Vercel set VITE_NEON_AUTH_URL exactly to …/neondb/auth (not the JWKS URL), then redeploy.";
+  }
+  if (status === 403) {
+    return message || "Sign-in blocked (403). Check Neon Auth trusted domains for this site origin.";
   }
 
   return message || `Auth request failed (${status})`;
@@ -123,16 +126,6 @@ async function refreshJwt(): Promise<string | null> {
 }
 
 export const authClient = {
-  signUp: {
-    email: (args: { email: string; password: string; name: string }) =>
-      authFetch("/sign-up/email", {
-        method: "POST",
-        body: JSON.stringify({
-          ...args,
-          callbackURL: adminCallbackBase(),
-        }),
-      }),
-  },
   signIn: {
     email: (args: { email: string; password: string }) =>
       authFetch("/sign-in/email", {
@@ -188,4 +181,13 @@ export async function getAccessToken(): Promise<string | null> {
   const cached = sessionStorage.getItem("d26_access_token");
   if (cached) return cached;
   return refreshJwt();
+}
+
+export async function forceRefreshAccessToken(): Promise<string | null> {
+  sessionStorage.removeItem("d26_access_token");
+  return refreshJwt();
+}
+
+export function clearAccessToken(): void {
+  sessionStorage.removeItem("d26_access_token");
 }

@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
-import { adminFetch } from "../lib/adminApi";
+import { adminPostForm } from "../lib/adminApi";
 import { DocBrandHeader } from "../components/BrandMark";
 import { browserLocalDateValue, formatCertDate } from "../lib/dates";
+import { compressImage } from "../lib/compressImage";
 
 type InviteResult = {
   id: string;
@@ -24,9 +25,20 @@ export function AdminIssueCertificatePage() {
   const [type, setType] = useState("COMPLETION");
   const [course, setCourse] = useState("6-Day Vibe Coding Masterclass");
   const [issueDate, setIssueDate] = useState(() => browserLocalDateValue());
+  const [adminSolo, setAdminSolo] = useState<File | null>(null);
+  const [studentSolo, setStudentSolo] = useState<File | null>(null);
+  const [together, setTogether] = useState<File | null>(null);
   const [result, setResult] = useState<InviteResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  async function pick(file: File | null, setter: (f: File | null) => void) {
+    if (!file) {
+      setter(null);
+      return;
+    }
+    setter(await compressImage(file));
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -39,20 +51,24 @@ export function AdminIssueCertificatePage() {
       setError("Student email is required — they must use this same email to claim.");
       return;
     }
+    if (!adminSolo || !studentSolo || !together) {
+      setError("Upload admin-only, student-only, and admin+student evidence photos.");
+      return;
+    }
     setLoading(true);
     setError(null);
     setResult(null);
     try {
       const iso = new Date(`${issueDate}T12:00:00`).toISOString();
-      const data = await adminFetch<InviteResult>("/api/ops/certificates", {
-        method: "POST",
-        body: JSON.stringify({
-          studentEmail: studentEmail.trim(),
-          type,
-          course,
-          issueDate: iso,
-        }),
-      });
+      const form = new FormData();
+      form.append("studentEmail", studentEmail.trim());
+      form.append("type", type);
+      form.append("course", course);
+      form.append("issueDate", iso);
+      form.append("adminSolo", adminSolo);
+      form.append("studentSolo", studentSolo);
+      form.append("together", together);
+      const data = await adminPostForm<InviteResult>("/api/ops/certificates", form);
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
@@ -65,8 +81,8 @@ export function AdminIssueCertificatePage() {
     <section className="panel nested">
       <DocBrandHeader title="Create certificate claim link" />
       <p className="lede">
-        Student email is locked to this invite. They must enter the same address before OTP and
-        submit. After claim, the letter goes public and the link expires.
+        Before sending the link, upload 3 evidence photos: admin only, student only, and both
+        together. The student still uploads a passport portrait plus 1 evidence image at claim.
       </p>
 
       <form className="sign-form" onSubmit={onSubmit}>
@@ -108,7 +124,48 @@ export function AdminIssueCertificatePage() {
           />
           <span className="muted">Preview: {formatCertDate(issueDate)}</span>
         </label>
-        <button className="btn primary" type="submit" disabled={loading}>
+        <fieldset className="evidence-block" disabled={loading}>
+          <legend>Required: classroom evidence photos</legend>
+          <p className="muted">
+            Upload 3 images before creating the link. Student passport/portrait is uploaded later
+            on the claim page (separate from the 1 student evidence image).
+          </p>
+          <label className="evidence-field">
+            1. Admin only
+            <input
+              type="file"
+              accept="image/*"
+              required
+              onChange={(e) => void pick(e.target.files?.[0] ?? null, setAdminSolo)}
+            />
+            <span className="muted">{adminSolo ? adminSolo.name : "Not selected"}</span>
+          </label>
+          <label className="evidence-field">
+            2. Student only
+            <input
+              type="file"
+              accept="image/*"
+              required
+              onChange={(e) => void pick(e.target.files?.[0] ?? null, setStudentSolo)}
+            />
+            <span className="muted">{studentSolo ? studentSolo.name : "Not selected"}</span>
+          </label>
+          <label className="evidence-field">
+            3. Admin + student together
+            <input
+              type="file"
+              accept="image/*"
+              required
+              onChange={(e) => void pick(e.target.files?.[0] ?? null, setTogether)}
+            />
+            <span className="muted">{together ? together.name : "Not selected"}</span>
+          </label>
+        </fieldset>
+        <button
+          className="btn primary"
+          type="submit"
+          disabled={loading || !adminSolo || !studentSolo || !together}
+        >
           {loading ? "Creating…" : "Create 24h claim link"}
         </button>
       </form>

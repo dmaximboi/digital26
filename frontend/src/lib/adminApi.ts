@@ -1,4 +1,8 @@
-import { getAccessToken } from "./auth";
+import {
+  clearAccessToken,
+  forceRefreshAccessToken,
+  getAccessToken,
+} from "./auth";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
 
@@ -9,59 +13,91 @@ function withLegacyAlias(path: string): string[] {
   return [path];
 }
 
-async function authHeaders(): Promise<HeadersInit> {
-  const token = await getAccessToken();
-  if (!token) {
-    throw new Error("Not signed in");
+function errorMessage(data: unknown, status: number, fallback: string): string {
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "error" in data &&
+    typeof (data as { error: unknown }).error === "string"
+  ) {
+    return (data as { error: string }).error;
   }
-  return {
-    Authorization: `Bearer ${token}`,
-    Accept: "application/json",
-    "Content-Type": "application/json",
-  };
+  return `${fallback} (${status})`;
 }
 
-export async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const baseHeaders = await authHeaders();
-  const method = (init?.method || "GET").toUpperCase();
-  const headers: Record<string, string> = {
-    ...(baseHeaders as Record<string, string>),
-    ...(init?.headers as Record<string, string> | undefined),
-  };
+async function authorizedFetch(
+  path: string,
+  init?: RequestInit,
+  retried = false,
+): Promise<Response> {
+  const token = await getAccessToken();
+  if (!token) throw new Error("Not signed in");
 
-  if (method === "GET" || method === "DELETE" || init?.body === undefined) {
-    delete headers["Content-Type"];
+  const headers = new Headers(init?.headers);
+  headers.set("Authorization", `Bearer ${token}`);
+  if (!headers.has("Accept")) headers.set("Accept", "application/json");
+
+  const method = (init?.method || "GET").toUpperCase();
+  if (
+    (method === "GET" || method === "DELETE" || init?.body === undefined) &&
+    headers.get("Content-Type") === "application/json"
+  ) {
+    headers.delete("Content-Type");
   }
 
-  let lastStatus = 0;
-  let lastData: unknown = {};
-
+  let last: Response | null = null;
   for (const candidate of withLegacyAlias(path)) {
-    const res = await fetch(`${API_BASE}${candidate}`, {
+    last = await fetch(`${API_BASE}${candidate}`, {
       ...init,
       headers,
       credentials: "omit",
     });
-    lastStatus = res.status;
-    if (res.status === 404 && candidate !== withLegacyAlias(path).at(-1)) {
+    if (last.status === 404 && candidate !== withLegacyAlias(path).at(-1)) {
       continue;
     }
-    if (res.status === 204) return undefined as T;
-    lastData = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const message =
-        typeof lastData === "object" &&
-        lastData !== null &&
-        "error" in lastData &&
-        typeof (lastData as { error: unknown }).error === "string"
-          ? (lastData as { error: string }).error
-          : `Request failed (${lastStatus})`;
-      throw new Error(message);
-    }
-    return lastData as T;
+    break;
   }
 
-  throw new Error(`Request failed (${lastStatus})`);
+  if (!last) throw new Error("Request failed");
+
+  if ((last.status === 401 || last.status === 403) && !retried) {
+    if (last.status === 401) {
+      const refreshed = await forceRefreshAccessToken();
+      if (refreshed) {
+        return authorizedFetch(path, init, true);
+      }
+    }
+    clearAccessToken();
+  }
+
+  return last;
+}
+
+export async function adminFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const headers = new Headers(init?.headers);
+  if (init?.body !== undefined && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const res = await authorizedFetch(path, { ...init, headers });
+  if (res.status === 204) return undefined as T;
+  const data: unknown = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(errorMessage(data, res.status, "Request failed"));
+  }
+  return data as T;
+}
+
+export async function adminPostForm<T>(path: string, form: FormData): Promise<T> {
+  const res = await authorizedFetch(path, {
+    method: "POST",
+    body: form,
+  });
+  const data: unknown = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(errorMessage(data, res.status, "Request failed"));
+  }
+  return data as T;
 }
 
 export async function adminDownloadPdf(
@@ -69,39 +105,40 @@ export async function adminDownloadPdf(
   publicId: string,
 ): Promise<void> {
   const filename = publicId.endsWith(".pdf") ? publicId : `${publicId}.pdf`;
-  const headers = await authHeaders();
-  const h = headers as Record<string, string>;
-  const paths = withLegacyAlias(
+  const res = await authorizedFetch(
     `/api/ops/files/${kind}/${encodeURIComponent(filename)}`,
+    { headers: { Accept: "application/pdf" } },
   );
-
-  let res: Response | null = null;
-  for (const p of paths) {
-    res = await fetch(`${API_BASE}${p}`, {
-      headers: {
-        Authorization: h.Authorization ?? "",
-        Accept: "application/pdf",
-      },
-      credentials: "omit",
-    });
-    if (res.status !== 404) break;
-  }
-  if (!res || !res.ok) {
-    const data: unknown = res ? await res.json().catch(() => ({})) : {};
-    const message =
-      typeof data === "object" &&
-      data !== null &&
-      "error" in data &&
-      typeof (data as { error: unknown }).error === "string"
-        ? (data as { error: string }).error
-        : `Download failed (${res?.status ?? 0})`;
-    throw new Error(message);
+  if (!res.ok) {
+    const data: unknown = await res.json().catch(() => ({}));
+    throw new Error(errorMessage(data, res.status, "Download failed"));
   }
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;
+  a.rel = "noopener";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+export async function adminDownloadCertPng(publicId: string): Promise<void> {
+  const res = await authorizedFetch(
+    `/api/ops/certificates/${encodeURIComponent(publicId)}/png`,
+    { headers: { Accept: "image/png" } },
+  );
+  if (!res.ok) {
+    const data: unknown = await res.json().catch(() => ({}));
+    throw new Error(errorMessage(data, res.status, "PNG download failed"));
+  }
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${publicId}-4k.png`;
   a.rel = "noopener";
   document.body.appendChild(a);
   a.click();

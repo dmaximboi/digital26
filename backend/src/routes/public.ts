@@ -4,7 +4,7 @@ import { z } from "zod";
 import { prisma } from "../db/prisma.js";
 import { env } from "../config/env.js";
 import { isValidPublicId } from "../lib/publicId.js";
-import { publicLookupLimiter } from "../middleware/security.js";
+import { publicLookupLimiter, gateLimiter } from "../middleware/security.js";
 
 export const publicRouter = Router();
 
@@ -31,7 +31,7 @@ const gateSchema = z.object({
     .regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/),
 });
 
-publicRouter.post("/gate", publicLookupLimiter, (req, res) => {
+publicRouter.post("/gate", gateLimiter, (req, res) => {
   const parsed = gateSchema.safeParse(req.body ?? {});
   if (!parsed.success) {
     res.status(200).json({ ok: false });
@@ -120,8 +120,12 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     return;
   }
 
+  // Public peep: only published mirror rows. Private tables / evidence never selected.
+  // Invalid or unknown IDs get the same 404 shape (no private leakage).
   let photoUrl = record.photoUrl;
-  if (photoUrl && !photoUrl.startsWith("http") && !photoUrl.startsWith("/")) {
+  if (record.status !== "VALID") {
+    photoUrl = null;
+  } else if (photoUrl && !photoUrl.startsWith("http") && !photoUrl.startsWith("/")) {
     photoUrl = `/api/public/files/students/${photoUrl}`;
   }
 

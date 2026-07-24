@@ -1,5 +1,5 @@
 import express from "express";
-import { applySecurity, globalLimiter } from "./middleware/security.js";
+import { applySecurity, globalLimiter, opsLimiter } from "./middleware/security.js";
 import { env } from "./config/env.js";
 import { healthRouter } from "./routes/health.js";
 import { publicRouter } from "./routes/public.js";
@@ -25,6 +25,9 @@ export function createApp() {
     }
     next();
   });
+
+  // Extra rate limit on every ops path (auth still required per-route)
+  app.use("/api/ops", opsLimiter);
 
   app.use(healthRouter);
   app.use("/api/public", publicRouter);

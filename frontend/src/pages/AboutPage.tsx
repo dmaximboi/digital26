@@ -8,7 +8,7 @@ export function AboutPage() {
     setPageMeta({
       title: "About Us",
       description:
-        "Who The Digital 26 is: Adewuyi Ayuba (Maxim), a Vibe Coding studio and classroom, and client digital presence under clear agreements.",
+        "The Digital 26 — world-class Vibe Coding studio & classroom. Low-code web development on a flexible any-month path (~6 months recommended), agreements, and public certificates.",
       path: "/about",
     });
     setJsonLd("d26-jsonld-about", {
@@ -17,7 +17,7 @@ export function AboutPage() {
       name: "About The Digital 26",
       url: siteUrl("/about"),
       description:
-        "The Digital 26 builds learners and ships real products: Vibe Coding studio and classroom plus websites and apps with structured agreements.",
+        "World-class Vibe Coding studio and classroom: low-code web development, flexible any-month programme (~6 months), client digital presence, and verifiable certificates.",
       mainEntity: {
         "@type": "Organization",
         name: "The Digital 26",
@@ -37,9 +37,9 @@ export function AboutPage() {
       <DocBrandHeader title="About Us" />
 
       <p className="about-lead">
-        The Digital 26 is a Vibe Coding studio and classroom. We teach people to build, we ship
-        websites and apps for clients, and we put agreements and certificates where anyone can
-        verify them.
+        The Digital 26 is a world-class Vibe Coding studio and classroom. We teach low-code web
+        development on a flexible any-month structure (about 6 months recommended), ship websites
+        and apps for clients, and put agreements and certificates where anyone can verify them.
       </p>
 
       <div className="about-grid">
@@ -63,11 +63,12 @@ export function AboutPage() {
           <h2>Vibe Coding</h2>
           <p>
             Learn by shipping in a studio and classroom setting. Build real projects, grow your
-            digital presence, and leave with work you can show.
+            digital presence, and leave with work you can show. Programme length is flexible
+            (any-month) — no longer locked to 3 months — with a recommended ~6-month pathway.
           </p>
           <p>
             Completers can receive a public Certificate of Participation or Completion that Google
-            and other systems can read and verify.
+            and other systems can read and verify (scan the QR or use the public ID).
           </p>
         </article>
 

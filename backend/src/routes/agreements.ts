@@ -20,9 +20,12 @@ import { writeAudit } from "../lib/audit.js";
 import { buildAgreementPdf } from "../lib/pdf.js";
 import {
   requireAdmin,
+  requireAdminWrite,
 } from "../middleware/requireAdmin.js";
 import { authLimiter } from "../middleware/security.js";
 import type { AuthedRequest } from "../middleware/adminAuth.js";
+import { EvidenceKind } from "@prisma/client";
+import { evidenceUpload, storeEvidenceFiles } from "../lib/evidence.js";
 
 const LINK_TTL_MS = 24 * 60 * 60 * 1000;
 const MAX_PASSKEY_ATTEMPTS = 5;
@@ -40,12 +43,31 @@ const createSchema = z.object({
 agreementsRouter.post(
   "/ops/agreements",
   authLimiter,
-  requireAdmin,
+  requireAdminWrite,
+  (req, res, next) => {
+    evidenceUpload.array("proofs", 3)(req, res, (err: unknown) => {
+      if (err) {
+        res.status(400).json({
+          error: err instanceof Error ? err.message : "Proof upload failed",
+        });
+        return;
+      }
+      next();
+    });
+  },
   async (req: AuthedRequest, res) => {
     try {
       const parsed = createSchema.safeParse(req.body);
       if (!parsed.success) {
         res.status(400).json({ error: "Invalid payload" });
+        return;
+      }
+
+      const proofs = Array.isArray(req.files) ? req.files : [];
+      if (proofs.length !== 3) {
+        res.status(400).json({
+          error: "Upload exactly 3 proof images before creating the agreement link",
+        });
         return;
       }
 
@@ -81,6 +103,14 @@ agreementsRouter.post(
         },
       });
 
+      await storeEvidenceFiles({
+        files: proofs,
+        kind: EvidenceKind.AGREEMENT_ADMIN_PROOF,
+        uploadedBy: "admin",
+        agreementId: agreement.id,
+        phoneHint: data.clientPhone ?? person.phone,
+      });
+
       const link = `${env.APP_URL}/sign/${sessionId}`;
       const publicPreviewNote = `${env.PUBLIC_SITE_URL}/a/{publicId}`;
       const mail = await sendPasskeyEmail({
@@ -100,6 +130,7 @@ agreementsRouter.post(
             clientEmail: email,
             linkExpiresAt: linkExpiresAt.toISOString(),
             emailDelivered: mail.delivered,
+            adminProofCount: 3,
           },
         });
       } catch (err) {
@@ -329,11 +360,30 @@ const submitSchema = z.object({
 agreementsRouter.post(
   "/sign/:sessionId/submit",
   authLimiter,
+  (req, res, next) => {
+    evidenceUpload.array("clientProofs", 2)(req, res, (err: unknown) => {
+      if (err) {
+        res.status(400).json({
+          error: err instanceof Error ? err.message : "Proof upload failed",
+        });
+        return;
+      }
+      next();
+    });
+  },
   async (req, res) => {
     const sessionId = String(req.params.sessionId ?? "");
     const parsed = submitSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "Invalid payload" });
+      return;
+    }
+
+    const clientProofs = Array.isArray(req.files) ? req.files : [];
+    if (clientProofs.length !== 2) {
+      res.status(400).json({
+        error: "Upload exactly 2 proof images (chat, proposal, or payment screenshot)",
+      });
       return;
     }
 
@@ -436,6 +486,14 @@ agreementsRouter.post(
         });
 
         return { publicId, agreementId: updated.id, termsSnapshot: fresh.termsSnapshot };
+      });
+
+      await storeEvidenceFiles({
+        files: clientProofs,
+        kind: EvidenceKind.AGREEMENT_CLIENT_PROOF,
+        uploadedBy: "client",
+        agreementId: result.agreementId,
+        phoneHint: phone.format("E.164"),
       });
 
       const pdf = await buildAgreementPdf({

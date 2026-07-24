@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { apiGet } from "../lib/api";
 import { DocBrandHeader } from "../components/BrandMark";
 import { AgreementArt } from "../components/AgreementArt";
+import { PublicRecordQr } from "../components/PublicRecordQr";
 
 type AgreementPublic = {
   publicId: string;
@@ -85,7 +86,7 @@ export function CheckAgreementPage() {
       )}
 
       {result && (
-        <div aria-live="polite" style={{ marginTop: "1.5rem" }}>
+        <div className="verify-result" aria-live="polite">
           <AgreementArt
             publicId={result.publicId}
             displayName={result.name}
@@ -94,6 +95,7 @@ export function CheckAgreementPage() {
             signature={result.signature}
             checkUrl={`${SITE}/check-agreement/${result.publicId}`}
           />
+          <PublicRecordQr url={`${SITE}/check-agreement/${result.publicId}`} />
         </div>
       )}
     </section>

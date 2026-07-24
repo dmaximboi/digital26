@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
+import { PDFDocument, rgb, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
 import QRCode from "qrcode";
 import { env } from "../config/env.js";
 import { loadPhotoBytes } from "./studentPhoto.js";
@@ -12,6 +12,12 @@ const GOLD = rgb(240 / 255, 165 / 255, 0);
 const BLACK = rgb(0.02, 0.02, 0.04);
 const CREAM = rgb(240 / 255, 235 / 255, 224 / 255);
 const MUTED = rgb(0.42, 0.38, 0.33);
+const PAPER = rgb(0.985, 0.978, 0.965);
+const INK = rgb(0.09, 0.09, 0.1);
+const INK_SOFT = rgb(0.28, 0.27, 0.25);
+const RULE = rgb(0.82, 0.78, 0.72);
+const SIDEBAR = rgb(0.05, 0.05, 0.06);
+const CHIP_BG = rgb(0.96, 0.93, 0.88);
 
 function uploadsRoot(): string {
   return env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads");
@@ -52,91 +58,344 @@ export async function buildAgreementPdf(opts: {
   terms: string;
 }): Promise<{ bytes: Uint8Array; filePath: string; publicUrl: string }> {
   const verifyUrl = `${env.PUBLIC_SITE_URL}/check-agreement/${opts.publicId}`;
+  const checkDisplay = verifyUrl.replace(/^https?:\/\//, "");
   const pdf = await PDFDocument.create();
   const page = pdf.addPage([595, 842]);
+  const { width, height } = page.getSize();
   const font = await pdf.embedFont(StandardFonts.Helvetica);
   const bold = await pdf.embedFont(StandardFonts.HelveticaBold);
-  const italic = await pdf.embedFont(StandardFonts.HelveticaOblique);
+  const italic = await pdf.embedFont(StandardFonts.TimesRomanItalic);
+  const serifBold = await pdf.embedFont(StandardFonts.TimesRomanBold);
   const logo = await embedLogo(pdf);
 
+  const sidebarW = 168;
+  const marginR = 36;
+  const contentX = sidebarW + 28;
+  const contentW = width - contentX - marginR;
+  const tag = (opts.dealTag || "Services engagement").slice(0, 72);
+  const signedLabel = opts.signedAt.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+
+  // Paper + left brand sidebar (resume layout)
+  page.drawRectangle({ x: 0, y: 0, width, height, color: PAPER });
+  page.drawRectangle({ x: 0, y: 0, width: sidebarW, height, color: SIDEBAR });
+  page.drawRectangle({
+    x: sidebarW - 3,
+    y: 0,
+    width: 3,
+    height,
+    color: GOLD,
+  });
+
+  // Sidebar brand
   if (logo) {
-    page.drawImage(logo, { x: 50, y: 760, width: 56, height: 56 });
+    const ls = 64;
+    const lx = (sidebarW - ls) / 2;
+    const ly = height - 108;
+    page.drawImage(logo, { x: lx, y: ly, width: ls, height: ls });
     page.drawCircle({
-      x: 78,
-      y: 788,
-      size: 30,
+      x: lx + ls / 2,
+      y: ly + ls / 2,
+      size: ls / 2 + 3,
       borderColor: GOLD,
       borderWidth: 2,
     });
   }
 
-  page.drawText("THE DIGITAL 26", {
-    x: logo ? 130 : 50,
-    y: 800,
-    size: 16,
+  drawCentered(page, "THE DIGITAL 26", {
+    x: sidebarW / 2,
+    y: height - 140,
+    size: 9,
     font: bold,
     color: GOLD,
   });
-  page.drawText("Service Agreement Letter", {
-    x: logo ? 130 : 50,
-    y: 780,
-    size: 12,
-    font: bold,
-    color: BLACK,
-  });
-  page.drawText("Website · Collaboration · Digital services", {
-    x: logo ? 130 : 50,
-    y: 762,
-    size: 9,
+  drawWrapped(page, "Vibe Coding Studio & Classroom", {
+    x: 18,
+    y: height - 162,
+    maxWidth: sidebarW - 36,
+    size: 8,
     font,
-    color: MUTED,
+    color: CREAM,
+    lineHeight: 11,
+    align: "center",
+    centerWidth: sidebarW,
   });
 
-  const tag = (opts.dealTag || "Services engagement").slice(0, 50);
-  const lines = [
-    `Public ID: ${opts.publicId}`,
-    `Client: ${opts.displayName}`,
-    `About: ${tag}`,
-    `Signed: ${opts.signedAt.toLocaleString("en-GB")}`,
-    `Signature: ${opts.signatureName}`,
-    `Check: ${verifyUrl}`,
+  // Sidebar meta chips
+  let sy = height - 210;
+  const sidebarMeta: Array<[string, string]> = [
+    ["DOCUMENT", "Service Agreement"],
+    ["PUBLIC ID", opts.publicId],
+    ["SIGNED", signedLabel],
+    ["STATUS", "Executed"],
   ];
-
-  let y = 720;
-  for (const line of lines) {
-    page.drawText(line, { x: 50, y, size: 11, font, color: BLACK });
-    y -= 18;
+  for (const [label, value] of sidebarMeta) {
+    page.drawText(label, {
+      x: 18,
+      y: sy,
+      size: 7,
+      font: bold,
+      color: GOLD,
+    });
+    sy -= 12;
+    const valueLines = wrapTextToWidth(value, font, 9, sidebarW - 36);
+    for (const line of valueLines) {
+      page.drawText(line, { x: 18, y: sy, size: 9, font, color: CREAM });
+      sy -= 12;
+    }
+    sy -= 14;
   }
 
-  y -= 10;
-  page.drawText("Terms snapshot", { x: 50, y, size: 12, font: bold, color: GOLD });
-  y -= 16;
-
-  const termsLines = wrapText(opts.terms.replace(/\s+/g, " ").trim(), 88);
-  for (const line of termsLines.slice(0, 28)) {
-    page.drawText(line, { x: 50, y, size: 9, font, color: MUTED });
-    y -= 12;
-    if (y < 160) break;
-  }
-
-  page.drawText(opts.signatureName, {
-    x: 50,
-    y: 120,
-    size: 16,
-    font: italic,
-    color: BLACK,
+  page.drawText("VERIFY ONLINE", {
+    x: 18,
+    y: 168,
+    size: 7,
+    font: bold,
+    color: GOLD,
   });
-  page.drawText("Digital signature", {
-    x: 50,
-    y: 104,
-    size: 9,
-    font,
-    color: MUTED,
-  });
-
   const qr = await qrPng(verifyUrl);
   const qrImage = await pdf.embedPng(qr);
-  page.drawImage(qrImage, { x: 420, y: 70, width: 120, height: 120 });
+  page.drawRectangle({
+    x: 22,
+    y: 48,
+    width: 124,
+    height: 124,
+    color: rgb(1, 1, 1),
+  });
+  page.drawImage(qrImage, { x: 28, y: 54, width: 112, height: 112 });
+  page.drawText("Scan to open public record", {
+    x: 18,
+    y: 34,
+    size: 7,
+    font,
+    color: MUTED,
+  });
+
+  // Main column — resume header
+  let y = height - 56;
+  page.drawText("SERVICE AGREEMENT LETTER", {
+    x: contentX,
+    y,
+    size: 18,
+    font: serifBold,
+    color: INK,
+  });
+  y -= 18;
+  page.drawText("Digital presence · Websites · Collaboration", {
+    x: contentX,
+    y,
+    size: 9,
+    font,
+    color: INK_SOFT,
+  });
+  y -= 14;
+  page.drawRectangle({
+    x: contentX,
+    y,
+    width: contentW,
+    height: 1.5,
+    color: GOLD,
+  });
+  y -= 28;
+
+  // Profile-style identity block
+  page.drawText(asciiPdf(opts.displayName.toUpperCase()), {
+    x: contentX,
+    y,
+    size: Math.min(20, Math.max(14, 26 - opts.displayName.length * 0.25)),
+    font: bold,
+    color: INK,
+  });
+  y -= 16;
+  page.drawText("Client · Counterparty to this letter", {
+    x: contentX,
+    y,
+    size: 9,
+    font,
+    color: INK_SOFT,
+  });
+  y -= 22;
+
+  // Two-column fact grid (resume contact strip)
+  const colGap = 16;
+  const colW = (contentW - colGap) / 2;
+  const facts: Array<[string, string]> = [
+    ["Engagement", asciiPdf(tag)],
+    ["Deal type", humanDealType(opts.dealType)],
+    ["Signature name", asciiPdf(opts.signatureName)],
+    ["Issued by", "Adewuyi Ayuba (Maxim)"],
+  ];
+  for (let i = 0; i < facts.length; i += 2) {
+    const left = facts[i]!;
+    const right = facts[i + 1];
+    drawFact(page, left[0], left[1], contentX, y, colW, font, bold);
+    if (right) {
+      drawFact(page, right[0], right[1], contentX + colW + colGap, y, colW, font, bold);
+    }
+    y -= 36;
+  }
+
+  y -= 4;
+  drawSectionRule(page, contentX, y, contentW, "SUMMARY", bold);
+  y -= 22;
+
+  const summaryParas = [
+    `This letter records that ${opts.displayName} has, based on our discussion, accepted and wants The Digital 26's services.`,
+    `About this engagement: ${tag}.`,
+  ];
+  for (const para of summaryParas) {
+    y = drawParagraph(page, asciiPdf(para), {
+      x: contentX,
+      y,
+      maxWidth: contentW,
+      size: 10,
+      font,
+      color: INK_SOFT,
+      lineHeight: 14,
+    });
+    y -= 10;
+  }
+
+  // Highlight chip
+  page.drawRectangle({
+    x: contentX,
+    y: y - 28,
+    width: contentW,
+    height: 34,
+    color: CHIP_BG,
+  });
+  page.drawRectangle({
+    x: contentX,
+    y: y - 28,
+    width: 3,
+    height: 34,
+    color: GOLD,
+  });
+  drawWrapped(
+    page,
+    asciiPdf(
+      "By signing, the Client agrees to consent, working terms, and service process - and relies on The Digital 26 to deliver with honesty and care.",
+    ),
+    {
+      x: contentX + 10,
+      y: y - 8,
+      maxWidth: contentW - 18,
+      size: 8.5,
+      font,
+      color: INK,
+      lineHeight: 11,
+    },
+  );
+  y -= 48;
+
+  drawSectionRule(page, contentX, y, contentW, "TERMS & COMMITMENTS", bold);
+  y -= 20;
+
+  const termBlocks = splitTerms(opts.terms);
+  for (const block of termBlocks) {
+    if (y < 170) break;
+    page.drawCircle({
+      x: contentX + 3,
+      y: y + 3,
+      size: 2.2,
+      color: GOLD,
+    });
+    y = drawParagraph(page, asciiPdf(block), {
+      x: contentX + 12,
+      y,
+      maxWidth: contentW - 12,
+      size: 9,
+      font,
+      color: INK_SOFT,
+      lineHeight: 12.5,
+    });
+    y -= 12;
+  }
+
+  if (y > 148) y = 148;
+  drawSectionRule(page, contentX, y, contentW, "SIGNATURES", bold);
+  y -= 28;
+
+  const sigW = (contentW - 24) / 2;
+  // Client signature
+  page.drawText(asciiPdf(opts.signatureName), {
+    x: contentX,
+    y,
+    size: 14,
+    font: italic,
+    color: INK,
+  });
+  page.drawRectangle({
+    x: contentX,
+    y: y - 8,
+    width: Math.min(sigW - 8, 160),
+    height: 0.8,
+    color: RULE,
+  });
+  page.drawText("CLIENT DIGITAL SIGNATURE", {
+    x: contentX,
+    y: y - 22,
+    size: 7,
+    font: bold,
+    color: MUTED,
+  });
+  page.drawText(`Typed name · ${signedLabel}`, {
+    x: contentX,
+    y: y - 34,
+    size: 8,
+    font,
+    color: INK_SOFT,
+  });
+
+  // Studio signature
+  const sx2 = contentX + sigW + 24;
+  page.drawText("Adewuyi Ayuba", {
+    x: sx2,
+    y,
+    size: 14,
+    font: italic,
+    color: INK,
+  });
+  page.drawRectangle({
+    x: sx2,
+    y: y - 8,
+    width: Math.min(sigW - 8, 160),
+    height: 0.8,
+    color: RULE,
+  });
+  page.drawText("THE DIGITAL 26 BY MAXIM", {
+    x: sx2,
+    y: y - 22,
+    size: 7,
+    font: bold,
+    color: MUTED,
+  });
+  page.drawText("Founder & Instructor", {
+    x: sx2,
+    y: y - 34,
+    size: 8,
+    font,
+    color: INK_SOFT,
+  });
+
+  // Footer verify line
+  page.drawRectangle({
+    x: contentX,
+    y: 28,
+    width: contentW,
+    height: 0.6,
+    color: RULE,
+  });
+  page.drawText(`Public check · ${checkDisplay}`, {
+    x: contentX,
+    y: 16,
+    size: 7.5,
+    font,
+    color: GOLD,
+  });
 
   const bytes = await pdf.save();
   const dir = path.join(uploadsRoot(), "agreements");
@@ -149,6 +408,182 @@ export async function buildAgreementPdf(opts: {
     filePath,
     publicUrl: `${env.API_URL}/api/ops/files/agreements/${opts.publicId}.pdf`,
   };
+}
+
+function asciiPdf(text: string): string {
+  return text
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"')
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/\u2026/g, "...")
+    .replace(/\u00A0/g, " ");
+}
+
+function humanDealType(dealType: string): string {
+  switch (dealType) {
+    case "BUY_PRODUCT":
+      return "Digital product";
+    case "LEARN_SKILLS":
+      return "Skills / collaboration";
+    default:
+      return "Services engagement";
+  }
+}
+
+function splitTerms(terms: string): string[] {
+  const cleaned = terms
+    .replace(/\r\n/g, "\n")
+    .split(/\n+/)
+    .map((p) => p.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .filter((p) => !/^THE DIGITAL 26/i.test(p));
+  if (cleaned.length >= 2) return cleaned.slice(0, 6);
+  // Fallback: sentence-split a single blob
+  return terms
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(/(?<=\.)\s+(?=[A-Z])/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 20)
+    .slice(0, 5);
+}
+
+function drawSectionRule(
+  page: PDFPage,
+  x: number,
+  y: number,
+  w: number,
+  title: string,
+  bold: PDFFont,
+): void {
+  page.drawText(title, { x, y, size: 9, font: bold, color: GOLD });
+  const tw = bold.widthOfTextAtSize(title, 9);
+  page.drawRectangle({
+    x: x + tw + 10,
+    y: y + 3,
+    width: Math.max(24, w - tw - 10),
+    height: 0.7,
+    color: RULE,
+  });
+}
+
+function drawFact(
+  page: PDFPage,
+  label: string,
+  value: string,
+  x: number,
+  y: number,
+  maxW: number,
+  font: PDFFont,
+  bold: PDFFont,
+): void {
+  page.drawText(label.toUpperCase(), {
+    x,
+    y,
+    size: 7,
+    font: bold,
+    color: MUTED,
+  });
+  const lines = wrapTextToWidth(value, font, 10, maxW);
+  let cy = y - 13;
+  for (const line of lines.slice(0, 2)) {
+    page.drawText(line, { x, y: cy, size: 10, font, color: INK });
+    cy -= 12;
+  }
+}
+
+function drawCentered(
+  page: PDFPage,
+  text: string,
+  opts: {
+    x: number;
+    y: number;
+    size: number;
+    font: PDFFont;
+    color: ReturnType<typeof rgb>;
+  },
+): void {
+  const tw = opts.font.widthOfTextAtSize(text, opts.size);
+  page.drawText(text, {
+    x: opts.x - tw / 2,
+    y: opts.y,
+    size: opts.size,
+    font: opts.font,
+    color: opts.color,
+  });
+}
+
+function wrapTextToWidth(
+  text: string,
+  font: PDFFont,
+  size: number,
+  maxWidth: number,
+): string[] {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (font.widthOfTextAtSize(next, size) > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  }
+  if (current) lines.push(current);
+  return lines.length ? lines : [""];
+}
+
+function drawWrapped(
+  page: PDFPage,
+  text: string,
+  opts: {
+    x: number;
+    y: number;
+    maxWidth: number;
+    size: number;
+    font: PDFFont;
+    color: ReturnType<typeof rgb>;
+    lineHeight: number;
+    align?: "left" | "center";
+    centerWidth?: number;
+  },
+): number {
+  const lines = wrapTextToWidth(text, opts.font, opts.size, opts.maxWidth);
+  let y = opts.y;
+  for (const line of lines) {
+    let x = opts.x;
+    if (opts.align === "center" && opts.centerWidth) {
+      const tw = opts.font.widthOfTextAtSize(line, opts.size);
+      x = (opts.centerWidth - tw) / 2;
+    }
+    page.drawText(line, {
+      x,
+      y,
+      size: opts.size,
+      font: opts.font,
+      color: opts.color,
+    });
+    y -= opts.lineHeight;
+  }
+  return y;
+}
+
+function drawParagraph(
+  page: PDFPage,
+  text: string,
+  opts: {
+    x: number;
+    y: number;
+    maxWidth: number;
+    size: number;
+    font: PDFFont;
+    color: ReturnType<typeof rgb>;
+    lineHeight: number;
+  },
+): number {
+  return drawWrapped(page, text, { ...opts, align: "left" });
 }
 
 export async function buildCertificatePdf(opts: {
@@ -398,21 +833,4 @@ export async function buildCertificatePdf(opts: {
     filePath,
     publicUrl: `${env.API_URL}/api/ops/files/certificates/${opts.publicId}.pdf`,
   };
-}
-
-function wrapText(text: string, width: number): string[] {
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
-    if (next.length > width) {
-      if (current) lines.push(current);
-      current = word;
-    } else {
-      current = next;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
 }

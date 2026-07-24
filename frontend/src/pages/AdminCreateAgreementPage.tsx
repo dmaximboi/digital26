@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { adminFetch } from "../lib/adminApi";
+import { adminPostForm } from "../lib/adminApi";
 import { DocBrandHeader } from "../components/BrandMark";
+import { compressImage } from "../lib/compressImage";
 
 type CreateResult = {
   id: string;
@@ -16,6 +17,7 @@ type CreateResult = {
 export function AdminCreateAgreementPage() {
   const [clientEmail, setClientEmail] = useState("");
   const [clientName, setClientName] = useState("");
+  const [proofs, setProofs] = useState<File[]>([]);
   const [result, setResult] = useState<CreateResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -24,17 +26,35 @@ export function AdminCreateAgreementPage() {
     document.title = "Create agreement | The Digital 26";
   }, []);
 
+  async function onProofs(list: FileList | null) {
+    if (!list) {
+      setProofs([]);
+      return;
+    }
+    const files = Array.from(list).slice(0, 3);
+    const compressed: File[] = [];
+    for (const f of files) {
+      compressed.push(await compressImage(f));
+    }
+    setProofs(compressed);
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (loading) return;
+    if (proofs.length !== 3) {
+      setError("Upload exactly 3 proof images (deal evidence) before creating the link.");
+      return;
+    }
     setLoading(true);
     setError(null);
     setResult(null);
     try {
-      const data = await adminFetch<CreateResult>("/api/ops/agreements", {
-        method: "POST",
-        body: JSON.stringify({ clientEmail, clientName }),
-      });
+      const form = new FormData();
+      form.append("clientEmail", clientEmail);
+      if (clientName.trim()) form.append("clientName", clientName.trim());
+      for (const f of proofs) form.append("proofs", f);
+      const data = await adminPostForm<CreateResult>("/api/ops/agreements", form);
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
@@ -47,9 +67,8 @@ export function AdminCreateAgreementPage() {
     <section className="panel nested">
       <DocBrandHeader title="Create agreement letter link" />
       <p className="lede">
-        For clients who want a website, collaboration, or our services. Creates a 24-hour signing
-        link; the client tags what the deal is about and signs. Then the link expires and the letter
-        goes public.
+        Upload 3 deal proofs first (proposal, chat, or payment). Then create the 24-hour signing
+        link. The client will add 2 more proofs when they sign.
       </p>
 
       <form className="sign-form" onSubmit={onSubmit}>
@@ -71,7 +90,34 @@ export function AdminCreateAgreementPage() {
             disabled={loading}
           />
         </label>
-        <button className="btn primary" type="submit" disabled={loading}>
+        <fieldset className="evidence-block" disabled={loading}>
+          <legend>Required: 3 deal proof images</legend>
+          <p className="muted">
+            Upload screenshots of proposal, WhatsApp chat, payment, or any deal proof. Max 3.
+            Client will upload 2 more when they sign.
+          </p>
+          <label className="evidence-field">
+            Choose 3 images
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => void onProofs(e.target.files)}
+              required
+            />
+            <span className={proofs.length === 3 ? "ok-count" : "muted"}>
+              {proofs.length}/3 selected
+              {proofs.length > 0 && (
+                <ul className="evidence-file-list">
+                  {proofs.map((f) => (
+                    <li key={`${f.name}-${f.size}`}>{f.name}</li>
+                  ))}
+                </ul>
+              )}
+            </span>
+          </label>
+        </fieldset>
+        <button className="btn primary" type="submit" disabled={loading || proofs.length !== 3}>
           {loading ? "Creating…" : "Create & email passkey"}
         </button>
       </form>

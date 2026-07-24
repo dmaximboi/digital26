@@ -1,4 +1,5 @@
 import { NavLink, Navigate, Outlet } from "react-router-dom";
+import { useEffect } from "react";
 import { useAdminAuth } from "../../auth/AdminAuthContext";
 import { BrandMark } from "../../components/BrandMark";
 import { useAdminPath } from "../../lib/adminPath";
@@ -6,6 +7,17 @@ import { useAdminPath } from "../../lib/adminPath";
 export function AdminLayout() {
   const { path: adminPath, ready } = useAdminPath();
   const { user, loading, signOut } = useAdminAuth();
+
+  useEffect(() => {
+    document.title = "Console";
+    let robots = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
+    if (!robots) {
+      robots = document.createElement("meta");
+      robots.name = "robots";
+      document.head.appendChild(robots);
+    }
+    robots.content = "noindex,nofollow,noarchive";
+  }, []);
 
   if (!ready) {
     return (
@@ -27,8 +39,8 @@ export function AdminLayout() {
     { to: `/${adminPath}/certificates`, label: "Certificates" },
     { to: `/${adminPath}/clients`, label: "Clients" },
     { to: `/${adminPath}/audit`, label: "Audit" },
-    { to: `/${adminPath}/agreements/new`, label: "New agreement" },
-    { to: `/${adminPath}/certificates/new`, label: "New cert link" },
+    { to: `/${adminPath}/agreements/new`, label: "New agreement + proofs" },
+    { to: `/${adminPath}/certificates/new`, label: "New cert + evidence" },
   ];
 
   if (loading) {

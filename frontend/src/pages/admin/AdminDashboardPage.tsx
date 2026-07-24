@@ -40,10 +40,10 @@ export function AdminDashboardPage() {
         </div>
         <div className="ops-page__actions">
           <Link className="btn primary" to={`/${ADMIN_BASE}/agreements/new`}>
-            New agreement
+            New agreement + 3 proofs
           </Link>
           <Link className="btn" to={`/${ADMIN_BASE}/certificates/new`}>
-            New cert link
+            New cert + evidence
           </Link>
         </div>
       </div>

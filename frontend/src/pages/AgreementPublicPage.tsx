@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { apiGet } from "../lib/api";
 import { DocBrandHeader } from "../components/BrandMark";
 import { AgreementArt } from "../components/AgreementArt";
+import { PublicRecordQr } from "../components/PublicRecordQr";
 
 type AgreementPublic = {
   publicId: string;
@@ -51,7 +52,7 @@ export function AgreementPublicPage() {
       {loading && <p>Loading…</p>}
       {error && <p className="status error">{error}</p>}
       {result && (
-        <div style={{ marginTop: "1rem" }}>
+        <div className="verify-result">
           <AgreementArt
             publicId={result.publicId}
             displayName={result.name}
@@ -60,6 +61,7 @@ export function AgreementPublicPage() {
             signature={result.signature}
             checkUrl={`${SITE}/check-agreement/${result.publicId}`}
           />
+          <PublicRecordQr url={`${SITE}/check-agreement/${result.publicId}`} />
         </div>
       )}
     </section>

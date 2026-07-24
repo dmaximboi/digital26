@@ -110,6 +110,14 @@ export function applySecurity(app: Express): void {
     }
     next();
   });
+
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith("/api/ops") || req.path.startsWith("/api/admin")) {
+      res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
+      res.setHeader("Cache-Control", "no-store");
+    }
+    next();
+  });
 }
 
 export const globalLimiter = rateLimit({
@@ -142,4 +150,22 @@ export const contactLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many messages. Try again later." },
+});
+
+/** All authenticated ops traffic */
+export const opsLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.isProd ? 120 : 800,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many console requests. Try again later." },
+});
+
+/** Console path gate — discourage brute force */
+export const gateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: env.isProd ? 12 : 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many gate attempts. Try again later." },
 });

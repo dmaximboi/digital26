@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db/prisma.js";
-import { requireAdmin } from "../middleware/requireAdmin.js";
+import { requireAdmin, requireAdminWrite } from "../middleware/requireAdmin.js";
 import { contactLimiter } from "../middleware/security.js";
 import { writeAudit } from "../lib/audit.js";
 import type { AuthedRequest } from "../middleware/adminAuth.js";
@@ -67,7 +67,7 @@ contactAdminRouter.get("/ops/messages", requireAdmin, async (_req, res) => {
 
 contactAdminRouter.post(
   "/ops/messages/:id/read",
-  requireAdmin,
+  requireAdminWrite,
   async (req: AuthedRequest, res) => {
     const id = String(req.params.id ?? "");
     const row = await prisma.contactMessage.findUnique({ where: { id } });
@@ -90,7 +90,7 @@ contactAdminRouter.post(
 
 contactAdminRouter.delete(
   "/ops/messages/:id",
-  requireAdmin,
+  requireAdminWrite,
   async (req: AuthedRequest, res) => {
     const id = String(req.params.id ?? "");
     try {

@@ -1,8 +1,9 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { apiGet, apiPost } from "../lib/api";
+import { apiGet, apiPost, apiPostForm } from "../lib/api";
 import { DocBrandHeader } from "../components/BrandMark";
 import { AgreementArt } from "../components/AgreementArt";
+import { compressImage } from "../lib/compressImage";
 
 type StatusResponse =
   | { status: "invalid"; error?: string }
@@ -44,6 +45,7 @@ export function SignPage() {
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [signatureName, setSignatureName] = useState("");
+  const [clientProofs, setClientProofs] = useState<File[]>([]);
   const [done, setDone] = useState<{ publicId: string; publicUrl: string } | null>(null);
 
   useEffect(() => {
@@ -105,6 +107,17 @@ export function SignPage() {
     }
   }
 
+  async function onClientProofs(list: FileList | null) {
+    if (!list) {
+      setClientProofs([]);
+      return;
+    }
+    const files = Array.from(list).slice(0, 2);
+    const out: File[] = [];
+    for (const f of files) out.push(await compressImage(f));
+    setClientProofs(out);
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (submitBusy) return;
@@ -114,20 +127,25 @@ export function SignPage() {
       setError("Deal tag must be 2–50 characters.");
       return;
     }
+    if (clientProofs.length !== 2) {
+      setError("Upload exactly 2 proof images (chat, proposal, or payment screenshot).");
+      return;
+    }
     setSubmitBusy(true);
     try {
-      const data = await apiPost<{ publicId: string; publicUrl: string }>(
+      const form = new FormData();
+      form.append("passkey", passkey);
+      form.append("fullName", fullName);
+      form.append("dealTag", tag);
+      form.append("phone", phone);
+      form.append("phoneCountry", "NG");
+      form.append("email", email);
+      form.append("otpCode", otpCode);
+      form.append("signatureName", signatureName);
+      for (const f of clientProofs) form.append("clientProofs", f);
+      const data = await apiPostForm<{ publicId: string; publicUrl: string }>(
         `/api/sign/${encodeURIComponent(sessionId)}/submit`,
-        {
-          passkey,
-          fullName,
-          dealTag: tag,
-          phone,
-          phoneCountry: "NG",
-          email,
-          otpCode,
-          signatureName,
-        },
+        form,
       );
       setDone(data);
     } catch (err) {
@@ -343,6 +361,19 @@ export function SignPage() {
               required
               disabled={submitBusy}
             />
+          </label>
+
+          <label className="evidence-field">
+            Your proofs (exactly 2 images — chat, proposal, or payment)
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              required
+              disabled={submitBusy}
+              onChange={(e) => void onClientProofs(e.target.files)}
+            />
+            <span className="muted">{clientProofs.length}/2 selected</span>
           </label>
 
           <button className="btn primary" type="submit" disabled={submitBusy}>

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { apiGet } from "../lib/api";
 import { DocBrandHeader } from "../components/BrandMark";
 import { CertificateArt } from "../components/CertificateArt";
+import { PublicRecordQr } from "../components/PublicRecordQr";
 import {
   certificateJsonLd,
   removeJsonLd,
@@ -128,6 +129,7 @@ export function VerifyPage() {
               verifyUrl={siteUrl(`/verify/${result.publicId}`)}
             />
           </div>
+          <PublicRecordQr url={siteUrl(`/verify/${result.publicId}`)} />
         </div>
       )}
     </section>

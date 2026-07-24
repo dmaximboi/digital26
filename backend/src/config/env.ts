@@ -21,6 +21,7 @@ const envSchema = z.object({
   FIELD_ENCRYPTION_KEY: z.string().min(1).optional(),
   STAFF_EMAILS: z.string().optional(),
   ADMIN_EMAILS: z.string().optional(),
+  STAFF_READONLY_EMAILS: z.string().optional(),
   CONSOLE_PATH: pathSegment.optional(),
   ADMIN_CONSOLE_PATH: pathSegment.optional(),
   CORS_ORIGINS: z
@@ -74,6 +75,12 @@ const adminEmails = staffEmailSource
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
+const readonlyEmails = (data.STAFF_READONLY_EMAILS || "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean)
+  .filter((e) => !adminEmails.includes(e));
+
 if (adminEmails.length === 0) {
   console.error("STAFF_EMAILS is required");
   process.exit(1);
@@ -113,6 +120,7 @@ export const env = {
   ADMIN_EMAILS: staffEmailSource,
   ADMIN_CONSOLE_PATH: consolePath,
   adminEmails,
+  readonlyEmails,
   consolePath,
   corsOrigins: withWwwVariants(
     data.CORS_ORIGINS.split(",")

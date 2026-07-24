@@ -12,34 +12,60 @@ Allow: /sitemap.xml
 Disallow: /sign/
 Disallow: /claim-cert/
 Disallow: /admin
+Disallow: /ops
+Disallow: /api/
+# Staff console (secret path) must never be indexed
+Disallow: /*/login
+Disallow: /*/messages
+Disallow: /*/visits
+Disallow: /*/agreements
+Disallow: /*/certificates
+Disallow: /*/clients
+Disallow: /*/audit
 
 User-agent: GPTBot
 Allow: /
 Allow: /verify
 Allow: /a/
+Allow: /about
 Allow: /llms.txt
+Disallow: /sign/
+Disallow: /claim-cert/
+Disallow: /api/
 
 User-agent: Google-Extended
 Allow: /
 Allow: /verify
 Allow: /a/
+Allow: /about
 Allow: /llms.txt
+Disallow: /sign/
+Disallow: /claim-cert/
 
 User-agent: ClaudeBot
 Allow: /
 Allow: /verify
 Allow: /a/
+Allow: /about
 Allow: /llms.txt
+Disallow: /sign/
+Disallow: /claim-cert/
 
 User-agent: PerplexityBot
 Allow: /
 Allow: /verify
 Allow: /a/
+Allow: /about
 Allow: /llms.txt
+Disallow: /sign/
+Disallow: /claim-cert/
 
 User-agent: Applebot-Extended
 Allow: /
 Allow: /verify
 Allow: /a/
+Allow: /about
+Disallow: /sign/
+Disallow: /claim-cert/
 
 Sitemap: https://digital26.online/sitemap.xml
