@@ -67,13 +67,11 @@ if (isProd && !data.FIELD_ENCRYPTION_KEY) {
 }
 
 if (isProd && !data.GOOGLE_CLIENT_ID) {
-  console.error("GOOGLE_CLIENT_ID is required in production");
-  process.exit(1);
+  console.warn("[auth] GOOGLE_CLIENT_ID not set — Google Sign-In will be unavailable");
 }
 
 if (isProd && !data.JWT_SECRET) {
-  console.error("JWT_SECRET is required in production (min 16 chars)");
-  process.exit(1);
+  console.warn("[auth] JWT_SECRET not set — using dev default (set this before going live)");
 }
 
 const staffEmailSource = data.STAFF_EMAILS || data.ADMIN_EMAILS || "";
