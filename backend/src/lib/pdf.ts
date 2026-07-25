@@ -131,6 +131,7 @@ export async function buildAgreementPdf(opts: {
     ["PUBLIC ID", opts.publicId],
     ["SIGNED", signedLabel],
     ["STATUS", "Executed"],
+    ["REG. NO", "RC - 9710046"],
   ];
   for (const [label, value] of sidebarMeta) {
     page.drawText(label, {
@@ -671,8 +672,8 @@ export async function buildCertificatePdf(opts: {
     color: GOLD,
   });
 
-  page.drawText("hereby proudly presents this", {
-    x: width / 2 - 80,
+  drawCentered(page, "hereby proudly presents this", {
+    x: width / 2,
     y: height - 120,
     size: 11,
     font,
@@ -684,16 +685,17 @@ export async function buildCertificatePdf(opts: {
       ? "CERTIFICATE OF COMPLETION"
       : "CERTIFICATE OF PARTICIPATION";
 
+  const titleW = bold.widthOfTextAtSize(title, 22);
   page.drawText(title, {
-    x: width / 2 - (title.length * 7) / 2,
+    x: width / 2 - titleW / 2,
     y: height - 160,
     size: 22,
     font: bold,
     color: GOLD,
   });
 
-  page.drawText("awarded to", {
-    x: width / 2 - 35,
+  drawCentered(page, "awarded to", {
+    x: width / 2,
     y: height - 195,
     size: 11,
     font,
@@ -701,37 +703,28 @@ export async function buildCertificatePdf(opts: {
   });
 
   const nameSize = opts.displayName.length > 28 ? 26 : 34;
-  page.drawText(opts.displayName, {
-    x: Math.max(80, width / 2 - opts.displayName.length * (nameSize * 0.28)),
+  const nameW = serif.widthOfTextAtSize(asciiPdf(opts.displayName), nameSize);
+  page.drawText(asciiPdf(opts.displayName), {
+    x: Math.max(80, width / 2 - nameW / 2),
     y: height - 245,
     size: nameSize,
     font: serif,
     color: CREAM,
   });
 
-  const body =
+  const bodyText =
     opts.type === "COMPLETION"
-      ? `Congratulations on successfully finishing the ${opts.course}`
-      : `with a warm welcome into the ${opts.course}`;
-  page.drawText(body, {
+      ? `Congratulations on successfully finishing the ${opts.course} with The Digital 26. Celebrate your wins and keep building with heart.`
+      : `With a warm welcome into the ${opts.course}. You are part of The Digital 26. Curiosity, energy, and growth. We're glad you're here.`;
+  drawWrapped(page, asciiPdf(bodyText), {
     x: 120,
     y: height - 290,
+    maxWidth: width - 240,
     size: 11,
     font,
     color: MUTED,
+    lineHeight: 16,
   });
-  page.drawText(
-    opts.type === "COMPLETION"
-      ? "with The Digital 26. Celebrate your wins and keep building with heart."
-      : "You are part of The Digital 26. Curiosity, energy, and growth. We're glad you're here.",
-    {
-      x: 120,
-      y: height - 308,
-      size: 11,
-      font,
-      color: MUTED,
-    },
-  );
 
   const skills = ["Vibe Coding", "Prompt Engineering", "Web Development", "Deployment"];
   let sx = 200;
@@ -757,15 +750,22 @@ export async function buildCertificatePdf(opts: {
 
   page.drawText("Adewuyi Ayuba", {
     x: 90,
-    y: 110,
+    y: 120,
     size: 14,
     font: serif,
     color: CREAM,
   });
   page.drawText("Instructor & Founder · The Digital 26 by Maxim", {
     x: 90,
-    y: 92,
+    y: 102,
     size: 8,
+    font,
+    color: MUTED,
+  });
+  page.drawText("RC - 9710046", {
+    x: 90,
+    y: 88,
+    size: 7,
     font,
     color: MUTED,
   });
@@ -777,7 +777,7 @@ export async function buildCertificatePdf(opts: {
   });
   page.drawText(dateStr, {
     x: width - 260,
-    y: 110,
+    y: 120,
     size: 12,
     font: bold,
     color: CREAM,
@@ -786,40 +786,63 @@ export async function buildCertificatePdf(opts: {
     opts.type === "COMPLETION" ? "Date of Completion" : "Date of Participation",
     {
       x: width - 260,
-      y: 92,
+      y: 102,
       size: 8,
       font,
       color: MUTED,
     },
   );
 
-  page.drawText(opts.publicId, {
-    x: width / 2 - 45,
-    y: 70,
+  // QR code — positioned bottom-center
+  const qr = await qrPng(verifyUrl);
+  const qrImage = await pdf.embedPng(qr);
+  const qrSize = 80;
+  page.drawRectangle({
+    x: width / 2 - qrSize / 2 - 4,
+    y: 56,
+    width: qrSize + 8,
+    height: qrSize + 8,
+    color: rgb(1, 1, 1),
+  });
+  page.drawImage(qrImage, { x: width / 2 - qrSize / 2, y: 60, width: qrSize, height: qrSize });
+
+  // Public ID below QR
+  const idText = opts.publicId;
+  const idWidth = bold.widthOfTextAtSize(idText, 9);
+  page.drawText(idText, {
+    x: width / 2 - idWidth / 2,
+    y: 44,
     size: 9,
     font: bold,
     color: GOLD,
   });
 
-  const qr = await qrPng(verifyUrl);
-  const qrImage = await pdf.embedPng(qr);
-  page.drawImage(qrImage, { x: width / 2 - 36, y: 100, width: 72, height: 72 });
-
+  // Status bottom-left
   page.drawText(`Status: ${opts.status}`, {
     x: 90,
-    y: 48,
+    y: 44,
     size: 8,
     font,
     color: MUTED,
   });
 
+  // Verify URL bottom
   const verifyLabel = `Verify: ${verifyUrl.replace(/^https?:\/\//, "")}`;
   page.drawText(verifyLabel, {
     x: Math.max(90, width / 2 - verifyLabel.length * 2.4),
-    y: 32,
+    y: 26,
     size: 8,
     font,
     color: GOLD,
+  });
+
+  // RC number bottom-right
+  page.drawText("RC - 9710046", {
+    x: width - 180,
+    y: 44,
+    size: 7,
+    font,
+    color: MUTED,
   });
 
   const bytes = await pdf.save();

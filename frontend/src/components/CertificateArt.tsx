@@ -91,6 +91,7 @@ export function CertificateArt({
               <br />
               The Digital 26 by Maxim
             </p>
+            <p className="sig-rc">RC - 9710046</p>
           </div>
 
           <div className="seal">

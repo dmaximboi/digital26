@@ -27,7 +27,7 @@ export function SiteFooter() {
         <div>
           <p className="footer-heading">The Digital 26</p>
           <p className="muted">Be Vibed, Be Digital · Vibe Coding Studio</p>
-          <p className="muted">digital26.online</p>
+          <p className="muted">digital26.online · RC - 9710046</p>
         </div>
       </div>
       <p className="footer-copy">© {new Date().getFullYear()} The Digital 26 by Maxim</p>

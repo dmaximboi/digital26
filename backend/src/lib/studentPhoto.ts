@@ -15,6 +15,16 @@ export function studentPhotoAbsoluteUrl(publicPath: string): string {
   return `${env.API_URL.replace(/\/$/, "")}${publicPath}`;
 }
 
+/**
+ * Returns an ImageKit URL with on-the-fly transforms for display.
+ * Only applies to ImageKit-hosted URLs; local paths are returned as-is.
+ */
+export function optimizedPhotoUrl(url: string, width = 400, quality = 70): string {
+  if (!url.startsWith("http") || !url.includes("imagekit.io")) return url;
+  const sep = url.includes("?") ? "&" : "?";
+  return `${url}${sep}tr=w-${width},q-${quality},f-webp`;
+}
+
 function imagekitEnabled(): boolean {
   return Boolean(env.IMAGEKIT_PRIVATE_KEY && env.IMAGEKIT_URL_ENDPOINT);
 }
@@ -35,8 +45,8 @@ export async function compressAndStoreStudentPhoto(
   const filename = `${Date.now()}-portrait.jpg`;
   const compressed = await sharp(tempPath)
     .rotate()
-    .resize(720, 900, { fit: "inside", withoutEnlargement: true })
-    .jpeg({ quality: 72, mozjpeg: true })
+    .resize(600, 750, { fit: "inside", withoutEnlargement: true })
+    .jpeg({ quality: 65, mozjpeg: true })
     .toBuffer();
 
   try {

@@ -49,6 +49,7 @@ export function AboutPage() {
           <p>
             Founded and led by <strong>Adewuyi Ayuba (Maxim)</strong>. We are builder-first: loyalty
             over hype, clear deals, and work you can check in the open.
+            Registered business — <strong>RC - 9710046</strong>.
           </p>
           <p>
             Personal profile:{" "}

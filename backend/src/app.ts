@@ -15,7 +15,7 @@ export function createApp() {
   const app = express();
 
   applySecurity(app);
-  app.use(express.json({ limit: env.JSON_BODY_LIMIT || "100kb" }));
+  app.use(express.json({ limit: "64kb" }));
   app.use(express.urlencoded({ extended: false, limit: "32kb" }));
   app.use(globalLimiter);
 

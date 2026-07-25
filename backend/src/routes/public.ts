@@ -5,6 +5,8 @@ import { prisma } from "../db/prisma.js";
 import { env } from "../config/env.js";
 import { isValidPublicId } from "../lib/publicId.js";
 import { publicLookupLimiter, gateLimiter } from "../middleware/security.js";
+import { optimizedPhotoUrl } from "../lib/studentPhoto.js";
+import { cacheFetch } from "../lib/cache.js";
 
 export const publicRouter = Router();
 
@@ -102,18 +104,22 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     return;
   }
 
-  const record = await prisma.certificatePublic.findUnique({
-    where: { publicId },
-    select: {
-      publicId: true,
-      displayName: true,
-      course: true,
-      type: true,
-      issueDate: true,
-      status: true,
-      photoUrl: true,
-    },
-  });
+  const record = await cacheFetch(
+    `cert:${publicId}`,
+    () => prisma.certificatePublic.findUnique({
+      where: { publicId },
+      select: {
+        publicId: true,
+        displayName: true,
+        course: true,
+        type: true,
+        issueDate: true,
+        status: true,
+        photoUrl: true,
+      },
+    }),
+    5 * 60 * 1000,
+  );
 
   if (!record) {
     res.status(404).json({ error: "Certificate not found" });
@@ -127,6 +133,9 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     photoUrl = null;
   } else if (photoUrl && !photoUrl.startsWith("http") && !photoUrl.startsWith("/")) {
     photoUrl = `/api/public/files/students/${photoUrl}`;
+  }
+  if (photoUrl) {
+    photoUrl = optimizedPhotoUrl(photoUrl, 400, 70);
   }
 
   res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
@@ -164,17 +173,21 @@ publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
     return;
   }
 
-  const record = await prisma.agreementPublic.findUnique({
-    where: { publicId },
-    select: {
-      publicId: true,
-      displayName: true,
-      dealType: true,
-      dealTag: true,
-      signedAt: true,
-      signatureName: true,
-    },
-  });
+  const record = await cacheFetch(
+    `agr:${publicId}`,
+    () => prisma.agreementPublic.findUnique({
+      where: { publicId },
+      select: {
+        publicId: true,
+        displayName: true,
+        dealType: true,
+        dealTag: true,
+        signedAt: true,
+        signatureName: true,
+      },
+    }),
+    5 * 60 * 1000,
+  );
 
   if (!record) {
     res.status(404).json({ error: "Agreement not found" });

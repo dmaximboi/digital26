@@ -106,7 +106,15 @@ export function applySecurity(app: Express): void {
 
   app.use((req: Request, res: Response, next: NextFunction) => {
     const raw = req.url || "";
-    if (raw.includes("..") || raw.includes("%2e%2e") || raw.includes("\\")) {
+    if (
+      raw.includes("..") ||
+      raw.includes("%2e%2e") ||
+      raw.includes("\\") ||
+      raw.includes("%00") ||
+      raw.includes("%5c") ||
+      raw.length > 2048
+    ) {
+      console.warn(`[security] blocked suspicious URL: ${raw.slice(0, 200)} from ${req.ip}`);
       res.status(400).json({ error: "Bad request" });
       return;
     }
