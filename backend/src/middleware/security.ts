@@ -43,10 +43,11 @@ export function applySecurity(app: Express): void {
             directives: {
               defaultSrc: ["'self'"],
               imgSrc: ["'self'", "data:", "https:", "blob:"],
-              styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+              styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://accounts.google.com"],
               fontSrc: ["'self'", "https://fonts.gstatic.com", "data:"],
-              scriptSrc: ["'self'"],
-              connectSrc,
+              scriptSrc: ["'self'", "https://accounts.google.com", "https://apis.google.com"],
+              connectSrc: [...connectSrc, "https://accounts.google.com"],
+              frameSrc: ["https://accounts.google.com"],
               frameAncestors: ["'none'"],
               objectSrc: ["'none'"],
               baseUri: ["'self'"],
@@ -54,6 +55,7 @@ export function applySecurity(app: Express): void {
             },
           }
         : false,
+      crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
       crossOriginResourcePolicy: { policy: "cross-origin" },
       referrerPolicy: { policy: "strict-origin-when-cross-origin" },
       frameguard: { action: "deny" },
@@ -92,7 +94,7 @@ export function applySecurity(app: Express): void {
       "Permissions-Policy",
       "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
     );
-    res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+    res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
     if (env.isProd) {
       res.setHeader(
         "Strict-Transport-Security",
@@ -112,9 +114,15 @@ export function applySecurity(app: Express): void {
   });
 
   app.use((req: Request, res: Response, next: NextFunction) => {
-    if (req.path.startsWith("/api/ops") || req.path.startsWith("/api/admin")) {
+    if (
+      req.path.startsWith("/api/ops") ||
+      req.path.startsWith("/api/admin") ||
+      req.path.startsWith("/api/student") ||
+      req.path.startsWith("/api/auth")
+    ) {
       res.setHeader("X-Robots-Tag", "noindex, nofollow, noarchive");
-      res.setHeader("Cache-Control", "no-store");
+      res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, private");
+      res.setHeader("Pragma", "no-cache");
     }
     next();
   });

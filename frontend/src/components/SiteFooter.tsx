@@ -20,6 +20,11 @@ export function SiteFooter() {
           </a>
         </div>
         <div>
+          <p className="footer-heading">Legal</p>
+          <Link to="/privacy">Privacy Policy</Link>
+          <Link to="/terms">Terms of Service</Link>
+        </div>
+        <div>
           <p className="footer-heading">The Digital 26</p>
           <p className="muted">Be Vibed, Be Digital · Vibe Coding Studio</p>
           <p className="muted">digital26.online</p>

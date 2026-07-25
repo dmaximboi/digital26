@@ -15,6 +15,8 @@ import { ApplyPage } from "./pages/ApplyPage";
 import { StudentDashboardPage } from "./pages/StudentDashboardPage";
 import { StudentAttendancePage } from "./pages/StudentAttendancePage";
 import { StudentChatPage } from "./pages/StudentChatPage";
+import { PrivacyPage } from "./pages/PrivacyPage";
+import { TermsPage } from "./pages/TermsPage";
 import { AdminLayout } from "./pages/admin/AdminLayout";
 import { AdminDashboardPage } from "./pages/admin/AdminDashboardPage";
 import { AdminAgreementsPage } from "./pages/admin/AdminAgreementsPage";
@@ -45,6 +47,10 @@ function AppRoutes() {
       <Route path="/a/:publicId" element={<AgreementPublicPage />} />
       <Route path="/sign/:sessionId" element={<SignPage />} />
       <Route path="/claim-cert/:sessionId" element={<ClaimCertPage />} />
+
+      {/* Legal */}
+      <Route path="/privacy" element={<PrivacyPage />} />
+      <Route path="/terms" element={<TermsPage />} />
 
       {/* Auth */}
       <Route path="/signin" element={<SignInPage />} />
