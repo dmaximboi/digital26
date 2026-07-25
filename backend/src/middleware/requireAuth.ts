@@ -34,7 +34,6 @@ async function extractUser(req: AuthedRequest): Promise<boolean> {
     req.userId = userId;
     req.userEmail = email;
 
-    // Always re-resolve admin status from env + DB (dual-layer verification)
     const adminRole = await resolveRole(email.toLowerCase());
     req.userRole = adminRole ?? role;
 
@@ -81,12 +80,10 @@ export async function requireApprovedStudent(req: AuthedRequest, res: Response, 
     res.status(401).json({ error: "Authentication required" });
     return;
   }
-  // Admins bypass student-approval check
   if (req.userRole === "ADMIN" || req.userRole === "READONLY") {
     next();
     return;
   }
-  // Verify student is actually approved in DB
   try {
     const profile = await prisma.studentProfile.findUnique({
       where: { userId: req.userId! },

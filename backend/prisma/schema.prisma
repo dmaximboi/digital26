@@ -25,7 +25,6 @@ enum CertificateStatus {
   REVOKED
 }
 
-/// Private person record — never expose phone/email on public routes
 model Person {
   id        String   @id @default(cuid())
   name      String
@@ -39,7 +38,6 @@ model Person {
   @@map("people")
 }
 
-/// Private agreement — full record including sensitive fields
 model Agreement {
   id              String    @id @default(cuid())
   personId        String    @map("person_id")
@@ -70,7 +68,6 @@ model Agreement {
   @@map("agreements")
 }
 
-/// Stripped public agreement card — public API reads ONLY this table
 model AgreementPublic {
   id            String   @id @default(cuid())
   publicId      String   @unique @map("public_id")
@@ -87,7 +84,6 @@ model AgreementPublic {
   @@map("agreements_public")
 }
 
-/// Private certificate record
 model Certificate {
   id             String            @id @default(cuid())
   personId       String?           @map("person_id")
@@ -98,7 +94,6 @@ model Certificate {
   status         CertificateStatus @default(VALID)
   photoUrl       String?           @map("photo_url")
   pdfUrl         String?           @map("pdf_url")
-  /// Locked invite email — claim OTP/submit must match exactly
   inviteEmail    String?           @map("invite_email")
   claimSessionId String?           @unique @map("claim_session_id")
   claimExpiresAt DateTime?         @map("claim_expires_at")
@@ -114,7 +109,6 @@ model Certificate {
   @@map("certificates")
 }
 
-/// Stripped public certificate — public verify route reads ONLY this table
 model CertificatePublic {
   id            String            @id @default(cuid())
   publicId      String            @unique @map("public_id")
@@ -124,7 +118,6 @@ model CertificatePublic {
   type          CertificateType
   issueDate     DateTime          @map("issue_date")
   status        CertificateStatus
-  /// Public portrait on the certificate (compressed student photo)
   photoUrl      String?           @map("photo_url")
   createdAt     DateTime          @default(now()) @map("created_at")
 
@@ -146,7 +139,6 @@ model AdminAuditLog {
   @@map("admin_audit_log")
 }
 
-/// Monotonic counters for public IDs (D26#####agr / D26#####cert)
 model IdSequence {
   name  String @id
   value Int    @default(0)
@@ -154,7 +146,6 @@ model IdSequence {
   @@map("id_sequences")
 }
 
-/// Email OTP codes (hashed). Used for agreement email verification.
 model EmailOtp {
   id         String    @id @default(cuid())
   email      String
@@ -171,13 +162,10 @@ model EmailOtp {
   @@map("email_otps")
 }
 
-/// Admin allowlist only (emails). Passwords never stored here.
-/// Neon Auth holds password hashes in neon_auth schema. This table is private / admin-only.
 model AdminAllowlist {
   id        String   @id @default(cuid())
   email     String   @unique
   active    Boolean  @default(true)
-  /// FULL = mutate + reveal; READONLY = view/download only
   role      String   @default("FULL")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -185,7 +173,6 @@ model AdminAllowlist {
   @@map("admin_allowlist")
 }
 
-/// Public contact form messages — admin inbox only
 model ContactMessage {
   id        String    @id @default(cuid())
   name      String
@@ -235,7 +222,6 @@ enum ProgrammeType {
   SIX_MONTH
 }
 
-/// All authenticated users (students + admins via Google OAuth)
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -253,7 +239,6 @@ model User {
   @@map("users")
 }
 
-/// Student profile — submitted via apply form, admin reviews
 model StudentProfile {
   id            String        @id @default(cuid())
   userId        String        @unique @map("user_id")
@@ -277,7 +262,6 @@ model StudentProfile {
   @@map("student_profiles")
 }
 
-/// Weekly attendance record — one per student per week
 model Attendance {
   id         String   @id @default(cuid())
   userId     String   @map("user_id")
@@ -293,7 +277,6 @@ model Attendance {
   @@map("attendance")
 }
 
-/// Student group chat — 10 messages per 24h per user, enforced at backend
 model ChatMessage {
   id        String   @id @default(cuid())
   userId    String   @map("user_id")
@@ -307,7 +290,6 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
-/// Private deal/cert evidence images — never exposed on public verify routes
 model EvidenceImage {
   id            String       @id @default(cuid())
   kind          EvidenceKind

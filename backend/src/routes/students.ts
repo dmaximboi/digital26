@@ -46,7 +46,6 @@ const applySchema = z.object({
   programme: z.nativeEnum(ProgrammeType),
 });
 
-// ─── Student: Submit application ─────────────────────────────
 studentsRouter.post(
   "/student/apply",
   authLimiter,
@@ -109,7 +108,6 @@ studentsRouter.post(
   },
 );
 
-// ─── Student: Get own profile/status ─────────────────────────
 studentsRouter.get("/student/me", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({
@@ -129,7 +127,6 @@ studentsRouter.get("/student/me", requireAuth, async (req: AuthedRequest, res) =
   }
 });
 
-// ─── Student: Weekly attendance sign-in ──────────────────────
 studentsRouter.post("/student/attendance", authLimiter, requireAuth, async (req: AuthedRequest, res) => {
   try {
     const profile = await prisma.studentProfile.findUnique({
@@ -212,7 +209,6 @@ studentsRouter.get("/student/attendance", requireAuth, async (req: AuthedRequest
   }
 });
 
-// ─── Student: Group chat ─────────────────────────────────────
 const CHAT_LIMIT = 10;
 const CHAT_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -290,7 +286,6 @@ studentsRouter.get("/student/chat", requireAuth, async (req: AuthedRequest, res)
   }
 });
 
-// ─── Admin: Student management ───────────────────────────────
 studentsRouter.get("/ops/students", requireAdmin, async (_req, res) => {
   try {
     const students = await prisma.studentProfile.findMany({

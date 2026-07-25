@@ -21,7 +21,7 @@ export function ApplyPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setPageMeta({ title: "Apply — The Digital 26", description: "Apply to join The Digital 26 Vibe Coding programme." });
+    setPageMeta({ title: "Apply The Digital 26", description: "Apply to join The Digital 26 Vibe Coding programme." });
   }, []);
 
   useEffect(() => {

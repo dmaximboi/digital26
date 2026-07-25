@@ -126,8 +126,6 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     return;
   }
 
-  // Public peep: only published mirror rows. Private tables / evidence never selected.
-  // Invalid or unknown IDs get the same 404 shape (no private leakage).
   let photoUrl = record.photoUrl;
   if (record.status !== "VALID") {
     photoUrl = null;

@@ -129,7 +129,7 @@ export function AdminAgreementDetailPage() {
                 {busy ? "Downloading…" : "Download agreement PDF"}
               </button>
             ) : (
-              "n/a — not signed yet"
+              "n/a not signed yet"
             )}
           </dd>
         </div>

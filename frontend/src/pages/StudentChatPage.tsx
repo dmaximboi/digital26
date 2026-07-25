@@ -22,7 +22,7 @@ export function StudentChatPage() {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setPageMeta({ title: "Class Chat — The Digital 26", description: "Chat with fellow students." });
+    setPageMeta({ title: "Class Chat The Digital 26", description: "Chat with fellow students." });
   }, []);
 
   useEffect(() => {

@@ -48,7 +48,7 @@ export function AdminIssueCertificatePage() {
       return;
     }
     if (!studentEmail.trim()) {
-      setError("Student email is required — they must use this same email to claim.");
+      setError("Student email is required they must use this same email to claim.");
       return;
     }
     if (!adminSolo || !studentSolo || !together) {
@@ -87,7 +87,7 @@ export function AdminIssueCertificatePage() {
 
       <form className="sign-form" onSubmit={onSubmit}>
         <label>
-          Student email (required — locked to claim)
+          Student email (required locked to claim)
           <input
             type="email"
             value={studentEmail}

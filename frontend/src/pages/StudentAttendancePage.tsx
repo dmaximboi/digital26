@@ -19,7 +19,7 @@ export function StudentAttendancePage() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    setPageMeta({ title: "Attendance — The Digital 26", description: "Weekly attendance tracker." });
+    setPageMeta({ title: "Attendance The Digital 26", description: "Weekly attendance tracker." });
   }, []);
 
   useEffect(() => {

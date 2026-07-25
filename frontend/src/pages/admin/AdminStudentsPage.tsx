@@ -129,7 +129,7 @@ export function AdminStudentsPage() {
                   <td>{s.user.email}</td>
                   <td>{s.programme === "FIVE_MONTH" ? "5M" : "6M"}</td>
                   <td>{s.attendanceCount} / {s.programme === "FIVE_MONTH" ? 22 : 26}</td>
-                  <td>{s.startDate ? new Date(s.startDate).toLocaleDateString() : "—"}</td>
+                  <td>{s.startDate ? new Date(s.startDate).toLocaleDateString() : ""}</td>
                 </tr>
               ))}
             </tbody>

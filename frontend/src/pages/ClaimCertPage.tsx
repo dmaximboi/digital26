@@ -277,7 +277,7 @@ export function ClaimCertPage() {
           </div>
 
           <label className="evidence-field">
-            Evidence image (1) — separate from passport
+            Evidence image (1) separate from passport
             <input
               type="file"
               accept="image/*"

@@ -8,7 +8,7 @@ export function AboutPage() {
     setPageMeta({
       title: "About Us",
       description:
-        "The Digital 26 — world-class Vibe Coding studio & classroom. Low-code web development on a flexible any-month path (~6 months recommended), agreements, and public certificates.",
+        "The Digital 26 world-class Vibe Coding studio & classroom. Low-code web development on a flexible any-month path (~6 months recommended), agreements, and public certificates.",
       path: "/about",
     });
     setJsonLd("d26-jsonld-about", {
@@ -49,7 +49,7 @@ export function AboutPage() {
           <p>
             Founded and led by <strong>Adewuyi Ayuba (Maxim)</strong>. We are builder-first: loyalty
             over hype, clear deals, and work you can check in the open.
-            Registered business — <strong>RC - 9710046</strong>.
+            Registered business <strong>RC - 9710046</strong>.
           </p>
           <p>
             Personal profile:{" "}
@@ -65,7 +65,7 @@ export function AboutPage() {
           <p>
             Learn by shipping in a studio and classroom setting. Build real projects, grow your
             digital presence, and leave with work you can show. Programme length is flexible
-            (any-month) — no longer locked to 3 months — with a recommended ~6-month pathway.
+            (any-month) no longer locked to 3 months with a recommended ~6-month pathway.
           </p>
           <p>
             Completers can receive a public Certificate of Participation or Completion that Google

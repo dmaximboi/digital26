@@ -21,7 +21,7 @@ export function StudentDashboardPage() {
   const [fetching, setFetching] = useState(true);
 
   useEffect(() => {
-    setPageMeta({ title: "Dashboard — The Digital 26", description: "Your student dashboard." });
+    setPageMeta({ title: "Dashboard The Digital 26", description: "Your student dashboard." });
   }, []);
 
   useEffect(() => {

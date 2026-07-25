@@ -7,7 +7,7 @@ export function AdminLayout() {
   const { user, loading, signOut } = useAuth();
 
   useEffect(() => {
-    document.title = "Admin — The Digital 26";
+    document.title = "Admin The Digital 26";
     let robots = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
     if (!robots) {
       robots = document.createElement("meta");

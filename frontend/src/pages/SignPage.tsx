@@ -124,7 +124,7 @@ export function SignPage() {
     setError(null);
     const tag = dealTag.trim();
     if (tag.length < 2 || tag.length > 50) {
-      setError("Deal tag must be 2–50 characters.");
+      setError("Deal tag must be 250 characters.");
       return;
     }
     if (clientProofs.length !== 2) {
@@ -229,7 +229,7 @@ export function SignPage() {
       <section className="panel">
         <DocBrandHeader title="Unlock agreement letter" />
         <p className="lede">
-          Enter the one-time passkey emailed to you. Valid for 24 hours — expires{" "}
+          Enter the one-time passkey emailed to you. Valid for 24 hours expires{" "}
           {new Date(status.expiresAt).toLocaleString()}.
         </p>
         <p className="muted">
@@ -364,7 +364,7 @@ export function SignPage() {
           </label>
 
           <label className="evidence-field">
-            Your proofs (exactly 2 images — chat, proposal, or payment)
+            Your proofs (exactly 2 images chat, proposal, or payment)
             <input
               type="file"
               accept="image/*"

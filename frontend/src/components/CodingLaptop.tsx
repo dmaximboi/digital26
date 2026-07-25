@@ -56,7 +56,6 @@ function colorize(line: string) {
   return parts;
 }
 
-/** Interactive coding laptop — click keyboard to change screen content */
 export function CodingLaptop() {
   const [snippet, setSnippet] = useState(0);
   const [scene, setScene] = useState<Scene>("code");
@@ -70,7 +69,6 @@ export function CodingLaptop() {
     setTypingKey((k) => k + 1);
   }, []);
 
-  // Auto: after code types → execute → logo → next snippet
   useEffect(() => {
     if (scene !== "code") return;
     const toExec = window.setTimeout(() => setScene("execute"), 3200);

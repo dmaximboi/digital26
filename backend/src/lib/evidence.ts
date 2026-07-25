@@ -7,8 +7,6 @@ import { prisma } from "../db/prisma.js";
 import { compressAndStoreStudentPhoto } from "./studentPhoto.js";
 import { env } from "../config/env.js";
 
-// Store on the same durable path the public files router can serve (students),
-// or ImageKit when configured. Avoid Render ephemeral "uploads/evidence" orphans.
 const uploadRoot = path.resolve(
   env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads"),
   "students",
@@ -70,7 +68,7 @@ export async function storeEvidenceFiles(opts: {
         },
       });
     } catch (err) {
-      console.warn("[evidence] evidence_images table not ready — image stored but not tracked:", err);
+      console.warn("[evidence] evidence_images table not ready:", err);
     }
     count += 1;
   }

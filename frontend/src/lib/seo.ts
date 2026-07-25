@@ -108,7 +108,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
     {
       "@context": "https://schema.org",
       "@type": "Course",
-      name: "Vibe Coding Studio & Classroom — Low-code Web Development",
+      name: "Vibe Coding Studio & Classroom Low-code Web Development",
       description:
         "Hands-on Vibe Coding and low-code web development at The Digital 26. Flexible any-month structure with a recommended ~6-month pathway. Learn by shipping websites, apps, and digital presence under mentor guidance.",
       provider: {
@@ -172,7 +172,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
           name: "How do I verify a Digital 26 certificate?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Open digital26.online/verify and enter the public certificate ID, or scan the QR code on the certificate PDF/PNG. Only published public IDs are visible — private evidence and contact details are never exposed.",
+            text: "Open digital26.online/verify and enter the public certificate ID, or scan the QR code on the certificate PDF/PNG. Only published public IDs are visible private evidence and contact details are never exposed.",
           },
         },
         {
@@ -188,7 +188,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
           name: "Is digital26.online a legitimate business site?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Yes. The Digital 26 operates at digital26.online with public certificate verification, agreement checks, founder profile at dmaximboi.vercel.app, and open GitHub presence. Trust comes from verifiable records and consistent brand identity — not from the TLD alone.",
+            text: "Yes. The Digital 26 operates at digital26.online with public certificate verification, agreement checks, founder profile at dmaximboi.vercel.app, and open GitHub presence. Trust comes from verifiable records and consistent brand identity not from the TLD alone.",
           },
         },
       ],
@@ -244,7 +244,7 @@ export function certificateJsonLd(cert: {
       String(cert.type).toUpperCase() === "COMPLETION"
         ? "Certificate of Completion"
         : "Certificate of Participation",
-    description: `${cert.name} — ${cert.course} (${cert.status})`,
+    description: `${cert.name} ${cert.course} (${cert.status})`,
     credentialCategory: cert.type,
     recognizedBy: {
       "@type": "Organization",

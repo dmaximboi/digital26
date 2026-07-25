@@ -59,7 +59,7 @@ export function AgreementArt({
           </p>
           <p>
             Both parties believe we will not offend each other, and will manage the relationship with
-            respect throughout the whole service process — Inshallah.
+            respect throughout the whole service process Inshallah.
           </p>
         </div>
 

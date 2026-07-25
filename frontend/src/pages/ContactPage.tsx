@@ -51,7 +51,7 @@ export function ContactPage() {
     <section className="panel">
       <DocBrandHeader title="Contact" />
       <p className="lede">
-        Websites, collaboration, studio questions — send a message. It goes straight to The
+        Websites, collaboration, studio questions send a message. It goes straight to The
         Digital 26 inbox.
       </p>
 

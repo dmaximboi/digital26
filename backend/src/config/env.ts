@@ -67,11 +67,11 @@ if (isProd && !data.FIELD_ENCRYPTION_KEY) {
 }
 
 if (isProd && !data.GOOGLE_CLIENT_ID) {
-  console.warn("[auth] GOOGLE_CLIENT_ID not set — Google Sign-In will be unavailable");
+  console.warn("[auth] GOOGLE_CLIENT_ID not set");
 }
 
 if (isProd && !data.JWT_SECRET) {
-  console.warn("[auth] JWT_SECRET not set — using dev default (set this before going live)");
+  console.warn("[auth] JWT_SECRET not set");
 }
 
 const staffEmailSource = data.STAFF_EMAILS || data.ADMIN_EMAILS || "";
@@ -109,7 +109,6 @@ function withWwwVariants(origins: string[]): string[] {
       }
       out.add(u.origin);
     } catch {
-      /* ignore */
     }
   }
   return [...out];

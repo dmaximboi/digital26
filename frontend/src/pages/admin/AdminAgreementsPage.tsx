@@ -50,7 +50,7 @@ export function AdminAgreementsPage() {
         <div>
           <h2 className="ops-page-title">Agreements</h2>
           <p className="muted">
-            Create links from <strong>New agreement</strong> — you must upload 3 proof images
+            Create links from <strong>New agreement</strong> you must upload 3 proof images
             first.
           </p>
         </div>

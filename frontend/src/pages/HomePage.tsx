@@ -9,7 +9,7 @@ export function HomePage() {
     setPageMeta({
       title: "Best Vibe Coding Studio",
       description:
-        "The Digital 26 is a world-class Vibe Coding studio and classroom. Learn low-code web development, apply with Google Sign-In, track attendance, verify certificates, and check agreements — all in one platform.",
+        "The Digital 26 is a world-class Vibe Coding studio and classroom. Learn low-code web development, apply with Google Sign-In, track attendance, verify certificates, and check agreements all in one platform.",
       path: "/",
     });
     setJsonLd("d26-jsonld-home", orgWebsiteJsonLd());
@@ -25,7 +25,7 @@ export function HomePage() {
         <h1>The Digital 26</h1>
         <p className="lede">
           World-class Vibe Coding studio and classroom. Low-code web development on a flexible
-          any-month path (about 6 months recommended). Digital presence with clear agreements —
+          any-month path (about 6 months recommended). Digital presence with clear agreements
           verify certificates in public.
         </p>
         <div className="cta-row">
@@ -52,7 +52,7 @@ export function HomePage() {
             <p>
               Learn low-code web development by shipping real projects. Choose a 5-month or
               6-month programme structure, attend weekly classes, and graduate with a publicly
-              verifiable certificate. Apply using your Google account — no separate password needed.
+              verifiable certificate. Apply using your Google account no separate password needed.
             </p>
           </article>
           <article className="home-feature">
@@ -67,7 +67,7 @@ export function HomePage() {
             <h3>Verifiable Certificates</h3>
             <p>
               Completers receive a Certificate of Participation or Completion with a public ID and
-              QR code. Anyone — employers, schools, clients — can verify it instantly on this site.
+              QR code. Anyone employers, schools, clients can verify it instantly on this site.
               Private details like phone, email, and NIN are never exposed.
             </p>
           </article>
@@ -76,7 +76,7 @@ export function HomePage() {
             <p>
               Students and administrators sign in securely with their Google account. This lets us
               verify your identity, manage student applications, track weekly attendance, and
-              enable communication between students — all without storing passwords.
+              enable communication between students all without storing passwords.
             </p>
           </article>
         </div>

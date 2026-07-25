@@ -14,7 +14,7 @@ async function authorizedFetch(path: string, init?: RequestInit): Promise<Respon
 
   if (res.status === 401) {
     clearToken();
-    throw new Error("Session expired — please sign in again");
+    throw new Error("Session expired please sign in again");
   }
 
   return res;

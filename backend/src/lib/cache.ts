@@ -1,9 +1,3 @@
-/**
- * Lightweight in-memory cache with TTL eviction.
- * No dependencies — avoids Redis cost on free plans.
- * Automatically evicts expired entries on access and via periodic sweep.
- */
-
 interface CacheEntry<T> {
   value: T;
   expiresAt: number;
@@ -11,7 +5,7 @@ interface CacheEntry<T> {
 
 const store = new Map<string, CacheEntry<unknown>>();
 
-const DEFAULT_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const DEFAULT_TTL_MS = 5 * 60 * 1000;
 const MAX_ENTRIES = 500;
 const SWEEP_INTERVAL_MS = 60 * 1000;
 
@@ -63,9 +57,6 @@ export function cacheStats(): { size: number; maxEntries: number } {
   return { size: store.size, maxEntries: MAX_ENTRIES };
 }
 
-/**
- * Cache-through helper: returns cached value or fetches and caches.
- */
 export async function cacheFetch<T>(
   key: string,
   fetcher: () => Promise<T>,

@@ -74,7 +74,7 @@ export function AdminVisitsPage() {
                   <code>{row.ip}</code>
                 </td>
                 <td>{row.path}</td>
-                <td className="muted">{row.referrer || "—"}</td>
+                <td className="muted">{row.referrer || ""}</td>
               </tr>
             ))}
             {data.items.length === 0 ? (

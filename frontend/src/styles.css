@@ -175,7 +175,6 @@ main {
 }
 
 .site-nav-drawer {
-  /* desktop: acts as the inline nav row */
 }
 
 .site-nav__link {
@@ -920,8 +919,7 @@ dd {
   }
 }
 
-/* ——— Responsive ——— */
-/* Hamburger earlier so mid widths / 90% zoom never wrap the top nav into two rows */
+/* Responsive */
 @media (max-width: 1100px) {
   .site-header,
   .site-footer,
@@ -1360,13 +1358,13 @@ dd {
   }
 }
 
-/* ── Sign In page ────────────────────────────────────────────── */
+/* Sign In page */
 .signin-page { text-align: center; max-width: 480px; margin: 2rem auto; }
 .signin-title { font-family: var(--font-display); color: var(--accent); margin-bottom: .5rem; }
 .google-btn-wrap { display: flex; justify-content: center; margin: 2rem 0; }
 .signin-info { margin-top: 2rem; }
 
-/* ── Nav auth links ─────────────────────────────────────────── */
+/* Nav auth links */
 .site-nav__link--cta {
   background: linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%);
   color: var(--accent-ink) !important;
@@ -1384,7 +1382,7 @@ dd {
 }
 .site-nav__link--signout:hover { color: var(--danger); }
 
-/* ── Apply page ─────────────────────────────────────────────── */
+/* Apply page */
 .apply-page { max-width: 640px; margin: 2rem auto; }
 .apply-title { font-family: var(--font-display); color: var(--accent); }
 .apply-form { display: flex; flex-direction: column; gap: 1.2rem; margin-top: 1.5rem; }
@@ -1420,7 +1418,7 @@ dd {
   .programme-choice { grid-template-columns: 1fr 1fr; }
 }
 
-/* ── Student dashboard ──────────────────────────────────────── */
+/* Student dashboard */
 .dashboard-status { text-align: center; max-width: 540px; margin: 3rem auto; }
 .status-icon { font-size: 3rem; margin-bottom: 1rem; }
 .status-details { margin-top: 1.5rem; text-align: left; background: rgba(255,255,255,.03); border-radius: 10px; padding: 1rem; }
@@ -1438,7 +1436,7 @@ dd {
 .dashboard-card h3 { font-family: var(--font-display); color: var(--accent); margin: 0 0 .5rem; }
 .dashboard-card p { color: var(--muted); margin: 0; font-size: .9rem; }
 
-/* ── Attendance ─────────────────────────────────────────────── */
+/* Attendance */
 .attendance-page { max-width: 640px; margin: 2rem auto; }
 .back-link { color: var(--accent); text-decoration: none; font-size: .9rem; }
 .back-link:hover { text-decoration: underline; }
@@ -1455,7 +1453,7 @@ dd {
 .attendance-cell__num { font-size: .75rem; }
 .attendance-cell__check { font-size: .9rem; }
 
-/* ── Chat ───────────────────────────────────────────────────── */
+/* Chat */
 .chat-page { max-width: 640px; margin: 2rem auto; display: flex; flex-direction: column; }
 .chat-messages { flex: 1; min-height: 300px; max-height: 480px; overflow-y: auto; display: flex; flex-direction: column; gap: .5rem; padding: 1rem 0; }
 .chat-empty { text-align: center; margin: auto; }
@@ -1470,7 +1468,7 @@ dd {
 .chat-input { display: flex; gap: .5rem; margin-top: .5rem; }
 .chat-input .form-input { flex: 1; }
 
-/* ── Admin students ─────────────────────────────────────────── */
+/* Admin students */
 .ops-section-title { font-family: var(--font-display); color: var(--accent); font-size: 1rem; margin: 1.5rem 0 .75rem; }
 .student-cards { display: flex; flex-direction: column; gap: 1rem; }
 .student-card {
@@ -1491,7 +1489,7 @@ dd {
   .student-card { grid-template-columns: 1fr; }
 }
 
-/* ── Homepage sections ────────────────────────── */
+/* Homepage sections */
 .home-about { margin: 3rem 0 2rem; }
 .home-about h2 { font-size: 1.6rem; margin-bottom: 1.25rem; color: var(--ink); text-align: center; }
 .home-about__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; }
@@ -1506,7 +1504,7 @@ dd {
 .home-legal-links a:hover { color: var(--accent); }
 .home-legal-links .dot { margin: 0 .5rem; color: var(--muted); }
 
-/* ── Legal pages (Privacy & Terms) ────────────── */
+/* Legal pages (Privacy & Terms) */
 .legal-page { max-width: 760px; }
 .legal-updated { font-size: .85rem; color: var(--muted); margin: -.5rem 0 1.5rem; }
 .legal-body h2 { font-size: 1.1rem; margin: 1.75rem 0 .5rem; color: var(--ink); }

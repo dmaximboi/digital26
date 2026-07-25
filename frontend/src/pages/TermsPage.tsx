@@ -8,13 +8,13 @@ export function TermsPage() {
     setPageMeta({
       title: "Terms of Service",
       description:
-        "Terms of Service for The Digital 26 — rules and conditions for using our platform.",
+        "Terms of Service for The Digital 26 rules and conditions for using our platform.",
       path: "/terms",
     });
     setJsonLd("d26-jsonld-terms", {
       "@context": "https://schema.org",
       "@type": "WebPage",
-      name: "Terms of Service — The Digital 26",
+      name: "Terms of Service The Digital 26",
       url: siteUrl("/terms"),
       description: "Terms of Service for The Digital 26 vibe coding studio.",
     });

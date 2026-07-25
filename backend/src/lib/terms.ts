@@ -1,7 +1,7 @@
 export const AGREEMENT_TERMS = `
-THE DIGITAL 26 — SERVICE AGREEMENT LETTER
+THE DIGITAL 26 SERVICE AGREEMENT LETTER
 
-Based on our discussion, the Client confirms they have accepted and want The Digital 26’s services
+Based on our discussion, the Client confirms they have accepted and want The Digital 26's services
 (website building, collaboration, or related digital work as tagged on this letter).
 
 By signing, the Client agrees to our consent, working terms, and service process. The Client relies on
@@ -12,9 +12,9 @@ inappropriate conduct. We commit to give our best output and to dedicate ourselv
 to satisfy the Client.
 
 Both parties believe we will not offend each other, and will manage the relationship with respect
-throughout the whole service process — Inshallah.
+throughout the whole service process Inshallah.
 
-A typed full name on this letter is the Client’s digital signature and acknowledgement.
+A typed full name on this letter is the Client's digital signature and acknowledgement.
 `.trim();
 
 

@@ -11,7 +11,7 @@ export function isResendConfigured(): boolean {
   return Boolean(env.RESEND_API_KEY?.trim());
 }
 
-/** @deprecated SMTP is unused — Render free blocks it. */
+/** @deprecated SMTP is unused Render free blocks it. */
 export function isSmtpConfigured(): boolean {
   return false;
 }
@@ -105,7 +105,7 @@ export async function sendMail(
     throw new Error("RESEND_API_KEY is not configured");
   }
 
-  console.log("\n========== EMAIL (dev — set RESEND_API_KEY) ==========");
+  console.log("\n========== EMAIL (dev set RESEND_API_KEY) ==========");
   console.log(`From: ${defaultFrom()}`);
   console.log(`To: ${args.to}`);
   console.log(`Subject: ${args.subject}`);

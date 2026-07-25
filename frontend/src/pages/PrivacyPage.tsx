@@ -8,13 +8,13 @@ export function PrivacyPage() {
     setPageMeta({
       title: "Privacy Policy",
       description:
-        "Privacy Policy for The Digital 26 — how we collect, use, and protect your personal data.",
+        "Privacy Policy for The Digital 26 how we collect, use, and protect your personal data.",
       path: "/privacy",
     });
     setJsonLd("d26-jsonld-privacy", {
       "@context": "https://schema.org",
       "@type": "WebPage",
-      name: "Privacy Policy — The Digital 26",
+      name: "Privacy Policy The Digital 26",
       url: siteUrl("/privacy"),
       description: "Privacy Policy for The Digital 26 vibe coding studio.",
     });

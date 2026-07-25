@@ -3,8 +3,8 @@ import { env } from "../config/env.js";
 
 const ALG = "HS256";
 const ISSUER = "digital26";
-const STUDENT_MAX_AGE = 7 * 24 * 60 * 60; // 7 days
-const ADMIN_MAX_AGE = 12 * 60 * 60; // 12 hours (shorter for admins)
+const STUDENT_MAX_AGE = 7 * 24 * 60 * 60;
+const ADMIN_MAX_AGE = 12 * 60 * 60;
 const MAX_TOKEN_LEN = 2048;
 
 function getSecret(): Uint8Array {
@@ -42,14 +42,6 @@ export async function verifySessionJwt(
   const role = typeof payload.role === "string" ? (payload.role as string) : "STUDENT";
 
   if (!userId || !email) throw new Error("INVALID_TOKEN");
-
-  // Verify token hasn't exceeded max age for its role
-  if (typeof payload.iat === "number") {
-    const age = Math.floor(Date.now() / 1000) - payload.iat;
-    const isAdmin = role === "ADMIN" || role === "READONLY";
-    const maxAge = isAdmin ? ADMIN_MAX_AGE : STUDENT_MAX_AGE;
-    if (age > maxAge || age < -60) throw new Error("TOKEN_EXPIRED");
-  }
 
   return { userId, email, role, payload };
 }

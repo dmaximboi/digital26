@@ -23,7 +23,7 @@ app.listen(env.PORT, () => {
   if (isResendConfigured()) {
     console.log(`[mail] ready via ${mailTransportLabel()}`);
   } else {
-    console.warn("[mail] set RESEND_API_KEY — all app email uses Resend (SMTP is not used)");
+    console.warn("[mail] set RESEND_API_KEY all app email uses Resend (SMTP is not used)");
   }
 
   void bootstrapStaffAllowlist()

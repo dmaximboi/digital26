@@ -13,7 +13,6 @@ function inEnvReadonly(email: string): boolean {
   return env.readonlyEmails.includes(email);
 }
 
-/** Env staff + active DB allowlist rows. */
 export async function isAuthorizedStaff(email: string): Promise<boolean> {
   const normalized = normalizeEmail(email);
   if (!normalized.includes("@")) return false;
@@ -26,12 +25,10 @@ export async function isAuthorizedStaff(email: string): Promise<boolean> {
     });
     return Boolean(row?.active);
   } catch {
-    // DB allowlist unavailable — fall back to env only
     return false;
   }
 }
 
-/** Full write access: STAFF_EMAILS or active DB allowlist (not readonly env list). */
 export async function canWriteOps(email: string): Promise<boolean> {
   const normalized = normalizeEmail(email);
   if (inEnvStaff(normalized)) return true;
@@ -45,19 +42,15 @@ export async function canWriteOps(email: string): Promise<boolean> {
     if (!row?.active) return false;
     return (row.role || "FULL").toUpperCase() !== "READONLY";
   } catch {
-    // DB allowlist or role column may not exist yet — env staff already
-    // returned true above, so non-env users are denied by default.
     return inEnvStaff(normalized);
   }
 }
 
-/** Sync STAFF_EMAILS into admin_allowlist so revoke can happen via DB later. */
 export async function bootstrapStaffAllowlist(): Promise<void> {
-  // If the table or role column doesn't exist, skip silently
   try {
     await prisma.adminAllowlist.findFirst({ select: { id: true }, take: 1 });
   } catch {
-    console.warn("[auth] admin_allowlist table not ready — skipping bootstrap (run prisma db push)");
+    console.warn("[auth] admin_allowlist table not ready (run prisma db push)");
     return;
   }
 

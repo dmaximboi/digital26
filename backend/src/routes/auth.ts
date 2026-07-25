@@ -20,9 +20,6 @@ function extractIp(req: { headers: Record<string, string | string[] | undefined>
   return first || req.socket.remoteAddress || "unknown";
 }
 
-// ─── Layer 1: Google verifies identity ───────────────────────
-// ─── Layer 2: Backend checks STAFF_EMAILS + DB allowlist ─────
-// ─── Layer 3: JWT signed with server-only secret ─────────────
 authRouter.post("/auth/google", authLimiter, async (req, res) => {
   try {
     const { credential } = req.body ?? {};
@@ -41,7 +38,6 @@ authRouter.post("/auth/google", authLimiter, async (req, res) => {
       return;
     }
 
-    // Layer 1: Google token verification (checks signature, expiry, audience)
     const ticket = await googleClient.verifyIdToken({
       idToken: credential,
       audience: env.GOOGLE_CLIENT_ID,
@@ -52,20 +48,12 @@ authRouter.post("/auth/google", authLimiter, async (req, res) => {
       return;
     }
 
-    // Reject tokens older than 5 minutes (replay protection)
-    const tokenAge = Math.floor(Date.now() / 1000) - (payload.iat ?? 0);
-    if (tokenAge > 300 || tokenAge < -60) {
-      res.status(401).json({ error: "Token expired or invalid" });
-      return;
-    }
-
     const email = payload.email.toLowerCase();
     const name = payload.name || email.split("@")[0] || "User";
     const avatarUrl = payload.picture || null;
     const googleId = payload.sub;
     const ip = extractIp(req);
 
-    // Layer 2: Check env allowlist + DB allowlist for admin role
     const isEnvAdmin = env.adminEmails.includes(email);
     const isEnvReadonly = env.readonlyEmails.includes(email);
 
@@ -78,7 +66,7 @@ authRouter.post("/auth/google", authLimiter, async (req, res) => {
       if (row?.active && (row.role || "FULL").toUpperCase() !== "READONLY") {
         isDbAdmin = true;
       }
-    } catch { /* table may not exist */ }
+    } catch {}
 
     const role = (isEnvAdmin || isDbAdmin) ? "ADMIN" : isEnvReadonly ? "READONLY" : "STUDENT";
 
@@ -100,10 +88,8 @@ authRouter.post("/auth/google", authLimiter, async (req, res) => {
       });
     }
 
-    // Layer 3: Issue our own JWT (signed with server-only JWT_SECRET)
     const token = await signSessionJwt({ userId: user.id, email: user.email, role: user.role });
 
-    // Audit admin sign-ins
     if (role === "ADMIN" || role === "READONLY") {
       try {
         await writeAudit({
@@ -111,7 +97,7 @@ authRouter.post("/auth/google", authLimiter, async (req, res) => {
           action: "auth.signin",
           metadata: { ip, googleId, role },
         });
-      } catch { /* audit table may not exist */ }
+      } catch {}
     }
 
     console.log(`[auth] sign-in: ${email} (${role}) from ${ip}`);
@@ -129,8 +115,9 @@ authRouter.post("/auth/google", authLimiter, async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("[auth.google]", err);
-    res.status(401).json({ error: "Google authentication failed" });
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[auth.google] failed:", msg);
+    res.status(401).json({ error: `Authentication failed: ${msg.slice(0, 100)}` });
   }
 });
 
@@ -176,7 +163,6 @@ authRouter.get("/auth/me", async (req, res) => {
       return;
     }
 
-    // Re-check admin status against both env AND DB on every request
     const isEnvAdmin = env.adminEmails.includes(user.email.toLowerCase());
     let isDbAdmin = false;
     try {
@@ -187,7 +173,7 @@ authRouter.get("/auth/me", async (req, res) => {
       if (row?.active && (row.role || "FULL").toUpperCase() !== "READONLY") {
         isDbAdmin = true;
       }
-    } catch { /* table may not exist */ }
+    } catch {}
 
     const effectiveRole = (isEnvAdmin || isDbAdmin) ? "ADMIN" : user.role;
 

@@ -14,7 +14,7 @@ export function SignInPage() {
   const initedRef = useRef(false);
 
   useEffect(() => {
-    setPageMeta({ title: "Sign In — The Digital 26", description: "Sign in with Google to access The Digital 26." });
+    setPageMeta({ title: "Sign In", description: "Sign in with Google to access The Digital 26." });
   }, []);
 
   useEffect(() => {
@@ -67,6 +67,8 @@ export function SignInPage() {
             setError(err instanceof Error ? err.message : "Sign-in failed");
           }
         },
+        ux_mode: "popup",
+        use_fedcm_for_prompt: true,
       });
 
       g.accounts.id.renderButton(btnRef.current!, {
@@ -100,15 +102,6 @@ export function SignInPage() {
       {!clientId && !error && <p className="muted">Loading Google Sign-In...</p>}
 
       <div className="google-btn-wrap" ref={btnRef} />
-
-      <div className="signin-info">
-        <p className="muted">
-          New here? After signing in, you'll be able to apply for our Vibe Coding programme.
-        </p>
-        <p className="muted">
-          Already an admin? Sign in with your staff Google account to access the admin panel.
-        </p>
-      </div>
     </section>
   );
 }

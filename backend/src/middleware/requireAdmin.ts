@@ -6,7 +6,6 @@ import { canWriteOps, isAuthorizedStaff } from "../lib/admins.js";
 import type { AuthedRequest } from "./adminAuth.js";
 
 const MAX_TOKEN_CHARS = 8192;
-/** Reject tokens older than 12h even if exp is longer (defense in depth). */
 const MAX_TOKEN_AGE_SEC = 12 * 60 * 60;
 
 const jwksUrl = env.NEON_AUTH_JWKS_URL
@@ -103,7 +102,6 @@ async function verifyNeonJwt(token: string): Promise<{
 
   let email = emailFromPayload(payload);
   if (!email) {
-    // Prefer claim; DB lookup only as fallback for older Neon tokens
     email = await emailFromNeonAuthUser(userId);
   }
   if (!email) throw new Error("EMAIL_NOT_FOUND");
@@ -132,7 +130,7 @@ async function authenticate(
   try {
     const { email, userId } = await verifyNeonJwt(token);
     if (!(await isAuthorizedStaff(email))) {
-      res.status(403).json({ error: "Forbidden — not on staff allowlist" });
+      res.status(403).json({ error: "Forbidden not on staff allowlist" });
       return null;
     }
     req.adminEmail = email;
@@ -144,7 +142,6 @@ async function authenticate(
   }
 }
 
-/** Authenticate + authorize any staff (FULL or READONLY). */
 export async function requireAdmin(
   req: AuthedRequest,
   res: Response,
@@ -155,7 +152,6 @@ export async function requireAdmin(
   next();
 }
 
-/** Authenticate + authorize write/mutation privileges only. */
 export async function requireAdminWrite(
   req: AuthedRequest,
   res: Response,
@@ -164,7 +160,7 @@ export async function requireAdminWrite(
   const auth = await authenticate(req, res);
   if (!auth) return;
   if (!(await canWriteOps(auth.email))) {
-    res.status(403).json({ error: "Forbidden — read-only staff cannot mutate" });
+    res.status(403).json({ error: "Forbidden read-only staff cannot mutate" });
     return;
   }
   next();

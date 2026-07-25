@@ -31,7 +31,6 @@ export function applySecurity(app: Express): void {
     try {
       connectSrc.push(new URL(env.API_URL).origin);
     } catch {
-      /* ignore */
     }
   }
 
@@ -168,7 +167,6 @@ export const contactLimiter = rateLimit({
   message: { error: "Too many messages. Try again later." },
 });
 
-/** All authenticated ops traffic */
 export const opsLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: env.isProd ? 120 : 800,
@@ -177,7 +175,6 @@ export const opsLimiter = rateLimit({
   message: { error: "Too many console requests. Try again later." },
 });
 
-/** Console path gate — discourage brute force */
 export const gateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: env.isProd ? 12 : 60,

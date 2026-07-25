@@ -136,7 +136,6 @@ adminRouter.get("/ops/agreements", requireAdmin, async (req: AuthedRequest, res)
   try {
     const q = String(req.query.q ?? "").trim();
 
-    // Try with evidence count; fall back without if the table doesn't exist yet
     let rows: Array<{
       id: string;
       publicId: string | null;
@@ -255,7 +254,8 @@ adminRouter.get("/ops/agreements/:id", requireAdmin, async (req: AuthedRequest, 
 
     try {
       await writeAudit({ adminEmail: req.userEmail!, action: "agreement.view", targetId: result.id });
-    } catch { /* audit table may not exist */ }
+    } catch {
+    }
 
     const evidence = result.evidence.map((e) => ({
       ...e,
@@ -453,7 +453,6 @@ adminRouter.get("/ops/files/:kind/:filename", requireAdmin, async (req, res) => 
   }
 
   try {
-    // Always rebuild from DB — Render disk is ephemeral, so stored files often 404.
     if (kind === "agreements") {
       const record = await prisma.agreementPublic.findUnique({
         where: { publicId },

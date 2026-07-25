@@ -79,7 +79,6 @@ export async function buildAgreementPdf(opts: {
     year: "numeric",
   });
 
-  // Paper + left brand sidebar (resume layout)
   page.drawRectangle({ x: 0, y: 0, width, height, color: PAPER });
   page.drawRectangle({ x: 0, y: 0, width: sidebarW, height, color: SIDEBAR });
   page.drawRectangle({
@@ -90,7 +89,6 @@ export async function buildAgreementPdf(opts: {
     color: GOLD,
   });
 
-  // Sidebar brand
   if (logo) {
     const ls = 64;
     const lx = (sidebarW - ls) / 2;
@@ -124,7 +122,6 @@ export async function buildAgreementPdf(opts: {
     centerWidth: sidebarW,
   });
 
-  // Sidebar meta chips
   let sy = height - 210;
   const sidebarMeta: Array<[string, string]> = [
     ["DOCUMENT", "Service Agreement"],
@@ -175,7 +172,6 @@ export async function buildAgreementPdf(opts: {
     color: MUTED,
   });
 
-  // Main column — resume header
   let y = height - 56;
   page.drawText("SERVICE AGREEMENT LETTER", {
     x: contentX,
@@ -202,7 +198,6 @@ export async function buildAgreementPdf(opts: {
   });
   y -= 28;
 
-  // Profile-style identity block
   page.drawText(asciiPdf(opts.displayName.toUpperCase()), {
     x: contentX,
     y,
@@ -220,7 +215,6 @@ export async function buildAgreementPdf(opts: {
   });
   y -= 22;
 
-  // Two-column fact grid (resume contact strip)
   const colGap = 16;
   const colW = (contentW - colGap) / 2;
   const facts: Array<[string, string]> = [
@@ -260,7 +254,6 @@ export async function buildAgreementPdf(opts: {
     y -= 10;
   }
 
-  // Highlight chip
   page.drawRectangle({
     x: contentX,
     y: y - 28,
@@ -321,7 +314,6 @@ export async function buildAgreementPdf(opts: {
   y -= 28;
 
   const sigW = (contentW - 24) / 2;
-  // Client signature
   page.drawText(asciiPdf(opts.signatureName), {
     x: contentX,
     y,
@@ -351,7 +343,6 @@ export async function buildAgreementPdf(opts: {
     color: INK_SOFT,
   });
 
-  // Studio signature
   const sx2 = contentX + sigW + 24;
   page.drawText("Adewuyi Ayuba", {
     x: sx2,
@@ -382,7 +373,6 @@ export async function buildAgreementPdf(opts: {
     color: INK_SOFT,
   });
 
-  // Footer verify line
   page.drawRectangle({
     x: contentX,
     y: 28,
@@ -439,7 +429,6 @@ function splitTerms(terms: string): string[] {
     .filter(Boolean)
     .filter((p) => !/^THE DIGITAL 26/i.test(p));
   if (cleaned.length >= 2) return cleaned.slice(0, 6);
-  // Fallback: sentence-split a single blob
   return terms
     .replace(/\s+/g, " ")
     .trim()
@@ -627,7 +616,6 @@ export async function buildCertificatePdf(opts: {
   });
 
   if (logo) {
-    
     const lx = 72;
     const ly = height - 100;
     const ls = 64;
@@ -660,7 +648,6 @@ export async function buildCertificatePdf(opts: {
         });
       }
     } catch {
-      
     }
   }
 
@@ -793,7 +780,6 @@ export async function buildCertificatePdf(opts: {
     },
   );
 
-  // QR code — positioned bottom-center
   const qr = await qrPng(verifyUrl);
   const qrImage = await pdf.embedPng(qr);
   const qrSize = 80;
@@ -806,7 +792,6 @@ export async function buildCertificatePdf(opts: {
   });
   page.drawImage(qrImage, { x: width / 2 - qrSize / 2, y: 60, width: qrSize, height: qrSize });
 
-  // Public ID below QR
   const idText = opts.publicId;
   const idWidth = bold.widthOfTextAtSize(idText, 9);
   page.drawText(idText, {
@@ -817,7 +802,6 @@ export async function buildCertificatePdf(opts: {
     color: GOLD,
   });
 
-  // Status bottom-left
   page.drawText(`Status: ${opts.status}`, {
     x: 90,
     y: 44,
@@ -826,7 +810,6 @@ export async function buildCertificatePdf(opts: {
     color: MUTED,
   });
 
-  // Verify URL bottom
   const verifyLabel = `Verify: ${verifyUrl.replace(/^https?:\/\//, "")}`;
   page.drawText(verifyLabel, {
     x: Math.max(90, width / 2 - verifyLabel.length * 2.4),
@@ -836,7 +819,6 @@ export async function buildCertificatePdf(opts: {
     color: GOLD,
   });
 
-  // RC number bottom-right
   page.drawText("RC - 9710046", {
     x: width - 180,
     y: 44,
