@@ -8,7 +8,7 @@ export function AboutPage() {
     setPageMeta({
       title: "About Us",
       description:
-        "The Digital 26 world-class Vibe Coding studio & classroom. Low-code web development on a flexible any-month path (~6 months recommended), agreements, and public certificates.",
+        "The Digital 26 is the first and best Vibe Coding studio in the world. We build secure systems in days, train students, and deliver faster and cheaper than freelancers. Available worldwide. RC - 9710046.",
       path: "/about",
     });
     setJsonLd("d26-jsonld-about", {
@@ -17,7 +17,7 @@ export function AboutPage() {
       name: "About The Digital 26",
       url: siteUrl("/about"),
       description:
-        "World-class Vibe Coding studio and classroom: low-code web development, flexible any-month programme (~6 months), client digital presence, and verifiable certificates.",
+        "The first and best Vibe Coding studio. We build secure websites and apps in days, train students in 5 or 6 months, and deliver worldwide.",
       mainEntity: {
         "@type": "Organization",
         name: "The Digital 26",
@@ -37,9 +37,10 @@ export function AboutPage() {
       <DocBrandHeader title="About Us" />
 
       <p className="about-lead">
-        The Digital 26 is a world-class Vibe Coding studio and classroom. We teach low-code web
-        development on a flexible any-month structure (about 6 months recommended), ship websites
-        and apps for clients, and put agreements and certificates where anyone can verify them.
+        The Digital 26 is the first and best Vibe Coding studio in the world. We build secure
+        websites and apps in just days, train students in vibe coding on a flexible schedule,
+        and deliver faster and cheaper than any freelancing platform. We are always available
+        for work worldwide.
       </p>
 
       <div className="about-grid">
@@ -47,12 +48,15 @@ export function AboutPage() {
           <p className="about-card__eyebrow">Who we are</p>
           <h2>Maxim and The Digital 26</h2>
           <p>
-            Founded and led by <strong>Adewuyi Ayuba (Maxim)</strong>. We are builder-first: loyalty
-            over hype, clear deals, and work you can check in the open.
-            Registered business <strong>RC - 9710046</strong>.
+            Founded and led by <strong>Adewuyi Ayuba (Maxim)</strong>. We are vast vibe coders
+            with strong engineering knowledge. Builder-first: loyalty over hype, clear deals, and
+            work you can check in the open. Registered business <strong>RC - 9710046</strong>.
           </p>
           <p>
-            Personal profile:{" "}
+            We have senior web and app engineers who review every codebase for security and
+            quality. Our team is always available and ready to deliver.
+          </p>
+          <p>
             <a href="https://dmaximboi.vercel.app" target="_blank" rel="noreferrer">
               dmaximboi.vercel.app
             </a>
@@ -60,48 +64,49 @@ export function AboutPage() {
         </article>
 
         <article className="about-card">
-          <p className="about-card__eyebrow">Studio & classroom</p>
-          <h2>Vibe Coding</h2>
+          <p className="about-card__eyebrow">What we build</p>
+          <h2>Any system, fast and secure</h2>
           <p>
-            Learn by shipping in a studio and classroom setting. Build real projects, grow your
-            digital presence, and leave with work you can show. Programme length is flexible
-            (any-month) no longer locked to 3 months with a recommended ~6-month pathway.
+            There is no system we cannot build. We deliver secure, production-ready solutions in
+            days: payment systems, tracking dashboards, order management, mapping platforms,
+            booking systems, e-commerce stores, portfolios, admin panels, inventory systems, CRM
+            tools, and 50+ more.
           </p>
           <p>
-            Completers can receive a public Certificate of Participation or Completion that Google
-            and other systems can read and verify (scan the QR or use the public ID).
+            We build faster and cheaper than any freelancing platform and every project is
+            reviewed by senior engineers for security and performance.
+          </p>
+        </article>
+
+        <article className="about-card">
+          <p className="about-card__eyebrow">Studio & classroom</p>
+          <h2>Student Training Programme</h2>
+          <p>
+            Learn vibe coding, prompt engineering, web development, and deployment. Programme
+            length is flexible: 5 months, 6 months, or any duration depending on student
+            availability. Classes are both physical and online, your choice.
+          </p>
+          <p>
+            Students learn with convenience and ease at affordable prices. After completing your
+            project, you receive a publicly verifiable Certificate of Participation or Completion
+            with a QR code and public ID.
           </p>
         </article>
 
         <article className="about-card">
           <p className="about-card__eyebrow">Client work</p>
-          <h2>Websites, apps, agreements</h2>
+          <h2>Agreements & verification</h2>
           <p>
-            We design and build websites and apps for people and businesses. Every serious deal sits
-            under a service agreement with a deal tag, plan, and structured delivery so both sides
-            know what was promised.
+            Every client deal sits under a service agreement letter with a deal tag, plan, and
+            structured delivery so both sides know what was promised. Signed letters stay publicly
+            checkable by ID. Phone and email stay private.
           </p>
-          <p>
-            Signed letters stay publicly checkable by ID. Phone and email stay private. Full PDFs
-            stay in the private console only.
-          </p>
-        </article>
-
-        <article className="about-card">
-          <p className="about-card__eyebrow">How it works</p>
-          <h2>Links, OTP, verify</h2>
-          <ul>
-            <li>Invite / claim links expire in 24 hours</li>
-            <li>Email OTP confirms the invited address</li>
-            <li>Certificates: public verify page + machine-readable API</li>
-            <li>Agreements: public card by ID on digital26.online</li>
-          </ul>
         </article>
       </div>
 
       <div className="cta-row about-cta">
         <Link className="btn primary" to="/contact">
-          Contact us
+          Hire us or apply
         </Link>
         <Link className="btn" to="/verify">
           Verify a certificate

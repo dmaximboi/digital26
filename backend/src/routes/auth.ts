@@ -115,9 +115,8 @@ authRouter.post("/auth/google", authLimiter, async (req, res) => {
       },
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[auth.google] failed:", msg);
-    res.status(401).json({ error: `Authentication failed: ${msg.slice(0, 100)}` });
+    console.error("[auth.google] failed:", err instanceof Error ? err.message : err);
+    res.status(401).json({ error: "Authentication failed. Please try again." });
   }
 });
 

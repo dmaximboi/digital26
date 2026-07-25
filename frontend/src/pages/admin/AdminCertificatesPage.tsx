@@ -3,8 +3,6 @@ import { Link } from "react-router-dom";
 import { apiDownload, apiFetch } from "../../lib/authApi";
 import { EvidenceGallery } from "../../components/EvidenceGallery";
 
-const APP_ORIGIN = typeof window !== "undefined" ? window.location.origin : "";
-
 type EvidenceItem = {
   id: string;
   kind: string;
@@ -22,9 +20,6 @@ type Item = {
   status: string;
   pdfUrl: string | null;
   canDownloadPdf?: boolean;
-  claimSessionId: string | null;
-  claimExpiresAt: string | null;
-  claimedAt: string | null;
   evidenceCount?: number;
   evidence?: EvidenceItem[];
   person: { id: string; name: string } | null;
@@ -92,12 +87,12 @@ export function AdminCertificatesPage() {
         <div>
           <h2 className="ops-page-title">Certificates</h2>
           <p className="muted">
-            Use <strong>New cert link</strong> and upload admin / student / together photos before
-            sending the invite.
+            Issue certificates to approved students. Their name, photo, and programme are used
+            automatically.
           </p>
         </div>
         <Link className="btn primary" to={`/admin/certificates/new`}>
-          New cert + evidence
+          Issue Certificate
         </Link>
       </div>
 
@@ -108,7 +103,7 @@ export function AdminCertificatesPage() {
             <tr>
               <th>Student</th>
               <th>Type</th>
-              <th>ID / claim</th>
+              <th>Public ID</th>
               <th>Evidence</th>
               <th>Status</th>
               <th>Download</th>
@@ -121,24 +116,15 @@ export function AdminCertificatesPage() {
                 <tr>
                   <td>
                     {c.person?.name ?? (
-                      <span className="muted">Awaiting student claim</span>
+                      <span className="muted">Unknown</span>
                     )}
                   </td>
                   <td>{c.type}</td>
                   <td>
                     {c.publicId ? (
                       <a href={`/verify/${c.publicId}`}>{c.publicId}</a>
-                    ) : c.claimSessionId ? (
-                      <a href={`${APP_ORIGIN}/claim-cert/${c.claimSessionId}`}>
-                        Claim link
-                      </a>
                     ) : (
                       "n/a"
-                    )}
-                    {c.status === "PENDING" && c.claimExpiresAt && (
-                      <div className="muted">
-                        expires {new Date(c.claimExpiresAt).toLocaleString()}
-                      </div>
                     )}
                   </td>
                   <td>
@@ -163,7 +149,7 @@ export function AdminCertificatesPage() {
                           disabled={busyId === `pdf:${c.publicId}`}
                           onClick={() => void download(c.publicId!)}
                         >
-                          {busyId === `pdf:${c.publicId}` ? "…" : "PDF"}
+                          {busyId === `pdf:${c.publicId}` ? "..." : "PDF"}
                         </button>
                         <button
                           type="button"
@@ -171,7 +157,7 @@ export function AdminCertificatesPage() {
                           disabled={busyId === `png:${c.publicId}`}
                           onClick={() => void downloadPng(c.publicId!)}
                         >
-                          {busyId === `png:${c.publicId}` ? "…" : "4K PNG"}
+                          {busyId === `png:${c.publicId}` ? "..." : "4K PNG"}
                         </button>
                       </div>
                     ) : (

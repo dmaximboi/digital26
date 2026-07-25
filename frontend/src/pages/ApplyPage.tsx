@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { apiPostForm } from "../lib/authApi";
+import { apiFetch, apiPostForm } from "../lib/authApi";
 import { setPageMeta } from "../lib/seo";
 
 type Programme = "FIVE_MONTH" | "SIX_MONTH";
@@ -17,6 +17,9 @@ export function ApplyPage() {
   const [programme, setProgramme] = useState<Programme>("SIX_MONTH");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpBusy, setOtpBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -48,12 +51,27 @@ export function ApplyPage() {
     }
   }
 
+  async function sendOtp() {
+    if (otpBusy) return;
+    setError("");
+    setOtpBusy(true);
+    try {
+      await apiFetch("/api/student/apply/otp", { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } });
+      setOtpSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to send code");
+    } finally {
+      setOtpBusy(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     if (!photo) { setError("Please upload your passport photo"); return; }
     if (!fullName.trim()) { setError("Full name is required"); return; }
     if (!phone.trim()) { setError("Phone number is required"); return; }
+    if (!otpCode || otpCode.length !== 6) { setError("Enter the 6-digit verification code"); return; }
 
     setBusy(true);
     try {
@@ -63,6 +81,7 @@ export function ApplyPage() {
       form.append("parentPhone", parentPhone.trim());
       form.append("address", address.trim());
       form.append("programme", programme);
+      form.append("otpCode", otpCode);
       form.append("photo", photo);
 
       await apiPostForm("/api/student/apply", form);
@@ -90,6 +109,39 @@ export function ApplyPage() {
             Email (from Google)
             <input type="email" value={user.email} disabled className="form-input" />
           </label>
+        </div>
+
+        <div className="form-row otp-verify-row">
+          <p className="form-label">Verify your email</p>
+          <div className="otp-block">
+            <button
+              className="btn"
+              type="button"
+              disabled={otpBusy || busy}
+              onClick={() => void sendOtp()}
+            >
+              {otpBusy ? "Sending..." : otpSent ? "Resend code" : "Send verification code"}
+            </button>
+            {otpSent && (
+              <p className="muted">
+                Code sent to {user.email}. Check inbox and spam folder.
+              </p>
+            )}
+            <label className="otp-code-label">
+              6-digit code
+              <input
+                className="otp-code-input"
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="000000"
+                inputMode="numeric"
+                pattern="\d{6}"
+                maxLength={6}
+                required
+                disabled={busy}
+              />
+            </label>
+          </div>
         </div>
 
         <div className="form-row">

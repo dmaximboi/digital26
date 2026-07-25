@@ -6,6 +6,8 @@ import { requireAuth, requireAdmin, requireAdminWrite } from "../middleware/requ
 import type { AuthedRequest } from "../middleware/requireAuth.js";
 import { compressAndStoreStudentPhoto } from "../lib/studentPhoto.js";
 import { authLimiter } from "../middleware/security.js";
+import { issueEmailOtp, verifyEmailOtp } from "../lib/otp.js";
+import { sendOtpEmail } from "../lib/mail.js";
 import multer from "multer";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
@@ -38,12 +40,51 @@ const photoUpload = multer({
   },
 });
 
+studentsRouter.post(
+  "/student/apply/otp",
+  authLimiter,
+  requireAuth,
+  async (req: AuthedRequest, res) => {
+    try {
+      const email = req.userEmail;
+      if (!email) {
+        res.status(400).json({ error: "Email not found" });
+        return;
+      }
+
+      const existing = await prisma.studentProfile.findUnique({
+        where: { userId: req.userId! },
+      });
+      if (existing) {
+        res.status(409).json({ error: "You have already submitted an application" });
+        return;
+      }
+
+      const issued = await issueEmailOtp({
+        email: email.toLowerCase(),
+        purpose: "student_apply",
+      });
+      if ("error" in issued) {
+        res.status(429).json({ error: issued.error });
+        return;
+      }
+
+      await sendOtpEmail({ to: email, code: issued.code });
+      res.json({ ok: true, message: "Verification code sent to your email" });
+    } catch (err) {
+      console.error("[student.apply.otp]", err);
+      res.status(500).json({ error: "Failed to send verification code" });
+    }
+  },
+);
+
 const applySchema = z.object({
   fullName: z.string().min(2).max(120),
   phone: z.string().min(5).max(32),
   parentPhone: z.string().min(5).max(32).optional(),
   address: z.string().min(5).max(500).optional(),
   programme: z.nativeEnum(ProgrammeType),
+  otpCode: z.string().regex(/^\d{6}$/),
 });
 
 studentsRouter.post(
@@ -63,7 +104,7 @@ studentsRouter.post(
     try {
       const parsed = applySchema.safeParse(req.body);
       if (!parsed.success) {
-        res.status(400).json({ error: "Invalid application data" });
+        res.status(400).json({ error: "Invalid application data. Make sure all fields and OTP code are filled." });
         return;
       }
 
@@ -78,6 +119,17 @@ studentsRouter.post(
       const photoFile = req.file;
       if (!photoFile) {
         res.status(400).json({ error: "A passport/portrait photo is required" });
+        return;
+      }
+
+      const email = req.userEmail!.toLowerCase();
+      const otp = await verifyEmailOtp({
+        email,
+        purpose: "student_apply",
+        code: parsed.data.otpCode,
+      });
+      if (!otp.ok) {
+        res.status(400).json({ error: otp.error });
         return;
       }
 

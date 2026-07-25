@@ -3,7 +3,7 @@ const SITE = (
 ).replace(/\/$/, "");
 
 const DEFAULT_DESC =
-  "The Digital 26 is a world-class Vibe Coding studio and classroom. Learn low-code web development on a flexible any-month programme (about 6 months recommended), ship real digital presence, and verify certificates in public.";
+  "The Digital 26 is the first and best Vibe Coding studio in the world. We build secure websites and apps in days, train students in 5 or 6 months, and deliver faster and cheaper than any freelancing platform. Available worldwide. RC - 9710046.";
 
 export function siteUrl(path = "/"): string {
   if (!path || path === "/") return `${SITE}/`;
@@ -32,7 +32,7 @@ export function setPageMeta(opts: {
   upsertMeta(
     "name",
     "keywords",
-    "vibe coding, low code, web development, digital26, Adewuyi Ayuba, Maxim, coding studio, verifiable certificate, Nigeria tech education",
+    "vibe coding, low code, web development, digital26, Adewuyi Ayuba, Maxim, coding studio, verifiable certificate, Nigeria tech education, freelancer alternative, build apps fast, secure web development, payment system, tracking dashboard, worldwide",
   );
   upsertLink("canonical", url);
 
@@ -88,7 +88,13 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
       knowsAbout: [
         "Vibe Coding",
         "Low-code web development",
-        "Digital presence",
+        "Payment systems",
+        "Tracking dashboards",
+        "Order management",
+        "E-commerce",
+        "Booking systems",
+        "Mapping platforms",
+        "Secure web and app development",
         "Verifiable credentials",
       ],
     },
@@ -108,9 +114,9 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
     {
       "@context": "https://schema.org",
       "@type": "Course",
-      name: "Vibe Coding Studio & Classroom Low-code Web Development",
+      name: "Vibe Coding Studio & Classroom",
       description:
-        "Hands-on Vibe Coding and low-code web development at The Digital 26. Flexible any-month structure with a recommended ~6-month pathway. Learn by shipping websites, apps, and digital presence under mentor guidance.",
+        "Hands-on vibe coding and web development training at The Digital 26. Flexible programme: 5 months, 6 months, or any duration. Physical and online classes. Learn by shipping real projects with mentor guidance. Affordable pricing.",
       provider: {
         "@type": "Organization",
         name: "The Digital 26",
@@ -120,8 +126,9 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
       teaches: [
         "Vibe Coding",
         "Low-code web development",
-        "Shipping products",
-        "Digital presence",
+        "Prompt engineering",
+        "Deployment",
+        "Shipping real products",
       ],
       timeRequired: "P6M",
       coursePrerequisites: "Curiosity and a laptop",
@@ -138,7 +145,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
       "@type": "EducationalOccupationalProgram",
       name: "The Digital 26 Flexible Vibe Coding Programme",
       description:
-        "Any-month programme structure (no longer locked to 3 months). Recommended completion path about 6 months. Studio + classroom delivery with publicly verifiable certificates.",
+        "Flexible programme: 5 months, 6 months, or any duration depending on student availability. Physical and online classes. Studio + classroom delivery with publicly verifiable certificates.",
       timeToComplete: "P6M",
       occupationalCategory: "15-1254.00",
       provider: {
@@ -156,7 +163,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
           name: "What is The Digital 26?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "The Digital 26 is a Vibe Coding studio and classroom led by Adewuyi Ayuba (Maxim). We teach low-code web development, ship client digital presence under clear agreements, and issue publicly verifiable certificates.",
+            text: "The Digital 26 is the first and best Vibe Coding studio in the world, led by Adewuyi Ayuba (Maxim). We build secure websites and apps in days, train students in vibe coding, and deliver faster and cheaper than any freelancing platform. RC - 9710046.",
           },
         },
         {
@@ -164,7 +171,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
           name: "How long is the programme?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "The structure is flexible (any-month). A recommended pathway is about 6 months of low-code web development and Vibe Coding practice.",
+            text: "The programme is flexible: 5 months, 6 months, or any duration depending on the student's availability. Classes are both physical and online. Students learn with convenience and ease at affordable prices.",
           },
         },
         {
@@ -180,7 +187,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
           name: "Why choose The Digital 26 for Vibe Coding?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "We combine a real studio/classroom with client delivery: low-code web development, shipping digital presence, clear service agreements, and credentials anyone can verify online. Founded by Adewuyi Ayuba (Maxim).",
+            text: "We are the first and best of our kind. We build any system (payment, tracking, order management, mapping, and 50+ more) faster and cheaper than any freelancing platform. Senior engineers review every codebase. We are always available worldwide and deliver in days.",
           },
         },
         {
@@ -200,7 +207,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
       url: siteUrl("/"),
       image: siteUrl("/logo.png"),
       description: DEFAULT_DESC,
-      priceRange: "$$",
+      priceRange: "$",
       founder: {
         "@type": "Person",
         name: "Adewuyi Ayuba",
@@ -212,16 +219,24 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
           "@type": "Offer",
           itemOffered: {
             "@type": "Service",
-            name: "Vibe Coding Studio & Classroom",
-            description: "Low-code web development training on a flexible any-month path (~6 months recommended).",
+            name: "Vibe Coding Training Programme",
+            description: "Learn vibe coding and web development in 5, 6, or any months. Physical and online classes at affordable prices.",
           },
         },
         {
           "@type": "Offer",
           itemOffered: {
             "@type": "Service",
-            name: "Digital presence & web delivery",
-            description: "Websites and apps under clear service agreements with public verification.",
+            name: "Secure Web & App Development",
+            description: "We build any system (payment, tracking, order management, mapping, e-commerce, and 50+ more) faster and cheaper than freelancers. Senior engineer code reviews included.",
+          },
+        },
+        {
+          "@type": "Offer",
+          itemOffered: {
+            "@type": "Service",
+            name: "Client Agreements & Verification",
+            description: "Service agreements with public verification for every client deal.",
           },
         },
       ],

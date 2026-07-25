@@ -2,14 +2,14 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { BrandMark } from "../components/BrandMark";
 import { CodingLaptop } from "../components/CodingLaptop";
-import { setPageMeta, setJsonLd, orgWebsiteJsonLd, siteUrl } from "../lib/seo";
+import { setPageMeta, setJsonLd, orgWebsiteJsonLd } from "../lib/seo";
 
 export function HomePage() {
   useEffect(() => {
     setPageMeta({
       title: "Best Vibe Coding Studio",
       description:
-        "The Digital 26 is a world-class Vibe Coding studio and classroom. Learn low-code web development, apply with Google Sign-In, track attendance, verify certificates, and check agreements all in one platform.",
+        "The Digital 26 is the first and best Vibe Coding studio in the world. We build secure websites and apps in days, train students in 5 or 6 months, and deliver faster and cheaper than any freelancing platform. Available worldwide.",
       path: "/",
     });
     setJsonLd("d26-jsonld-home", orgWebsiteJsonLd());
@@ -24,9 +24,9 @@ export function HomePage() {
         </div>
         <h1>The Digital 26</h1>
         <p className="lede">
-          World-class Vibe Coding studio and classroom. Low-code web development on a flexible
-          any-month path (about 6 months recommended). Digital presence with clear agreements
-          verify certificates in public.
+          The first and best Vibe Coding studio in the world. We build secure websites and apps
+          in days, train students in vibe coding, and deliver faster and cheaper than any
+          freelancing platform. Available worldwide.
         </p>
         <div className="cta-row">
           <Link className="btn primary" to="/apply">
@@ -50,25 +50,46 @@ export function HomePage() {
           <article className="home-feature">
             <h3>Vibe Coding Studio & Classroom</h3>
             <p>
-              Learn low-code web development by shipping real projects. Choose a 5-month or
-              6-month programme structure, attend weekly classes, and graduate with a publicly
-              verifiable certificate. Apply using your Google account no separate password needed.
+              Learn vibe coding and low-code web development by shipping real projects. Choose a
+              5-month, 6-month, or any-month programme depending on your availability. Classes
+              are both physical and online, your choice. Students learn at their own pace with
+              convenience and ease, and our prices are affordable.
             </p>
           </article>
           <article className="home-feature">
-            <h3>Client Agreements & Digital Presence</h3>
+            <h3>We Build Anything, Fast</h3>
             <p>
-              We build websites and apps for clients under clear service agreements. Every deal is
-              documented with a unique agreement ID, terms snapshot, and evidence. Clients and
-              partners can verify agreements publicly.
+              We are vast vibe coders with strong engineering knowledge. We build secure websites
+              and apps in just days: payment systems, tracking dashboards, order management,
+              mapping platforms, booking systems, e-commerce, portfolios, and 50+ more. There is
+              no system we cannot build.
             </p>
           </article>
           <article className="home-feature">
-            <h3>Verifiable Certificates</h3>
+            <h3>Faster & Cheaper Than Freelancers</h3>
             <p>
-              Completers receive a Certificate of Participation or Completion with a public ID and
-              QR code. Anyone employers, schools, clients can verify it instantly on this site.
-              Private details like phone, email, and NIN are never exposed.
+              We deliver faster and cheaper than any freelancing platform. We have senior web and
+              app engineers who review every codebase for security, performance, and quality. Our
+              work is secure, scalable, and production-ready. We are always available for work
+              worldwide.
+            </p>
+          </article>
+          <article className="home-feature">
+            <h3>Verified Certificates & Agreements</h3>
+            <p>
+              Students who complete the programme receive a verified Certificate of Participation
+              or Completion with a public ID and QR code anyone can verify. Every client deal is
+              backed by a service agreement letter with public verification. We are open,
+              transparent, and accountable.
+            </p>
+          </article>
+          <article className="home-feature">
+            <h3>Student Training Programme</h3>
+            <p>
+              We train students in vibe coding, prompt engineering, web development, and
+              deployment. The programme is flexible: 5 months, 6 months, or any duration that
+              works for you. Classes run both online and in-person. After completing your project,
+              you get a publicly verifiable certificate.
             </p>
           </article>
           <article className="home-feature">
@@ -76,7 +97,7 @@ export function HomePage() {
             <p>
               Students and administrators sign in securely with their Google account. This lets us
               verify your identity, manage student applications, track weekly attendance, and
-              enable communication between students all without storing passwords.
+              enable communication between students, all without storing passwords.
             </p>
           </article>
         </div>
@@ -85,15 +106,18 @@ export function HomePage() {
       <section className="home-cta-bottom">
         <h2>Ready to start?</h2>
         <p>
-          Sign in with Google to apply for the Vibe Coding programme, or explore our public
-          verification tools.
+          Apply for the Vibe Coding programme, hire us to build your system, or explore our
+          public verification tools.
         </p>
         <div className="cta-row">
           <Link className="btn primary" to="/signin">
             Sign in with Google
           </Link>
+          <Link className="btn" to="/contact">
+            Hire us
+          </Link>
           <Link className="btn" to="/about">
-            Learn more about us
+            Learn more
           </Link>
         </div>
       </section>

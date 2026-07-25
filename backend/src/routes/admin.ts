@@ -122,8 +122,7 @@ adminRouter.get("/ops/visits", requireAdmin, async (_req, res) => {
     });
   } catch (err) {
     console.error("[visits]", err);
-    res.status(503).json({
-      error: "Visitor table is not ready yet. Redeploy API with prisma db push.",
+    res.json({
       total: 0,
       today: 0,
       uniqueIpsToday: 0,

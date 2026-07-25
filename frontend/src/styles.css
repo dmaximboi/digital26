@@ -1514,6 +1514,32 @@ dd {
 .legal-body a { color: var(--accent); text-decoration: underline; }
 .legal-body a:hover { color: var(--ink); }
 
+.selected-student-preview {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  padding: .75rem 1rem;
+  border-radius: .5rem;
+  background: var(--surface, #111);
+  border: 1px solid var(--border, #333);
+}
+.selected-student-preview .student-thumb {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.selected-student-preview strong { display: block; margin-bottom: .15rem; }
+
+.otp-verify-row {
+  padding: .75rem 0;
+}
+.otp-verify-row .otp-block {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+}
+
 @media (min-width: 1100px) {
   .site-header,
   .site-footer,

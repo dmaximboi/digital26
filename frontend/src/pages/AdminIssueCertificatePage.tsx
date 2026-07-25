@@ -1,74 +1,66 @@
-import { useState, type FormEvent } from "react";
-import { apiPostForm } from "../lib/authApi";
+import { useEffect, useState, type FormEvent } from "react";
+import { apiFetch, apiPostForm } from "../lib/authApi";
 import { DocBrandHeader } from "../components/BrandMark";
-import { browserLocalDateValue, formatCertDate } from "../lib/dates";
 import { compressImage } from "../lib/compressImage";
 
-type InviteResult = {
+type ApprovedStudent = {
   id: string;
+  fullName: string;
+  email: string;
+  programme: "FIVE_MONTH" | "SIX_MONTH";
+  photoUrl: string | null;
+};
+
+type IssueResult = {
+  ok: boolean;
+  publicId: string;
   type: string;
   course: string;
-  issueDate: string;
-  claimSessionId: string;
-  claimLink: string;
-  claimExpiresAt: string;
-  hoursValid: number;
-  status: string;
-  inviteEmail: string;
-  emailDelivered?: boolean;
-  emailError?: string | null;
-  message: string;
+  studentName: string;
+  studentEmail: string;
+  verifyUrl: string;
+  pdfUrl: string | null;
 };
 
 export function AdminIssueCertificatePage() {
-  const [studentEmail, setStudentEmail] = useState("");
+  const [students, setStudents] = useState<ApprovedStudent[]>([]);
+  const [selectedId, setSelectedId] = useState("");
   const [type, setType] = useState("COMPLETION");
-  const [course, setCourse] = useState("6-Day Vibe Coding Masterclass");
-  const [issueDate, setIssueDate] = useState(() => browserLocalDateValue());
-  const [adminSolo, setAdminSolo] = useState<File | null>(null);
-  const [studentSolo, setStudentSolo] = useState<File | null>(null);
   const [together, setTogether] = useState<File | null>(null);
-  const [result, setResult] = useState<InviteResult | null>(null);
+  const [result, setResult] = useState<IssueResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(true);
 
-  async function pick(file: File | null, setter: (f: File | null) => void) {
-    if (!file) {
-      setter(null);
-      return;
-    }
-    setter(await compressImage(file));
+  useEffect(() => {
+    apiFetch<{ items: ApprovedStudent[] }>("/api/ops/approved-students")
+      .then((d) => setStudents(d.items))
+      .catch((e) => setError(e.message))
+      .finally(() => setLoadingStudents(false));
+  }, []);
+
+  const selected = students.find((s) => s.id === selectedId) ?? null;
+
+  async function pick(file: File | null) {
+    if (!file) { setTogether(null); return; }
+    setTogether(await compressImage(file));
   }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (loading) return;
-    if (!issueDate) {
-      setError("Set the issue date yourself (defaults to today in your browser).");
-      return;
-    }
-    if (!studentEmail.trim()) {
-      setError("Student email is required they must use this same email to claim.");
-      return;
-    }
-    if (!adminSolo || !studentSolo || !together) {
-      setError("Upload admin-only, student-only, and admin+student evidence photos.");
-      return;
-    }
+    if (!selectedId) { setError("Select a student"); return; }
+    if (!together) { setError("Upload a photo of admin and student together"); return; }
+
     setLoading(true);
     setError(null);
     setResult(null);
     try {
-      const iso = new Date(`${issueDate}T12:00:00`).toISOString();
       const form = new FormData();
-      form.append("studentEmail", studentEmail.trim());
+      form.append("studentProfileId", selectedId);
       form.append("type", type);
-      form.append("course", course);
-      form.append("issueDate", iso);
-      form.append("adminSolo", adminSolo);
-      form.append("studentSolo", studentSolo);
       form.append("together", together);
-      const data = await apiPostForm<InviteResult>("/api/ops/certificates", form);
+      const data = await apiPostForm<IssueResult>("/api/ops/certificates", form);
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
@@ -79,94 +71,79 @@ export function AdminIssueCertificatePage() {
 
   return (
     <section className="panel nested">
-      <DocBrandHeader title="Create certificate claim link" />
+      <DocBrandHeader title="Issue Certificate" />
       <p className="lede">
-        Before sending the link, upload 3 evidence photos: admin only, student only, and both
-        together. The student still uploads a passport portrait plus 1 evidence image at claim.
+        Select an approved student to issue their certificate. The student's registered name,
+        photo, and programme are used automatically. Upload one photo of admin + student together.
       </p>
 
       <form className="sign-form" onSubmit={onSubmit}>
         <label>
-          Student email (required locked to claim)
-          <input
-            type="email"
-            value={studentEmail}
-            onChange={(e) => setStudentEmail(e.target.value)}
-            placeholder="student@gmail.com"
-            required
-            disabled={loading}
-          />
+          Approved Student
+          {loadingStudents ? (
+            <p className="muted">Loading students...</p>
+          ) : students.length === 0 ? (
+            <p className="muted">No approved students found. Approve students first.</p>
+          ) : (
+            <select
+              value={selectedId}
+              onChange={(e) => setSelectedId(e.target.value)}
+              required
+              disabled={loading}
+            >
+              <option value="">Select a student</option>
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.fullName} ({s.email}) - {s.programme === "FIVE_MONTH" ? "5M" : "6M"}
+                </option>
+              ))}
+            </select>
+          )}
         </label>
+
+        {selected && (
+          <div className="selected-student-preview">
+            {selected.photoUrl && (
+              <img src={selected.photoUrl} alt={selected.fullName} className="student-thumb" />
+            )}
+            <div>
+              <strong>{selected.fullName}</strong>
+              <p className="muted">{selected.email}</p>
+              <p className="programme-badge">
+                {selected.programme === "FIVE_MONTH" ? "5-Month Accelerated" : "6-Month Standard"}
+              </p>
+            </div>
+          </div>
+        )}
+
         <label>
-          Type
+          Certificate Type
           <select value={type} onChange={(e) => setType(e.target.value)} disabled={loading}>
             <option value="COMPLETION">Completion</option>
             <option value="PARTICIPATION">Participation</option>
           </select>
         </label>
-        <label>
-          Course
-          <input
-            value={course}
-            onChange={(e) => setCourse(e.target.value)}
-            required
-            disabled={loading}
-          />
-        </label>
-        <label>
-          Issue date (you control this)
-          <input
-            type="date"
-            value={issueDate}
-            onChange={(e) => setIssueDate(e.target.value)}
-            required
-            disabled={loading}
-          />
-          <span className="muted">Preview: {formatCertDate(issueDate)}</span>
-        </label>
+
         <fieldset className="evidence-block" disabled={loading}>
-          <legend>Required: classroom evidence photos</legend>
-          <p className="muted">
-            Upload 3 images before creating the link. Student passport/portrait is uploaded later
-            on the claim page (separate from the 1 student evidence image).
-          </p>
+          <legend>Admin + Student photo</legend>
+          <p className="muted">Upload 1 photo of you (admin) and the student together.</p>
           <label className="evidence-field">
-            1. Admin only
             <input
               type="file"
               accept="image/*"
               required
-              onChange={(e) => void pick(e.target.files?.[0] ?? null, setAdminSolo)}
-            />
-            <span className="muted">{adminSolo ? adminSolo.name : "Not selected"}</span>
-          </label>
-          <label className="evidence-field">
-            2. Student only
-            <input
-              type="file"
-              accept="image/*"
-              required
-              onChange={(e) => void pick(e.target.files?.[0] ?? null, setStudentSolo)}
-            />
-            <span className="muted">{studentSolo ? studentSolo.name : "Not selected"}</span>
-          </label>
-          <label className="evidence-field">
-            3. Admin + student together
-            <input
-              type="file"
-              accept="image/*"
-              required
-              onChange={(e) => void pick(e.target.files?.[0] ?? null, setTogether)}
+              onChange={(e) => void pick(e.target.files?.[0] ?? null)}
             />
             <span className="muted">{together ? together.name : "Not selected"}</span>
           </label>
         </fieldset>
+
         <button
           className="btn primary"
           type="submit"
-          disabled={loading || !adminSolo || !studentSolo || !together}
+          disabled={loading || !selectedId || !together}
         >
-          {loading ? "Creating…" : "Create 24h claim link"}
+          {loading ? "Issuing..." : "Issue Certificate"}
         </button>
       </form>
 
@@ -174,34 +151,25 @@ export function AdminIssueCertificatePage() {
 
       {result && (
         <article className="result-card">
-          <p>{result.message}</p>
-          {result.emailDelivered && (
-            <p className="muted">
-              Tell the student: if the email is missing, check Spam / Junk. In Gmail, mark Not spam
-              and add the sender to Contacts.
-            </p>
-          )}
-          {result.emailDelivered === false && (
-            <p className="status error">
-              Email was not delivered
-              {result.emailError ? `: ${result.emailError}` : "."} Share the claim link with the
-              student yourself.
-            </p>
-          )}
+          <p>Certificate issued successfully. The student has been emailed.</p>
           <dl>
             <div>
-              <dt>Locked email</dt>
-              <dd>{result.inviteEmail}</dd>
+              <dt>Student</dt>
+              <dd>{result.studentName} ({result.studentEmail})</dd>
             </div>
             <div>
-              <dt>Claim link</dt>
+              <dt>Public ID</dt>
               <dd>
-                <a href={result.claimLink}>{result.claimLink}</a>
+                <a href={`/verify/${result.publicId}`}>{result.publicId}</a>
               </dd>
             </div>
             <div>
-              <dt>Expires</dt>
-              <dd>{new Date(result.claimExpiresAt).toLocaleString()}</dd>
+              <dt>Type</dt>
+              <dd>Certificate of {result.type === "COMPLETION" ? "Completion" : "Participation"}</dd>
+            </div>
+            <div>
+              <dt>Course</dt>
+              <dd>{result.course}</dd>
             </div>
           </dl>
         </article>

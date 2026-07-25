@@ -1,10 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db/prisma.js";
+import { env } from "../config/env.js";
 import { requireAdmin, requireAdminWrite } from "../middleware/requireAuth.js";
 import type { AuthedRequest } from "../middleware/requireAuth.js";
 import { contactLimiter } from "../middleware/security.js";
 import { writeAudit } from "../lib/audit.js";
+import { trySendMail } from "../lib/mail.js";
 
 
 export const contactPublicRouter = Router();
@@ -35,10 +37,37 @@ contactPublicRouter.post("/contact", contactLimiter, async (req, res) => {
     },
   });
 
+  const adminEmail = env.adminEmails[0];
+  if (adminEmail) {
+    const mailSubject = data.subject
+      ? `[D26 Contact] ${data.subject}`
+      : `[D26 Contact] New message from ${data.name}`;
+
+    trySendMail({
+      to: adminEmail,
+      subject: mailSubject,
+      text: [
+        `New contact message on digital26.online`,
+        ``,
+        `Name: ${data.name}`,
+        `Email: ${data.email}`,
+        data.phone ? `Phone: ${data.phone}` : "",
+        data.subject ? `Subject: ${data.subject}` : "",
+        ``,
+        `Message:`,
+        data.message,
+        ``,
+        `View all messages in your admin panel.`,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    }).catch(() => {});
+  }
+
   res.status(201).json({
     ok: true,
     id: row.id,
-    message: "Message received. We’ll get back to you soon.",
+    message: "Message received. We'll get back to you soon.",
   });
 });
 
