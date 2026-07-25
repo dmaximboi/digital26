@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { adminFetch } from "../../lib/adminApi";
+import { apiFetch } from "../../lib/authApi";
 
 type Msg = {
   id: string;
@@ -20,7 +20,7 @@ export function AdminMessagesPage() {
   const [busy, setBusy] = useState<string | null>(null);
 
   async function load() {
-    const data = await adminFetch<{ items: Msg[]; unread: number }>("/api/ops/messages");
+    const data = await apiFetch<{ items: Msg[]; unread: number }>("/api/ops/messages");
     setItems(data.items);
     setUnread(data.unread);
   }
@@ -34,7 +34,7 @@ export function AdminMessagesPage() {
   async function markRead(id: string) {
     setBusy(id);
     try {
-      await adminFetch(`/api/ops/messages/${encodeURIComponent(id)}/read`, {
+      await apiFetch(`/api/ops/messages/${encodeURIComponent(id)}/read`, {
         method: "POST",
         body: "{}",
       });
@@ -50,7 +50,7 @@ export function AdminMessagesPage() {
     if (!window.confirm("Delete this message?")) return;
     setBusy(id);
     try {
-      await adminFetch(`/api/ops/messages/${encodeURIComponent(id)}`, {
+      await apiFetch(`/api/ops/messages/${encodeURIComponent(id)}`, {
         method: "DELETE",
       });
       if (openId === id) setOpenId(null);

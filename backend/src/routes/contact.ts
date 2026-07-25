@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../db/prisma.js";
-import { requireAdmin, requireAdminWrite } from "../middleware/requireAdmin.js";
+import { requireAdmin, requireAdminWrite } from "../middleware/requireAuth.js";
+import type { AuthedRequest } from "../middleware/requireAuth.js";
 import { contactLimiter } from "../middleware/security.js";
 import { writeAudit } from "../lib/audit.js";
-import type { AuthedRequest } from "../middleware/adminAuth.js";
 
 
 export const contactPublicRouter = Router();
@@ -80,7 +80,7 @@ contactAdminRouter.post(
       data: { readAt: row.readAt ?? new Date() },
     });
     await writeAudit({
-      adminEmail: req.adminEmail!,
+      adminEmail: req.userEmail!,
       action: "message.read",
       targetId: id,
     });
@@ -100,7 +100,7 @@ contactAdminRouter.delete(
       return;
     }
     await writeAudit({
-      adminEmail: req.adminEmail!,
+      adminEmail: req.userEmail!,
       action: "message.delete",
       targetId: id,
     });

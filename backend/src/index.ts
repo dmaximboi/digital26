@@ -12,10 +12,13 @@ app.listen(env.PORT, () => {
       "[security] FIELD_ENCRYPTION_KEY is not set - sensitive field encryption will fail until configured",
     );
   }
-  if (!env.NEON_AUTH_URL) {
-    console.warn("[auth] NEON_AUTH_URL missing - admin Neon Auth JWT verify disabled");
+  if (!env.GOOGLE_CLIENT_ID) {
+    console.warn("[auth] GOOGLE_CLIENT_ID missing - Google Sign-In disabled");
   } else {
-    console.log(`[auth] Neon Auth: ${env.NEON_AUTH_URL}`);
+    console.log("[auth] Google Sign-In enabled");
+  }
+  if (!env.JWT_SECRET) {
+    console.warn("[auth] JWT_SECRET not set - using dev default (unsafe in production)");
   }
   if (isResendConfigured()) {
     console.log(`[mail] ready via ${mailTransportLabel()}`);

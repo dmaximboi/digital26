@@ -224,6 +224,89 @@ enum EvidenceKind {
   CERT_STUDENT_EVIDENCE
 }
 
+enum StudentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProgrammeType {
+  FIVE_MONTH
+  SIX_MONTH
+}
+
+/// All authenticated users (students + admins via Google OAuth)
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  avatarUrl String?  @map("avatar_url")
+  googleId  String?  @unique @map("google_id")
+  role      String   @default("STUDENT")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  student      StudentProfile?
+  attendance   Attendance[]
+  chatMessages ChatMessage[]
+
+  @@map("users")
+}
+
+/// Student profile — submitted via apply form, admin reviews
+model StudentProfile {
+  id            String        @id @default(cuid())
+  userId        String        @unique @map("user_id")
+  fullName      String        @map("full_name")
+  phone         String
+  photoUrl      String?       @map("photo_url")
+  parentPhone   String?       @map("parent_phone")
+  address       String?       @db.Text
+  programme     ProgrammeType
+  status        StudentStatus @default(PENDING)
+  reviewedAt    DateTime?     @map("reviewed_at")
+  reviewedBy    String?       @map("reviewed_by")
+  rejectionNote String?       @map("rejection_note") @db.Text
+  startDate     DateTime?     @map("start_date")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendance Attendance[]
+
+  @@map("student_profiles")
+}
+
+/// Weekly attendance record — one per student per week
+model Attendance {
+  id         String   @id @default(cuid())
+  userId     String   @map("user_id")
+  profileId  String   @map("profile_id")
+  weekNumber Int      @map("week_number")
+  signedAt   DateTime @default(now()) @map("signed_at")
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@unique([profileId, weekNumber])
+  @@index([userId])
+  @@map("attendance")
+}
+
+/// Student group chat — 10 messages per 24h per user, enforced at backend
+model ChatMessage {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([userId])
+  @@map("chat_messages")
+}
+
 /// Private deal/cert evidence images — never exposed on public verify routes
 model EvidenceImage {
   id            String       @id @default(cuid())

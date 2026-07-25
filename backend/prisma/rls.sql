@@ -16,7 +16,11 @@ BEGIN
     'contact_messages',
     'site_visits',
     'evidence_images',
-    'id_sequences'
+    'id_sequences',
+    'users',
+    'student_profiles',
+    'attendance',
+    'chat_messages'
   ]
   LOOP
     EXECUTE format('ALTER TABLE IF EXISTS %I ENABLE ROW LEVEL SECURITY', t);

@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { adminPostForm } from "../lib/adminApi";
+import { apiPostForm } from "../lib/authApi";
 import { DocBrandHeader } from "../components/BrandMark";
 import { compressImage } from "../lib/compressImage";
 
@@ -54,7 +54,7 @@ export function AdminCreateAgreementPage() {
       form.append("clientEmail", clientEmail);
       if (clientName.trim()) form.append("clientName", clientName.trim());
       for (const f of proofs) form.append("proofs", f);
-      const data = await adminPostForm<CreateResult>("/api/ops/agreements", form);
+      const data = await apiPostForm<CreateResult>("/api/ops/agreements", form);
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");

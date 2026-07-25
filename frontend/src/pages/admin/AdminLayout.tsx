@@ -1,15 +1,13 @@
 import { NavLink, Navigate, Outlet } from "react-router-dom";
 import { useEffect } from "react";
-import { useAdminAuth } from "../../auth/AdminAuthContext";
+import { useAuth } from "../../auth/AuthContext";
 import { BrandMark } from "../../components/BrandMark";
-import { useAdminPath } from "../../lib/adminPath";
 
 export function AdminLayout() {
-  const { path: adminPath, ready } = useAdminPath();
-  const { user, loading, signOut } = useAdminAuth();
+  const { user, loading, signOut } = useAuth();
 
   useEffect(() => {
-    document.title = "Console";
+    document.title = "Admin — The Digital 26";
     let robots = document.querySelector('meta[name="robots"]') as HTMLMetaElement | null;
     if (!robots) {
       robots = document.createElement("meta");
@@ -19,41 +17,34 @@ export function AdminLayout() {
     robots.content = "noindex,nofollow,noarchive";
   }, []);
 
-  if (!ready) {
-    return (
-      <section className="panel">
-        <p className="muted">Loading…</p>
-      </section>
-    );
-  }
-
-  if (!adminPath) {
-    return <Navigate to="/" replace />;
-  }
-
-  const links = [
-    { to: `/${adminPath}`, label: "Dashboard", end: true as const },
-    { to: `/${adminPath}/messages`, label: "Messages" },
-    { to: `/${adminPath}/visits`, label: "Visitors" },
-    { to: `/${adminPath}/agreements`, label: "Agreements" },
-    { to: `/${adminPath}/certificates`, label: "Certificates" },
-    { to: `/${adminPath}/clients`, label: "Clients" },
-    { to: `/${adminPath}/audit`, label: "Audit" },
-    { to: `/${adminPath}/agreements/new`, label: "New agreement + proofs" },
-    { to: `/${adminPath}/certificates/new`, label: "New cert + evidence" },
-  ];
-
   if (loading) {
     return (
       <section className="panel">
-        <p>Checking session…</p>
+        <p className="muted">Checking session...</p>
       </section>
     );
   }
 
   if (!user) {
-    return <Navigate to={`/${adminPath}/login`} replace />;
+    return <Navigate to="/signin" replace />;
   }
+
+  if (user.role !== "ADMIN" && user.role !== "READONLY") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  const links = [
+    { to: "/admin", label: "Dashboard", end: true as const },
+    { to: "/admin/students", label: "Students" },
+    { to: "/admin/messages", label: "Messages" },
+    { to: "/admin/visits", label: "Visitors" },
+    { to: "/admin/agreements", label: "Agreements" },
+    { to: "/admin/certificates", label: "Certificates" },
+    { to: "/admin/clients", label: "Clients" },
+    { to: "/admin/audit", label: "Audit" },
+    { to: "/admin/agreements/new", label: "New agreement" },
+    { to: "/admin/certificates/new", label: "New cert" },
+  ];
 
   return (
     <section className="panel ops-shell">
@@ -61,7 +52,7 @@ export function AdminLayout() {
         <div className="ops-top__brand">
           <BrandMark size="sm" showText />
           <div>
-            <p className="eyebrow">Private console</p>
+            <p className="eyebrow">Admin Panel</p>
             <p className="muted ops-top__email">{user.email}</p>
           </div>
         </div>
@@ -70,7 +61,7 @@ export function AdminLayout() {
         </button>
       </header>
 
-      <nav className="ops-nav" aria-label="Console">
+      <nav className="ops-nav" aria-label="Admin">
         {links.map((l) => (
           <NavLink
             key={l.to}

@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { adminDownloadPdf, adminFetch } from "../../lib/adminApi";
-import { useAdminPath } from "../../lib/adminPath";
+import { apiDownload, apiFetch } from "../../lib/authApi";
 
 type Item = {
   id: string;
@@ -19,8 +18,6 @@ type Item = {
 };
 
 export function AdminAgreementsPage() {
-  const { path: adminPath } = useAdminPath();
-  const ADMIN_BASE = adminPath ?? "";
   const [q, setQ] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +25,7 @@ export function AdminAgreementsPage() {
 
   useEffect(() => {
     const params = q ? `?q=${encodeURIComponent(q)}` : "";
-    adminFetch<{ items: Item[] }>(`/api/ops/agreements${params}`)
+    apiFetch<{ items: Item[] }>(`/api/ops/agreements${params}`)
       .then((d) => setItems(d.items))
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed"),
@@ -39,7 +36,7 @@ export function AdminAgreementsPage() {
     setBusyId(publicId);
     setError(null);
     try {
-      await adminDownloadPdf("agreements", publicId);
+      await apiDownload(`/api/ops/files/agreements/${publicId}.pdf`, `${publicId}.pdf`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Download failed");
     } finally {
@@ -57,7 +54,7 @@ export function AdminAgreementsPage() {
             first.
           </p>
         </div>
-        <Link className="btn primary" to={`/${ADMIN_BASE}/agreements/new`}>
+        <Link className="btn primary" to={`/admin/agreements/new`}>
           New agreement + proofs
         </Link>
       </div>
@@ -86,7 +83,7 @@ export function AdminAgreementsPage() {
             {items.map((a) => (
               <tr key={a.id}>
                 <td>
-                  <Link to={`/${ADMIN_BASE}/agreements/${a.id}`}>{a.person.name}</Link>
+                  <Link to={`/admin/agreements/${a.id}`}>{a.person.name}</Link>
                 </td>
                 <td>{a.dealTag || a.dealType}</td>
                 <td>{a.publicId ?? "n/a"}</td>

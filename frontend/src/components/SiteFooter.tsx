@@ -21,7 +21,7 @@ export function SiteFooter() {
         </div>
         <div>
           <p className="footer-heading">The Digital 26</p>
-          <p className="muted">Vibe Coding studio · classroom · digital presence</p>
+          <p className="muted">Be Vibed, Be Digital · Vibe Coding Studio</p>
           <p className="muted">digital26.online</p>
         </div>
       </div>

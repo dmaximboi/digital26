@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { adminFetch } from "../../lib/adminApi";
+import { apiFetch } from "../../lib/authApi";
 
 type Person = {
   id: string;
@@ -29,7 +29,7 @@ export function AdminClientsPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
-    adminFetch<{ items: Person[] }>("/api/ops/clients")
+    apiFetch<{ items: Person[] }>("/api/ops/clients")
       .then((d) => setItems(d.items))
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed"),
@@ -41,7 +41,7 @@ export function AdminClientsPage() {
     setBusyId(id);
     setError(null);
     try {
-      const c = await adminFetch<Contact & { id: string }>(
+      const c = await apiFetch<Contact & { id: string }>(
         `/api/ops/people/${encodeURIComponent(id)}/reveal-contact`,
         { method: "POST", body: "{}" },
       );

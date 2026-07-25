@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { adminFetch } from "../../lib/adminApi";
+import { apiFetch } from "../../lib/authApi";
 
 type Item = {
   id: string;
@@ -14,7 +14,7 @@ export function AdminAuditLogPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    adminFetch<{ items: Item[] }>("/api/ops/audit")
+    apiFetch<{ items: Item[] }>("/api/ops/audit")
       .then((d) => setItems(d.items))
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed"),

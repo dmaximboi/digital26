@@ -18,12 +18,9 @@ import { emailsEqual } from "../lib/safeEqual.js";
 import { AGREEMENT_TERMS } from "../lib/terms.js";
 import { writeAudit } from "../lib/audit.js";
 import { buildAgreementPdf } from "../lib/pdf.js";
-import {
-  requireAdmin,
-  requireAdminWrite,
-} from "../middleware/requireAdmin.js";
+import { requireAdminWrite } from "../middleware/requireAuth.js";
+import type { AuthedRequest } from "../middleware/requireAuth.js";
 import { authLimiter } from "../middleware/security.js";
-import type { AuthedRequest } from "../middleware/adminAuth.js";
 import { EvidenceKind } from "@prisma/client";
 import { evidenceUpload, storeEvidenceFiles } from "../lib/evidence.js";
 
@@ -122,7 +119,7 @@ agreementsRouter.post(
 
       try {
         await writeAudit({
-          adminEmail: req.adminEmail!,
+          adminEmail: req.userEmail!,
           action: "agreement.create",
           targetId: agreement.id,
           metadata: {

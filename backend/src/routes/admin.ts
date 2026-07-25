@@ -1,22 +1,22 @@
 import { Router } from "express";
 import { prisma } from "../db/prisma.js";
-import { requireAdmin, requireAdminWrite } from "../middleware/requireAdmin.js";
+import { requireAdmin, requireAdminWrite } from "../middleware/requireAuth.js";
+import type { AuthedRequest } from "../middleware/requireAuth.js";
 import { authLimiter } from "../middleware/security.js";
-import type { AuthedRequest } from "../middleware/adminAuth.js";
 import { writeAudit } from "../lib/audit.js";
 import { buildAgreementPdf, buildCertificatePdf } from "../lib/pdf.js";
 import { isValidPublicId } from "../lib/publicId.js";
 import { studentPhotoAbsoluteUrl } from "../lib/studentPhoto.js";
-import { canWriteOps } from "../lib/admins.js";
+import { env } from "../config/env.js";
 
 export const adminRouter = Router();
 
 adminRouter.get("/ops/me", authLimiter, requireAdmin, async (req: AuthedRequest, res) => {
-  const email = req.adminEmail!;
+  const email = req.userEmail!;
   res.json({
     email,
-    userId: req.adminUserId ?? null,
-    canWrite: await canWriteOps(email),
+    userId: req.userId ?? null,
+    canWrite: req.userRole === "ADMIN",
   });
 });
 
@@ -69,7 +69,7 @@ adminRouter.get("/ops/dashboard", requireAdmin, async (req: AuthedRequest, res) 
 
     try {
       await writeAudit({
-        adminEmail: req.adminEmail!,
+        adminEmail: req.userEmail!,
         action: "dashboard.view",
       });
     } catch (err) {
@@ -254,7 +254,7 @@ adminRouter.get("/ops/agreements/:id", requireAdmin, async (req: AuthedRequest, 
     }
 
     try {
-      await writeAudit({ adminEmail: req.adminEmail!, action: "agreement.view", targetId: result.id });
+      await writeAudit({ adminEmail: req.userEmail!, action: "agreement.view", targetId: result.id });
     } catch { /* audit table may not exist */ }
 
     const evidence = result.evidence.map((e) => ({
@@ -299,7 +299,7 @@ adminRouter.post(
       return;
     }
     await writeAudit({
-      adminEmail: req.adminEmail!,
+      adminEmail: req.userEmail!,
       action: "person.reveal_contact",
       targetId: id,
     });

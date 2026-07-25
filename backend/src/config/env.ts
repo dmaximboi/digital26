@@ -32,6 +32,8 @@ const envSchema = z.object({
   APP_URL: z.string().url().default("https://digital26.online"),
   PUBLIC_SITE_URL: z.string().url().default("https://digital26.online"),
   API_URL: z.string().url().default("http://localhost:4000"),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  JWT_SECRET: z.string().min(16).optional(),
   NEON_AUTH_URL: z.string().url().optional(),
   NEON_AUTH_JWKS_URL: z.string().url().optional(),
   NEON_AUTH_COOKIE_SECRET: z.string().optional(),
@@ -64,8 +66,13 @@ if (isProd && !data.FIELD_ENCRYPTION_KEY) {
   process.exit(1);
 }
 
-if (isProd && (!data.NEON_AUTH_URL || !data.NEON_AUTH_JWKS_URL)) {
-  console.error("NEON_AUTH_URL and NEON_AUTH_JWKS_URL are required in production");
+if (isProd && !data.GOOGLE_CLIENT_ID) {
+  console.error("GOOGLE_CLIENT_ID is required in production");
+  process.exit(1);
+}
+
+if (isProd && !data.JWT_SECRET) {
+  console.error("JWT_SECRET is required in production (min 16 chars)");
   process.exit(1);
 }
 
@@ -86,11 +93,7 @@ if (adminEmails.length === 0) {
   process.exit(1);
 }
 
-const consolePath = data.CONSOLE_PATH || data.ADMIN_CONSOLE_PATH;
-if (!consolePath) {
-  console.error("CONSOLE_PATH is required");
-  process.exit(1);
-}
+const consolePath = data.CONSOLE_PATH || data.ADMIN_CONSOLE_PATH || "";
 
 function withWwwVariants(origins: string[]): string[] {
   const out = new Set<string>();

@@ -1,8 +1,9 @@
 import { useEffect, useId, useState } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { BrandMark } from "./BrandMark";
+import { useAuth } from "../auth/AuthContext";
 
-const NAV = [
+const PUBLIC_NAV = [
   { to: "/", label: "Home", end: true },
   { to: "/about", label: "About Us" },
   { to: "/verify", label: "Verify" },
@@ -13,7 +14,9 @@ const NAV = [
 export function SiteHeader() {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
   const menuId = useId();
+  const { user, loading, signOut } = useAuth();
 
   useEffect(() => {
     setOpen(false);
@@ -39,6 +42,9 @@ export function SiteHeader() {
   function closeMenu() {
     setOpen(false);
   }
+
+  const isAdmin = user?.role === "ADMIN" || user?.role === "READONLY";
+  const isStudent = user?.role === "STUDENT" && user.hasProfile;
 
   return (
     <header className="site-header">
@@ -66,7 +72,7 @@ export function SiteHeader() {
         className={open ? "site-nav-desktop site-nav-drawer is-open" : "site-nav-desktop site-nav-drawer"}
         aria-label="Primary"
       >
-        {NAV.map((item) => (
+        {PUBLIC_NAV.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -79,15 +85,35 @@ export function SiteHeader() {
             {item.label}
           </NavLink>
         ))}
-        <a
-          className="site-nav__link site-nav__link--ext"
-          href="https://dmaximboi.vercel.app"
-          target="_blank"
-          rel="noreferrer"
-          onClick={closeMenu}
-        >
-          Profile
-        </a>
+
+        {!loading && !user && (
+          <>
+            <NavLink to="/apply" className={({ isActive }) => isActive ? "site-nav__link site-nav__link--cta is-active" : "site-nav__link site-nav__link--cta"} onClick={closeMenu}>
+              Apply
+            </NavLink>
+            <NavLink to="/signin" className={({ isActive }) => isActive ? "site-nav__link is-active" : "site-nav__link"} onClick={closeMenu}>
+              Sign In
+            </NavLink>
+          </>
+        )}
+
+        {!loading && isStudent && (
+          <NavLink to="/dashboard" className={({ isActive }) => isActive ? "site-nav__link is-active" : "site-nav__link"} onClick={closeMenu}>
+            Dashboard
+          </NavLink>
+        )}
+
+        {!loading && isAdmin && (
+          <NavLink to="/admin" className={({ isActive }) => isActive ? "site-nav__link site-nav__link--admin is-active" : "site-nav__link site-nav__link--admin"} onClick={closeMenu}>
+            Admin
+          </NavLink>
+        )}
+
+        {!loading && user && (
+          <button type="button" className="site-nav__link site-nav__link--signout" onClick={() => { signOut(); closeMenu(); navigate("/"); }}>
+            Sign Out
+          </button>
+        )}
       </nav>
     </header>
   );

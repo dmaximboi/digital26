@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { adminFetch } from "../../lib/adminApi";
+import { apiFetch } from "../../lib/authApi";
 
 type VisitRow = {
   id: string;
@@ -22,7 +22,7 @@ export function AdminVisitsPage() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    adminFetch<VisitsPayload>("/api/ops/visits")
+    apiFetch<VisitsPayload>("/api/ops/visits")
       .then(setData)
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed to load"),

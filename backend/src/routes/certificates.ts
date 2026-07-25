@@ -12,9 +12,9 @@ import { buildCertificatePdf } from "../lib/pdf.js";
 import { generateSessionId } from "../lib/crypto.js";
 import { issueEmailOtp, verifyEmailOtp } from "../lib/otp.js";
 import { sendOtpEmail, sendCertificateClaimEmail } from "../lib/mail.js";
-import { requireAdmin, requireAdminWrite } from "../middleware/requireAdmin.js";
+import { requireAdmin, requireAdminWrite } from "../middleware/requireAuth.js";
+import type { AuthedRequest } from "../middleware/requireAuth.js";
 import { authLimiter } from "../middleware/security.js";
-import type { AuthedRequest } from "../middleware/adminAuth.js";
 import { emailsEqual } from "../lib/safeEqual.js";
 import { compressAndStoreStudentPhoto } from "../lib/studentPhoto.js";
 import { EvidenceKind } from "@prisma/client";
@@ -125,7 +125,7 @@ certificatesRouter.post(
 
       try {
         await writeAudit({
-          adminEmail: req.adminEmail!,
+          adminEmail: req.userEmail!,
           action: "certificate.invite",
           targetId: cert.id,
           metadata: {
@@ -505,7 +505,7 @@ certificatesRouter.post(
     ]);
 
     await writeAudit({
-      adminEmail: req.adminEmail!,
+      adminEmail: req.userEmail!,
       action: "certificate.revoke",
       targetId: cert.id,
       metadata: { publicId },

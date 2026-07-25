@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { adminDownloadPdf, adminFetch } from "../../lib/adminApi";
+import { apiDownload, apiFetch } from "../../lib/authApi";
 import { EvidenceGallery } from "../../components/EvidenceGallery";
 
 type EvidenceItem = {
@@ -39,7 +39,7 @@ export function AdminAgreementDetailPage() {
   const [revealBusy, setRevealBusy] = useState(false);
 
   useEffect(() => {
-    adminFetch<Detail>(`/api/ops/agreements/${id}`)
+    apiFetch<Detail>(`/api/ops/agreements/${id}`)
       .then(setData)
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed"),
@@ -51,7 +51,7 @@ export function AdminAgreementDetailPage() {
     setBusy(true);
     setError(null);
     try {
-      await adminDownloadPdf("agreements", data.publicId);
+      await apiDownload(`/api/ops/files/agreements/${data.publicId}.pdf`, `${data.publicId}.pdf`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Download failed");
     } finally {
@@ -64,7 +64,7 @@ export function AdminAgreementDetailPage() {
     setRevealBusy(true);
     setError(null);
     try {
-      const c = await adminFetch<Contact & { id: string; name: string }>(
+      const c = await apiFetch<Contact & { id: string; name: string }>(
         `/api/ops/people/${encodeURIComponent(data.person.id)}/reveal-contact`,
         { method: "POST", body: "{}" },
       );

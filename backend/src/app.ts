@@ -3,11 +3,13 @@ import { applySecurity, globalLimiter, opsLimiter } from "./middleware/security.
 import { env } from "./config/env.js";
 import { healthRouter } from "./routes/health.js";
 import { publicRouter } from "./routes/public.js";
+import { authRouter } from "./routes/auth.js";
 import { agreementsRouter } from "./routes/agreements.js";
 import { certificatesRouter } from "./routes/certificates.js";
 import { adminRouter } from "./routes/admin.js";
 import { filesRouter } from "./routes/files.js";
 import { contactPublicRouter, contactAdminRouter } from "./routes/contact.js";
+import { studentsRouter } from "./routes/students.js";
 
 export function createApp() {
   const app = express();
@@ -26,13 +28,14 @@ export function createApp() {
     next();
   });
 
-  // Extra rate limit on every ops path (auth still required per-route)
   app.use("/api/ops", opsLimiter);
 
   app.use(healthRouter);
+  app.use("/api", authRouter);
   app.use("/api/public", publicRouter);
   app.use("/api/public", filesRouter);
   app.use("/api/public", contactPublicRouter);
+  app.use("/api", studentsRouter);
   app.use("/api", agreementsRouter);
   app.use("/api", certificatesRouter);
   app.use("/api", contactAdminRouter);

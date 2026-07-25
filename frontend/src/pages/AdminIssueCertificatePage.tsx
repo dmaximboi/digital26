@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { adminPostForm } from "../lib/adminApi";
+import { apiPostForm } from "../lib/authApi";
 import { DocBrandHeader } from "../components/BrandMark";
 import { browserLocalDateValue, formatCertDate } from "../lib/dates";
 import { compressImage } from "../lib/compressImage";
@@ -68,7 +68,7 @@ export function AdminIssueCertificatePage() {
       form.append("adminSolo", adminSolo);
       form.append("studentSolo", studentSolo);
       form.append("together", together);
-      const data = await adminPostForm<InviteResult>("/api/ops/certificates", form);
+      const data = await apiPostForm<InviteResult>("/api/ops/certificates", form);
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");

@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { adminDownloadPdf, adminDownloadCertPng, adminFetch } from "../../lib/adminApi";
-import { useAdminPath } from "../../lib/adminPath";
+import { apiDownload, apiFetch } from "../../lib/authApi";
 import { EvidenceGallery } from "../../components/EvidenceGallery";
 
 const APP_ORIGIN = typeof window !== "undefined" ? window.location.origin : "";
@@ -32,15 +31,13 @@ type Item = {
 };
 
 export function AdminCertificatesPage() {
-  const { path: adminPath } = useAdminPath();
-  const ADMIN_BASE = adminPath ?? "";
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [openEvidenceId, setOpenEvidenceId] = useState<string | null>(null);
 
   async function load() {
-    const data = await adminFetch<{ items: Item[] }>("/api/ops/certificates");
+    const data = await apiFetch<{ items: Item[] }>("/api/ops/certificates");
     setItems(data.items);
   }
 
@@ -53,7 +50,7 @@ export function AdminCertificatesPage() {
   async function revoke(publicId: string) {
     setBusyId(`revoke:${publicId}`);
     try {
-      await adminFetch(`/api/ops/certificates/${encodeURIComponent(publicId)}/revoke`, {
+      await apiFetch(`/api/ops/certificates/${encodeURIComponent(publicId)}/revoke`, {
         method: "POST",
         body: "{}",
       });
@@ -69,7 +66,7 @@ export function AdminCertificatesPage() {
     setBusyId(`pdf:${publicId}`);
     setError(null);
     try {
-      await adminDownloadPdf("certificates", publicId);
+      await apiDownload(`/api/ops/files/certificates/${publicId}.pdf`, `${publicId}.pdf`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Download failed");
     } finally {
@@ -81,7 +78,7 @@ export function AdminCertificatesPage() {
     setBusyId(`png:${publicId}`);
     setError(null);
     try {
-      await adminDownloadCertPng(publicId);
+      await apiDownload(`/api/ops/certificates/${publicId}/png`, `${publicId}-4k.png`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "PNG download failed");
     } finally {
@@ -99,7 +96,7 @@ export function AdminCertificatesPage() {
             sending the invite.
           </p>
         </div>
-        <Link className="btn primary" to={`/${ADMIN_BASE}/certificates/new`}>
+        <Link className="btn primary" to={`/admin/certificates/new`}>
           New cert + evidence
         </Link>
       </div>

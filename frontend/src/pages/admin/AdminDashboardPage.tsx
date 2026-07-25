@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { adminFetch } from "../../lib/adminApi";
-import { useAdminPath } from "../../lib/adminPath";
+import { apiFetch } from "../../lib/authApi";
 
 type Dash = {
   agreementsThisMonth: number;
@@ -15,13 +14,11 @@ type Dash = {
 };
 
 export function AdminDashboardPage() {
-  const { path: adminPath } = useAdminPath();
-  const ADMIN_BASE = adminPath ?? "";
   const [data, setData] = useState<Dash | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    adminFetch<Dash>("/api/ops/dashboard")
+    apiFetch<Dash>("/api/ops/dashboard")
       .then(setData)
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed to load"),
@@ -39,10 +36,10 @@ export function AdminDashboardPage() {
           <p className="muted">Overview of letters, certs, and inbox</p>
         </div>
         <div className="ops-page__actions">
-          <Link className="btn primary" to={`/${ADMIN_BASE}/agreements/new`}>
+          <Link className="btn primary" to={`/admin/agreements/new`}>
             New agreement + 3 proofs
           </Link>
-          <Link className="btn" to={`/${ADMIN_BASE}/certificates/new`}>
+          <Link className="btn" to={`/admin/certificates/new`}>
             New cert + evidence
           </Link>
         </div>
@@ -52,14 +49,14 @@ export function AdminDashboardPage() {
         <article>
           <h3>Visits today</h3>
           <p className="stat">{data.visitsToday ?? 0}</p>
-          <Link className="muted" to={`/${ADMIN_BASE}/visits`}>
+          <Link className="muted" to={`/admin/visits`}>
             Open visitors →
           </Link>
         </article>
         <article>
           <h3>Unread messages</h3>
           <p className="stat">{data.unreadMessages}</p>
-          <Link className="muted" to={`/${ADMIN_BASE}/messages`}>
+          <Link className="muted" to={`/admin/messages`}>
             Open inbox →
           </Link>
         </article>
