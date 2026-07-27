@@ -8,6 +8,7 @@ import { compressAndStoreStudentPhoto } from "../lib/studentPhoto.js";
 import { authLimiter } from "../middleware/security.js";
 import { issueEmailOtp, verifyEmailOtp } from "../lib/otp.js";
 import { sendOtpEmail } from "../lib/mail.js";
+import { writeAudit } from "../lib/audit.js";
 import multer from "multer";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
@@ -84,6 +85,7 @@ const applySchema = z.object({
   parentPhone: z.string().min(5).max(32).optional(),
   address: z.string().min(5).max(500).optional(),
   programme: z.nativeEnum(ProgrammeType),
+  classMode: z.enum(["PHYSICAL", "ONLINE"]).default("PHYSICAL"),
   otpCode: z.string().regex(/^\d{6}$/),
 });
 
@@ -145,6 +147,7 @@ studentsRouter.post(
           parentPhone: data.parentPhone?.trim() || null,
           address: data.address?.trim() || null,
           programme: data.programme,
+          classMode: data.classMode as "PHYSICAL" | "ONLINE",
         },
       });
 
@@ -167,6 +170,7 @@ studentsRouter.get("/student/me", requireAuth, async (req: AuthedRequest, res) =
       select: {
         id: true, fullName: true, phone: true, photoUrl: true,
         parentPhone: true, address: true, programme: true,
+        customMonths: true, classMode: true,
         status: true, rejectionNote: true, startDate: true,
         createdAt: true,
       },
@@ -176,6 +180,56 @@ studentsRouter.get("/student/me", requireAuth, async (req: AuthedRequest, res) =
   } catch (err) {
     console.error("[student.me]", err);
     res.json({ profile: null });
+  }
+});
+
+studentsRouter.get("/student/messages", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.userId! },
+    });
+    if (!profile) {
+      res.json({ messages: [] });
+      return;
+    }
+
+    const messages = await prisma.studentMessage.findMany({
+      where: { profileId: profile.id },
+      orderBy: { createdAt: "asc" },
+      take: 100,
+    });
+
+    res.json({ messages });
+  } catch (err) {
+    console.error("[student.messages]", err);
+    res.json({ messages: [] });
+  }
+});
+
+studentsRouter.post("/student/messages", authLimiter, requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const profile = await prisma.studentProfile.findUnique({
+      where: { userId: req.userId! },
+    });
+    if (!profile) {
+      res.status(404).json({ error: "No profile found" });
+      return;
+    }
+
+    const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
+    if (!body || body.length > 500) {
+      res.status(400).json({ error: "Message required (max 500 chars)" });
+      return;
+    }
+
+    const msg = await prisma.studentMessage.create({
+      data: { profileId: profile.id, fromAdmin: false, body },
+    });
+
+    res.status(201).json(msg);
+  } catch (err) {
+    console.error("[student.messages.post]", err);
+    res.status(500).json({ error: "Failed to send message" });
   }
 });
 
@@ -193,7 +247,7 @@ studentsRouter.post("/student/attendance", authLimiter, requireAuth, async (req:
       return;
     }
 
-    const totalWeeks = profile.programme === ProgrammeType.FIVE_MONTH ? 22 : 26;
+    const totalWeeks = programmeWeeks(profile.programme, profile.customMonths);
     const now = new Date();
     const startMs = profile.startDate.getTime();
     const elapsedMs = now.getTime() - startMs;
@@ -241,7 +295,7 @@ studentsRouter.get("/student/attendance", requireAuth, async (req: AuthedRequest
       return;
     }
 
-    const totalWeeks = profile.programme === ProgrammeType.FIVE_MONTH ? 22 : 26;
+    const totalWeeks = programmeWeeks(profile.programme, profile.customMonths);
     let currentWeek = 0;
     if (profile.startDate) {
       const elapsedMs = Date.now() - profile.startDate.getTime();
@@ -268,12 +322,15 @@ const chatSchema = z.object({ body: z.string().min(1).max(500) });
 
 studentsRouter.post("/student/chat", authLimiter, requireAuth, async (req: AuthedRequest, res) => {
   try {
-    const profile = await prisma.studentProfile.findUnique({
-      where: { userId: req.userId! },
-    });
-    if (!profile || profile.status !== StudentStatus.APPROVED) {
-      res.status(403).json({ error: "Only approved students can chat" });
-      return;
+    const isAdmin = req.userRole === "ADMIN" || req.userRole === "READONLY";
+    if (!isAdmin) {
+      const profile = await prisma.studentProfile.findUnique({
+        where: { userId: req.userId! },
+      });
+      if (!profile || profile.status !== StudentStatus.APPROVED) {
+        res.status(403).json({ error: "Only approved students can chat" });
+        return;
+      }
     }
 
     const parsed = chatSchema.safeParse(req.body);
@@ -282,17 +339,19 @@ studentsRouter.post("/student/chat", authLimiter, requireAuth, async (req: Authe
       return;
     }
 
-    const windowStart = new Date(Date.now() - CHAT_WINDOW_MS);
-    const recentCount = await prisma.chatMessage.count({
-      where: { userId: req.userId!, createdAt: { gte: windowStart } },
-    });
-
-    if (recentCount >= CHAT_LIMIT) {
-      res.status(429).json({
-        error: `Message limit reached (${CHAT_LIMIT} per 24 hours). Try again later.`,
-        remaining: 0,
+    if (!isAdmin) {
+      const windowStart = new Date(Date.now() - CHAT_WINDOW_MS);
+      const recentCount = await prisma.chatMessage.count({
+        where: { userId: req.userId!, createdAt: { gte: windowStart } },
       });
-      return;
+
+      if (recentCount >= CHAT_LIMIT) {
+        res.status(429).json({
+          error: `Message limit reached (${CHAT_LIMIT} per 24 hours). Try again later.`,
+          remaining: 0,
+        });
+        return;
+      }
     }
 
     const msg = await prisma.chatMessage.create({
@@ -300,7 +359,7 @@ studentsRouter.post("/student/chat", authLimiter, requireAuth, async (req: Authe
       select: { id: true, body: true, createdAt: true },
     });
 
-    res.status(201).json({ ...msg, remaining: CHAT_LIMIT - recentCount - 1 });
+    res.status(201).json(msg);
   } catch (err) {
     console.error("[student.chat.post]", err);
     res.status(500).json({ error: "Failed to send message" });
@@ -309,10 +368,13 @@ studentsRouter.post("/student/chat", authLimiter, requireAuth, async (req: Authe
 
 studentsRouter.get("/student/chat", requireAuth, async (req: AuthedRequest, res) => {
   try {
-    const profile = await prisma.studentProfile.findUnique({ where: { userId: req.userId! } });
-    if (!profile || profile.status !== StudentStatus.APPROVED) {
-      res.status(403).json({ error: "Only approved students can view chat" });
-      return;
+    const isAdmin = req.userRole === "ADMIN" || req.userRole === "READONLY";
+    if (!isAdmin) {
+      const profile = await prisma.studentProfile.findUnique({ where: { userId: req.userId! } });
+      if (!profile || profile.status !== StudentStatus.APPROVED) {
+        res.status(403).json({ error: "Only approved students can view chat" });
+        return;
+      }
     }
 
     const cursor = typeof req.query.before === "string" ? req.query.before : undefined;
@@ -322,16 +384,20 @@ studentsRouter.get("/student/chat", requireAuth, async (req: AuthedRequest, res)
       take: 50,
       select: {
         id: true, body: true, createdAt: true,
-        user: { select: { id: true, name: true, avatarUrl: true } },
+        user: { select: { id: true, name: true, avatarUrl: true, role: true } },
       },
     });
 
-    const windowStart = new Date(Date.now() - CHAT_WINDOW_MS);
-    const myCount = await prisma.chatMessage.count({
-      where: { userId: req.userId!, createdAt: { gte: windowStart } },
-    });
+    let remaining = CHAT_LIMIT;
+    if (!isAdmin) {
+      const windowStart = new Date(Date.now() - CHAT_WINDOW_MS);
+      const myCount = await prisma.chatMessage.count({
+        where: { userId: req.userId!, createdAt: { gte: windowStart } },
+      });
+      remaining = Math.max(0, CHAT_LIMIT - myCount);
+    }
 
-    res.json({ messages: messages.reverse(), remaining: Math.max(0, CHAT_LIMIT - myCount) });
+    res.json({ messages: messages.reverse(), remaining });
   } catch (err) {
     console.error("[student.chat.list]", err);
     res.json({ messages: [], remaining: 0 });
@@ -343,7 +409,7 @@ studentsRouter.get("/ops/students", requireAdmin, async (_req, res) => {
     const students = await prisma.studentProfile.findMany({
       include: {
         user: { select: { id: true, email: true, name: true, avatarUrl: true } },
-        _count: { select: { attendance: true } },
+        _count: { select: { attendance: true, messages: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 200,
@@ -359,6 +425,8 @@ studentsRouter.get("/ops/students", requireAdmin, async (_req, res) => {
         parentPhone: s.parentPhone,
         address: s.address,
         programme: s.programme,
+        customMonths: s.customMonths,
+        classMode: s.classMode,
         status: s.status,
         startDate: s.startDate,
         reviewedAt: s.reviewedAt,
@@ -366,6 +434,7 @@ studentsRouter.get("/ops/students", requireAdmin, async (_req, res) => {
         rejectionNote: s.rejectionNote,
         createdAt: s.createdAt,
         attendanceCount: s._count.attendance,
+        messageCount: s._count.messages,
         user: s.user,
       })),
     });
@@ -396,6 +465,8 @@ studentsRouter.post("/ops/students/:id/approve", authLimiter, requireAdminWrite,
       },
     });
 
+    await writeAudit({ adminEmail: req.userEmail!, action: "student.approve", targetId: id });
+
     res.json({ ok: true, status: "APPROVED", startDate });
   } catch (err) {
     console.error("[ops.students.approve]", err);
@@ -423,10 +494,146 @@ studentsRouter.post("/ops/students/:id/reject", authLimiter, requireAdminWrite, 
       },
     });
 
+    await writeAudit({ adminEmail: req.userEmail!, action: "student.reject", targetId: id });
+
     res.json({ ok: true, status: "REJECTED" });
   } catch (err) {
     console.error("[ops.students.reject]", err);
     res.status(500).json({ error: "Failed to reject student" });
+  }
+});
+
+studentsRouter.post("/ops/students/:id/reconsider", authLimiter, requireAdminWrite, async (req: AuthedRequest, res) => {
+  try {
+    const id = String(req.params.id);
+    const profile = await prisma.studentProfile.findUnique({ where: { id } });
+    if (!profile) {
+      res.status(404).json({ error: "Student not found" });
+      return;
+    }
+
+    await prisma.studentProfile.update({
+      where: { id },
+      data: {
+        status: StudentStatus.PENDING,
+        reviewedAt: null,
+        reviewedBy: null,
+        rejectionNote: null,
+      },
+    });
+
+    await writeAudit({ adminEmail: req.userEmail!, action: "student.reconsider", targetId: id });
+
+    res.json({ ok: true, status: "PENDING" });
+  } catch (err) {
+    console.error("[ops.students.reconsider]", err);
+    res.status(500).json({ error: "Failed to reconsider student" });
+  }
+});
+
+studentsRouter.post("/ops/students/:id/revoke", authLimiter, requireAdminWrite, async (req: AuthedRequest, res) => {
+  try {
+    const id = String(req.params.id);
+    const profile = await prisma.studentProfile.findUnique({ where: { id } });
+    if (!profile) {
+      res.status(404).json({ error: "Student not found" });
+      return;
+    }
+
+    await prisma.studentProfile.update({
+      where: { id },
+      data: {
+        status: StudentStatus.PENDING,
+        reviewedAt: new Date(),
+        reviewedBy: req.userEmail,
+        startDate: null,
+      },
+    });
+
+    await writeAudit({ adminEmail: req.userEmail!, action: "student.revoke", targetId: id });
+
+    res.json({ ok: true, status: "PENDING" });
+  } catch (err) {
+    console.error("[ops.students.revoke]", err);
+    res.status(500).json({ error: "Failed to revoke student" });
+  }
+});
+
+studentsRouter.post("/ops/students/:id/update-programme", authLimiter, requireAdminWrite, async (req: AuthedRequest, res) => {
+  try {
+    const id = String(req.params.id);
+    const { programme, customMonths } = req.body ?? {};
+    const profile = await prisma.studentProfile.findUnique({ where: { id } });
+    if (!profile) {
+      res.status(404).json({ error: "Student not found" });
+      return;
+    }
+
+    const validProgrammes = ["FIVE_MONTH", "SIX_MONTH", "CUSTOM"];
+    if (!validProgrammes.includes(programme)) {
+      res.status(400).json({ error: "Invalid programme type" });
+      return;
+    }
+
+    const months = programme === "CUSTOM" ? Number(customMonths) || null : null;
+
+    await prisma.studentProfile.update({
+      where: { id },
+      data: { programme, customMonths: months },
+    });
+
+    await writeAudit({
+      adminEmail: req.userEmail!,
+      action: "student.update_programme",
+      targetId: id,
+      metadata: { programme, customMonths: months },
+    });
+
+    res.json({ ok: true, programme, customMonths: months });
+  } catch (err) {
+    console.error("[ops.students.update-programme]", err);
+    res.status(500).json({ error: "Failed to update programme" });
+  }
+});
+
+studentsRouter.get("/ops/students/:id/messages", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const messages = await prisma.studentMessage.findMany({
+      where: { profileId: id },
+      orderBy: { createdAt: "asc" },
+      take: 200,
+    });
+    res.json({ messages });
+  } catch (err) {
+    console.error("[ops.students.messages]", err);
+    res.json({ messages: [] });
+  }
+});
+
+studentsRouter.post("/ops/students/:id/messages", authLimiter, requireAdminWrite, async (req: AuthedRequest, res) => {
+  try {
+    const id = String(req.params.id);
+    const body = typeof req.body?.body === "string" ? req.body.body.trim() : "";
+    if (!body || body.length > 500) {
+      res.status(400).json({ error: "Message required (max 500 chars)" });
+      return;
+    }
+
+    const profile = await prisma.studentProfile.findUnique({ where: { id } });
+    if (!profile) {
+      res.status(404).json({ error: "Student not found" });
+      return;
+    }
+
+    const msg = await prisma.studentMessage.create({
+      data: { profileId: id, fromAdmin: true, body },
+    });
+
+    res.status(201).json(msg);
+  } catch (err) {
+    console.error("[ops.students.messages.post]", err);
+    res.status(500).json({ error: "Failed to send message" });
   }
 });
 
@@ -435,7 +642,7 @@ studentsRouter.get("/ops/students/:id/attendance", requireAdmin, async (req, res
     const id = String(req.params.id);
     const profile = await prisma.studentProfile.findUnique({
       where: { id },
-      select: { id: true, fullName: true, programme: true, startDate: true },
+      select: { id: true, fullName: true, programme: true, customMonths: true, startDate: true },
     });
     if (!profile) {
       res.status(404).json({ error: "Student not found" });
@@ -448,10 +655,15 @@ studentsRouter.get("/ops/students/:id/attendance", requireAdmin, async (req, res
       select: { weekNumber: true, signedAt: true },
     });
 
-    const totalWeeks = profile.programme === ProgrammeType.FIVE_MONTH ? 22 : 26;
+    const totalWeeks = programmeWeeks(profile.programme, profile.customMonths);
     res.json({ student: profile, records, totalWeeks });
   } catch (err) {
     console.error("[ops.students.attendance]", err);
     res.status(500).json({ error: "Failed to load attendance" });
   }
 });
+
+function programmeWeeks(programme: string, customMonths: number | null): number {
+  if (programme === "CUSTOM" && customMonths) return customMonths * 4;
+  return programme === "FIVE_MONTH" ? 22 : 26;
+}

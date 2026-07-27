@@ -145,10 +145,18 @@ export const globalLimiter = rateLimit({
 
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: env.isProd ? 15 : 80,
+  max: env.isProd ? 10 : 80,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many auth attempts. Try again later." },
+});
+
+export const otpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: env.isProd ? 6 : 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many code requests. Try again later." },
 });
 
 export const publicLookupLimiter = rateLimit({

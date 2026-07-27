@@ -15,6 +15,7 @@ export function ApplyPage() {
   const [parentPhone, setParentPhone] = useState("");
   const [address, setAddress] = useState("");
   const [programme, setProgramme] = useState<Programme>("SIX_MONTH");
+  const [classMode, setClassMode] = useState<"PHYSICAL" | "ONLINE">("PHYSICAL");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [otpSent, setOtpSent] = useState(false);
@@ -81,6 +82,7 @@ export function ApplyPage() {
       form.append("parentPhone", parentPhone.trim());
       form.append("address", address.trim());
       form.append("programme", programme);
+      form.append("classMode", classMode);
       form.append("otpCode", otpCode);
       form.append("photo", photo);
 
@@ -208,6 +210,26 @@ export function ApplyPage() {
                 <li>Standard templates & resources</li>
                 <li>Certificate of completion</li>
               </ul>
+            </div>
+          </label>
+        </fieldset>
+
+        <fieldset className="programme-choice class-mode-choice">
+          <legend>Class Mode *</legend>
+          <label className={`programme-card ${classMode === "PHYSICAL" ? "selected" : ""}`}>
+            <input type="radio" name="classMode" value="PHYSICAL" checked={classMode === "PHYSICAL"}
+              onChange={() => setClassMode("PHYSICAL")} />
+            <div className="programme-card__content">
+              <h3>Physical Class</h3>
+              <p className="programme-card__price">In-person sessions</p>
+            </div>
+          </label>
+          <label className={`programme-card ${classMode === "ONLINE" ? "selected" : ""}`}>
+            <input type="radio" name="classMode" value="ONLINE" checked={classMode === "ONLINE"}
+              onChange={() => setClassMode("ONLINE")} />
+            <div className="programme-card__content">
+              <h3>Online Class</h3>
+              <p className="programme-card__price">Remote sessions</p>
             </div>
           </label>
         </fieldset>

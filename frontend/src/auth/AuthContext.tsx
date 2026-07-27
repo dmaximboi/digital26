@@ -96,6 +96,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(() => {
     clearToken();
     setUser(null);
+    try {
+      const g = (window as unknown as {
+        google?: { accounts?: { id?: { disableAutoSelect?: () => void; revoke?: (email: string, cb: () => void) => void } } };
+      }).google;
+      g?.accounts?.id?.disableAutoSelect?.();
+    } catch {}
   }, []);
 
   useEffect(() => {

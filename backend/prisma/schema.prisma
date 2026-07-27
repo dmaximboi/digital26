@@ -220,6 +220,12 @@ enum StudentStatus {
 enum ProgrammeType {
   FIVE_MONTH
   SIX_MONTH
+  CUSTOM
+}
+
+enum ClassMode {
+  PHYSICAL
+  ONLINE
 }
 
 model User {
@@ -240,26 +246,43 @@ model User {
 }
 
 model StudentProfile {
-  id            String        @id @default(cuid())
-  userId        String        @unique @map("user_id")
-  fullName      String        @map("full_name")
-  phone         String
-  photoUrl      String?       @map("photo_url")
-  parentPhone   String?       @map("parent_phone")
-  address       String?       @db.Text
-  programme     ProgrammeType
-  status        StudentStatus @default(PENDING)
-  reviewedAt    DateTime?     @map("reviewed_at")
-  reviewedBy    String?       @map("reviewed_by")
-  rejectionNote String?       @map("rejection_note") @db.Text
-  startDate     DateTime?     @map("start_date")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
+  id              String        @id @default(cuid())
+  userId          String        @unique @map("user_id")
+  fullName        String        @map("full_name")
+  phone           String
+  photoUrl        String?       @map("photo_url")
+  parentPhone     String?       @map("parent_phone")
+  address         String?       @db.Text
+  programme       ProgrammeType
+  customMonths    Int?          @map("custom_months")
+  classMode       ClassMode     @default(PHYSICAL) @map("class_mode")
+  status          StudentStatus @default(PENDING)
+  reviewedAt      DateTime?     @map("reviewed_at")
+  reviewedBy      String?       @map("reviewed_by")
+  rejectionNote   String?       @map("rejection_note") @db.Text
+  startDate       DateTime?     @map("start_date")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   attendance Attendance[]
+  messages   StudentMessage[]
 
   @@map("student_profiles")
+}
+
+model StudentMessage {
+  id        String   @id @default(cuid())
+  profileId String   @map("profile_id")
+  fromAdmin Boolean  @default(false) @map("from_admin")
+  body      String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  profile StudentProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+  @@index([createdAt])
+  @@map("student_messages")
 }
 
 model Attendance {

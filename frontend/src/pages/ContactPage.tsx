@@ -55,6 +55,18 @@ export function ContactPage() {
         Digital 26 inbox.
       </p>
 
+      <div className="contact-whatsapp">
+        <a
+          href="https://wa.me/2349123165792"
+          target="_blank"
+          rel="noreferrer"
+          className="btn primary whatsapp-btn"
+        >
+          Chat on WhatsApp
+        </a>
+        <span className="muted">+234 91 23 16 5792</span>
+      </div>
+
       {done ? (
         <article className="result-card">
           <p className="badge ok">Sent</p>

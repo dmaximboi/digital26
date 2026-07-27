@@ -8,7 +8,7 @@ type ChatMsg = {
   id: string;
   body: string;
   createdAt: string;
-  user: { id: string; name: string; avatarUrl: string | null };
+  user: { id: string; name: string; avatarUrl: string | null; role?: string };
 };
 
 export function StudentChatPage() {
@@ -66,6 +66,8 @@ export function StudentChatPage() {
     }
   }
 
+  const isUnlimited = user?.role === "ADMIN" || user?.role === "READONLY";
+
   if (loading) {
     return <section className="panel" aria-busy="true"><p className="muted">Loading...</p></section>;
   }
@@ -74,7 +76,9 @@ export function StudentChatPage() {
     <section className="panel chat-page">
       <Link to="/dashboard" className="back-link">&larr; Dashboard</Link>
       <h1>Class Chat</h1>
-      <p className="muted">Messages remaining today: <strong>{remaining}</strong> / 10</p>
+      {user?.role !== "ADMIN" && user?.role !== "READONLY" && (
+        <p className="muted">Messages remaining today: <strong>{remaining}</strong> / 10</p>
+      )}
 
       <div className="chat-messages">
         {messages.length === 0 && <p className="muted chat-empty">No messages yet. Be the first!</p>}
@@ -84,7 +88,10 @@ export function StudentChatPage() {
             <div key={m.id} className={`chat-bubble ${isMe ? "mine" : "other"}`}>
               <div className="chat-bubble__header">
                 {m.user.avatarUrl && <img src={m.user.avatarUrl} alt="" className="chat-avatar" />}
-                <span className="chat-name">{isMe ? "You" : m.user.name}</span>
+                <span className="chat-name">
+                  {isMe ? "You" : m.user.name}
+                  {m.user.role === "ADMIN" && !isMe && <span className="chat-admin-tag"> (Admin)</span>}
+                </span>
                 <time className="chat-time">{new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
               </div>
               <p className="chat-bubble__body">{m.body}</p>
@@ -101,12 +108,12 @@ export function StudentChatPage() {
           type="text"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder={remaining > 0 ? "Type a message..." : "Daily limit reached"}
+          placeholder={isUnlimited || remaining > 0 ? "Type a message..." : "Daily limit reached"}
           maxLength={500}
-          disabled={remaining <= 0 || busy}
+          disabled={(!isUnlimited && remaining <= 0) || busy}
           className="form-input"
         />
-        <button type="submit" className="btn primary" disabled={!body.trim() || busy || remaining <= 0}>
+        <button type="submit" className="btn primary" disabled={!body.trim() || busy || (!isUnlimited && remaining <= 0)}>
           Send
         </button>
       </form>

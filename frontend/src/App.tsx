@@ -72,6 +72,7 @@ function AppRoutes() {
         <Route path="agreements/:id" element={<AdminAgreementDetailPage />} />
         <Route path="certificates" element={<AdminCertificatesPage />} />
         <Route path="certificates/new" element={<AdminIssueCertificatePage />} />
+        <Route path="chat" element={<StudentChatPage />} />
         <Route path="clients" element={<AdminClientsPage />} />
         <Route path="audit" element={<AdminAuditLogPage />} />
       </Route>

@@ -1540,6 +1540,82 @@ dd {
   gap: .5rem;
 }
 
+.contact-whatsapp {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: .75rem 1rem;
+  border-radius: .5rem;
+  background: var(--surface, #111);
+  border: 1px solid var(--border, #333);
+}
+.whatsapp-btn { background: #25d366 !important; color: #fff !important; }
+.whatsapp-btn:hover { background: #1da851 !important; }
+
+.student-msg-box {
+  margin-top: 1.5rem;
+  border: 1px solid var(--border, #333);
+  border-radius: .5rem;
+  padding: 1rem;
+  background: var(--surface, #111);
+}
+.student-msg-box h3 { margin: 0 0 .75rem; font-size: 1rem; }
+.student-msg-list {
+  max-height: 300px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  margin-bottom: .75rem;
+}
+.student-msg {
+  padding: .5rem .75rem;
+  border-radius: .4rem;
+  max-width: 85%;
+}
+.student-msg.from-admin {
+  background: var(--accent-soft, rgba(255, 158, 0, .12));
+  align-self: flex-start;
+}
+.student-msg.from-student {
+  background: var(--surface-alt, #1a1a1a);
+  align-self: flex-end;
+}
+.student-msg__label { font-size: .75rem; font-weight: 600; color: var(--accent, #ff9e00); }
+.student-msg__body { margin: .15rem 0; font-size: .9rem; }
+.student-msg__time { font-size: .7rem; color: var(--muted, #888); }
+.student-msg-input {
+  display: flex;
+  gap: .5rem;
+}
+.student-msg-input .form-input { flex: 1; }
+
+.admin-chat-panel {
+  margin-top: .75rem;
+  padding: .75rem;
+  border-top: 1px solid var(--border, #333);
+  width: 100%;
+}
+.admin-chat-panel.standalone {
+  margin: 1rem 0;
+  border: 1px solid var(--border, #333);
+  border-radius: .5rem;
+  padding: 1rem;
+  background: var(--surface, #111);
+}
+.admin-chat-panel h4 { margin: 0 0 .5rem; }
+
+.inline-edit {
+  display: flex;
+  gap: .35rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.editable { cursor: pointer; text-decoration: underline dotted; }
+
+.chat-admin-tag { font-size: .75rem; color: var(--accent, #ff9e00); }
+
 @media (min-width: 1100px) {
   .site-header,
   .site-footer,

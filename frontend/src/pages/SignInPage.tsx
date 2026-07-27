@@ -18,14 +18,13 @@ export function SignInPage() {
   }, []);
 
   useEffect(() => {
-    if (!loading && user) {
-      if (user.role === "ADMIN" || user.role === "READONLY") {
-        navigate("/admin", { replace: true });
-      } else if (user.hasProfile) {
-        navigate("/dashboard", { replace: true });
-      } else {
-        navigate("/apply", { replace: true });
-      }
+    if (loading || !user) return;
+    if (user.role === "ADMIN" || user.role === "READONLY") {
+      navigate("/admin", { replace: true });
+    } else if (user.hasProfile) {
+      navigate("/dashboard", { replace: true });
+    } else {
+      navigate("/apply", { replace: true });
     }
   }, [loading, user, navigate]);
 

@@ -9,12 +9,22 @@ type StudentItem = {
   photoUrl: string | null;
   parentPhone: string | null;
   address: string | null;
-  programme: "FIVE_MONTH" | "SIX_MONTH";
+  programme: "FIVE_MONTH" | "SIX_MONTH" | "CUSTOM";
+  customMonths: number | null;
+  classMode: "PHYSICAL" | "ONLINE";
   status: "PENDING" | "APPROVED" | "REJECTED";
   startDate: string | null;
   attendanceCount: number;
+  messageCount: number;
   createdAt: string;
   user: { id: string; email: string; name: string; avatarUrl: string | null };
+};
+
+type StudentMsg = {
+  id: string;
+  fromAdmin: boolean;
+  body: string;
+  createdAt: string;
 };
 
 export function AdminStudentsPage() {
@@ -22,6 +32,13 @@ export function AdminStudentsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [chatOpen, setChatOpen] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<StudentMsg[]>([]);
+  const [chatBody, setChatBody] = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
+  const [editProg, setEditProg] = useState<string | null>(null);
+  const [progValue, setProgValue] = useState("");
+  const [customMonths, setCustomMonths] = useState("");
 
   const load = useCallback(() => {
     setLoading(true);
@@ -62,6 +79,82 @@ export function AdminStudentsPage() {
     }
   }
 
+  async function reconsider(id: string) {
+    setBusy(id);
+    try {
+      await apiFetch("/api/ops/students/" + id + "/reconsider", { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } });
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function revoke(id: string) {
+    if (!confirm("Revoke this student's approval? They will need to be re-approved.")) return;
+    setBusy(id);
+    try {
+      await apiFetch("/api/ops/students/" + id + "/revoke", { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } });
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function openChat(id: string) {
+    if (chatOpen === id) { setChatOpen(null); return; }
+    setChatOpen(id);
+    setChatBody("");
+    try {
+      const d = await apiFetch<{ messages: StudentMsg[] }>(`/api/ops/students/${id}/messages`);
+      setChatMessages(d.messages);
+    } catch {
+      setChatMessages([]);
+    }
+  }
+
+  async function sendChatMsg() {
+    if (!chatOpen || !chatBody.trim() || chatBusy) return;
+    setChatBusy(true);
+    try {
+      await apiFetch(`/api/ops/students/${chatOpen}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ body: chatBody.trim() }),
+        headers: { "Content-Type": "application/json" },
+      });
+      setChatBody("");
+      const d = await apiFetch<{ messages: StudentMsg[] }>(`/api/ops/students/${chatOpen}/messages`);
+      setChatMessages(d.messages);
+    } catch {} finally {
+      setChatBusy(false);
+    }
+  }
+
+  async function saveProgramme(id: string) {
+    setBusy(id);
+    try {
+      await apiFetch(`/api/ops/students/${id}/update-programme`, {
+        method: "POST",
+        body: JSON.stringify({ programme: progValue, customMonths: progValue === "CUSTOM" ? Number(customMonths) || 0 : null }),
+        headers: { "Content-Type": "application/json" },
+      });
+      setEditProg(null);
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function progLabel(s: StudentItem) {
+    if (s.programme === "CUSTOM" && s.customMonths) return `${s.customMonths}M Custom`;
+    return s.programme === "FIVE_MONTH" ? "5M" : "6M";
+  }
+
   const pending = items.filter((s) => s.status === "PENDING");
   const approved = items.filter((s) => s.status === "APPROVED");
   const rejected = items.filter((s) => s.status === "REJECTED");
@@ -91,7 +184,7 @@ export function AdminStudentsPage() {
                   {s.parentPhone && <p>Parent: {s.parentPhone}</p>}
                   {s.address && <p>Address: {s.address}</p>}
                   <p className="programme-badge">
-                    {s.programme === "FIVE_MONTH" ? "5-Month Accelerated" : "6-Month Standard"}
+                    {progLabel(s)} · {s.classMode === "ONLINE" ? "Online" : "Physical"}
                   </p>
                   <p className="muted">Applied: {new Date(s.createdAt).toLocaleDateString()}</p>
                 </div>
@@ -102,7 +195,39 @@ export function AdminStudentsPage() {
                   <button className="btn danger" onClick={() => reject(s.id)} disabled={busy === s.id}>
                     Reject
                   </button>
+                  <button className="btn" onClick={() => void openChat(s.id)}>
+                    {chatOpen === s.id ? "Close chat" : `Chat (${s.messageCount})`}
+                  </button>
                 </div>
+                {chatOpen === s.id && (
+                  <div className="admin-chat-panel">
+                    <div className="student-msg-list">
+                      {chatMessages.length === 0 && <p className="muted">No messages yet.</p>}
+                      {chatMessages.map((m) => (
+                        <div key={m.id} className={`student-msg ${m.fromAdmin ? "from-admin" : "from-student"}`}>
+                          <span className="student-msg__label">{m.fromAdmin ? "You (Admin)" : s.fullName}</span>
+                          <p className="student-msg__body">{m.body}</p>
+                          <time className="student-msg__time">{new Date(m.createdAt).toLocaleString()}</time>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="student-msg-input">
+                      <input
+                        type="text"
+                        value={chatBody}
+                        onChange={(e) => setChatBody(e.target.value)}
+                        placeholder="Reply to student..."
+                        maxLength={500}
+                        disabled={chatBusy}
+                        className="form-input"
+                        onKeyDown={(e) => { if (e.key === "Enter") void sendChatMsg(); }}
+                      />
+                      <button className="btn primary" onClick={() => void sendChatMsg()} disabled={!chatBody.trim() || chatBusy}>
+                        Send
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -118,8 +243,10 @@ export function AdminStudentsPage() {
                 <th>Name</th>
                 <th>Email</th>
                 <th>Programme</th>
+                <th>Class</th>
                 <th>Attendance</th>
                 <th>Started</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -127,13 +254,63 @@ export function AdminStudentsPage() {
                 <tr key={s.id}>
                   <td>{s.fullName}</td>
                   <td>{s.user.email}</td>
-                  <td>{s.programme === "FIVE_MONTH" ? "5M" : "6M"}</td>
-                  <td>{s.attendanceCount} / {s.programme === "FIVE_MONTH" ? 22 : 26}</td>
+                  <td>
+                    {editProg === s.id ? (
+                      <div className="inline-edit">
+                        <select value={progValue} onChange={(e) => setProgValue(e.target.value)}>
+                          <option value="FIVE_MONTH">5-Month</option>
+                          <option value="SIX_MONTH">6-Month</option>
+                          <option value="CUSTOM">Custom</option>
+                        </select>
+                        {progValue === "CUSTOM" && (
+                          <input type="number" min={1} max={24} value={customMonths}
+                            onChange={(e) => setCustomMonths(e.target.value)} placeholder="Months" className="form-input" style={{ width: 70 }} />
+                        )}
+                        <button className="btn primary" onClick={() => void saveProgramme(s.id)} disabled={busy === s.id}>Save</button>
+                        <button className="btn" onClick={() => setEditProg(null)}>Cancel</button>
+                      </div>
+                    ) : (
+                      <span onClick={() => { setEditProg(s.id); setProgValue(s.programme); setCustomMonths(String(s.customMonths || "")); }} className="editable">
+                        {progLabel(s)}
+                      </span>
+                    )}
+                  </td>
+                  <td>{s.classMode === "ONLINE" ? "Online" : "Physical"}</td>
+                  <td>{s.attendanceCount} / {s.programme === "FIVE_MONTH" ? 22 : s.programme === "SIX_MONTH" ? 26 : (s.customMonths || 6) * 4}</td>
                   <td>{s.startDate ? new Date(s.startDate).toLocaleDateString() : ""}</td>
+                  <td>
+                    <button className="btn" onClick={() => void openChat(s.id)}>
+                      Chat ({s.messageCount})
+                    </button>
+                    <button className="btn danger" onClick={() => revoke(s.id)} disabled={busy === s.id}>
+                      Revoke
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {chatOpen && approved.some((s) => s.id === chatOpen) && (
+            <div className="admin-chat-panel standalone">
+              <h4>Chat with {approved.find((s) => s.id === chatOpen)?.fullName}</h4>
+              <div className="student-msg-list">
+                {chatMessages.length === 0 && <p className="muted">No messages yet.</p>}
+                {chatMessages.map((m) => (
+                  <div key={m.id} className={`student-msg ${m.fromAdmin ? "from-admin" : "from-student"}`}>
+                    <span className="student-msg__label">{m.fromAdmin ? "You (Admin)" : "Student"}</span>
+                    <p className="student-msg__body">{m.body}</p>
+                    <time className="student-msg__time">{new Date(m.createdAt).toLocaleString()}</time>
+                  </div>
+                ))}
+              </div>
+              <div className="student-msg-input">
+                <input type="text" value={chatBody} onChange={(e) => setChatBody(e.target.value)}
+                  placeholder="Reply..." maxLength={500} disabled={chatBusy} className="form-input"
+                  onKeyDown={(e) => { if (e.key === "Enter") void sendChatMsg(); }} />
+                <button className="btn primary" onClick={() => void sendChatMsg()} disabled={!chatBody.trim() || chatBusy}>Send</button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
@@ -142,18 +319,47 @@ export function AdminStudentsPage() {
           <h3 className="ops-section-title">Rejected ({rejected.length})</h3>
           <table className="ops-table">
             <thead>
-              <tr><th>Name</th><th>Email</th><th>Programme</th></tr>
+              <tr><th>Name</th><th>Email</th><th>Programme</th><th>Actions</th></tr>
             </thead>
             <tbody>
               {rejected.map((s) => (
                 <tr key={s.id}>
                   <td>{s.fullName}</td>
                   <td>{s.user.email}</td>
-                  <td>{s.programme === "FIVE_MONTH" ? "5M" : "6M"}</td>
+                  <td>{progLabel(s)}</td>
+                  <td>
+                    <button className="btn primary" onClick={() => reconsider(s.id)} disabled={busy === s.id}>
+                      Reconsider
+                    </button>
+                    <button className="btn" onClick={() => void openChat(s.id)}>
+                      Chat ({s.messageCount})
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {chatOpen && rejected.some((s) => s.id === chatOpen) && (
+            <div className="admin-chat-panel standalone">
+              <h4>Chat with {rejected.find((s) => s.id === chatOpen)?.fullName}</h4>
+              <div className="student-msg-list">
+                {chatMessages.length === 0 && <p className="muted">No messages yet.</p>}
+                {chatMessages.map((m) => (
+                  <div key={m.id} className={`student-msg ${m.fromAdmin ? "from-admin" : "from-student"}`}>
+                    <span className="student-msg__label">{m.fromAdmin ? "You (Admin)" : "Student"}</span>
+                    <p className="student-msg__body">{m.body}</p>
+                    <time className="student-msg__time">{new Date(m.createdAt).toLocaleString()}</time>
+                  </div>
+                ))}
+              </div>
+              <div className="student-msg-input">
+                <input type="text" value={chatBody} onChange={(e) => setChatBody(e.target.value)}
+                  placeholder="Reply..." maxLength={500} disabled={chatBusy} className="form-input"
+                  onKeyDown={(e) => { if (e.key === "Enter") void sendChatMsg(); }} />
+                <button className="btn primary" onClick={() => void sendChatMsg()} disabled={!chatBody.trim() || chatBusy}>Send</button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
