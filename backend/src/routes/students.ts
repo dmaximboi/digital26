@@ -248,10 +248,7 @@ studentsRouter.post("/student/attendance", authLimiter, requireAuth, async (req:
     }
 
     const totalWeeks = programmeWeeks(profile.programme, profile.customMonths);
-    const now = new Date();
-    const startMs = profile.startDate.getTime();
-    const elapsedMs = now.getTime() - startMs;
-    const currentWeek = Math.floor(elapsedMs / (7 * 24 * 60 * 60 * 1000)) + 1;
+    const currentWeek = calendarWeekNumber(profile.startDate);
 
     if (currentWeek < 1) {
       res.status(400).json({ error: "Programme has not started yet" });
@@ -298,8 +295,7 @@ studentsRouter.get("/student/attendance", requireAuth, async (req: AuthedRequest
     const totalWeeks = programmeWeeks(profile.programme, profile.customMonths);
     let currentWeek = 0;
     if (profile.startDate) {
-      const elapsedMs = Date.now() - profile.startDate.getTime();
-      currentWeek = Math.max(1, Math.floor(elapsedMs / (7 * 24 * 60 * 60 * 1000)) + 1);
+      currentWeek = Math.max(1, calendarWeekNumber(profile.startDate));
     }
 
     const records = await prisma.attendance.findMany({
@@ -666,4 +662,20 @@ studentsRouter.get("/ops/students/:id/attendance", requireAdmin, async (req, res
 function programmeWeeks(programme: string, customMonths: number | null): number {
   if (programme === "CUSTOM" && customMonths) return customMonths * 4;
   return programme === "FIVE_MONTH" ? 22 : 26;
+}
+
+function startOfWeekMonday(d: Date): Date {
+  const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function calendarWeekNumber(startDate: Date, now = new Date()): number {
+  const startWeek = startOfWeekMonday(startDate);
+  const nowWeek = startOfWeekMonday(now);
+  const diffMs = nowWeek.getTime() - startWeek.getTime();
+  return Math.floor(diffMs / (7 * 24 * 60 * 60 * 1000)) + 1;
 }

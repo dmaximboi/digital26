@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { apiFetch, apiPostForm } from "../lib/authApi";
+import { compressImage } from "../lib/compressImage";
 import { setPageMeta } from "../lib/seo";
 
 type Programme = "FIVE_MONTH" | "SIX_MONTH";
@@ -40,15 +41,24 @@ export function ApplyPage() {
     if (user?.email) setFullName(user.name || "");
   }, [user]);
 
-  function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handlePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
-    setPhoto(file);
-    if (file) {
+    if (!file) {
+      setPhoto(null);
+      setPhotoPreview(null);
+      return;
+    }
+    setError("");
+    try {
+      const compressed = await compressImage(file);
+      setPhoto(compressed);
       const reader = new FileReader();
       reader.onload = () => setPhotoPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    } else {
+      reader.readAsDataURL(compressed);
+    } catch (err) {
+      setPhoto(null);
       setPhotoPreview(null);
+      setError(err instanceof Error ? err.message : "Could not process photo");
     }
   }
 

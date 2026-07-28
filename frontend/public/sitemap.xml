@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://digital26.online/</loc>
+    <loc>https://www.digital26.online/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://digital26.online/about</loc>
+    <loc>https://www.digital26.online/about</loc>
     <changefreq>monthly</changefreq>
     <priority>0.85</priority>
   </url>
   <url>
-    <loc>https://digital26.online/verify</loc>
+    <loc>https://www.digital26.online/verify</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://digital26.online/check-agreement</loc>
+    <loc>https://www.digital26.online/check-agreement</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://digital26.online/contact</loc>
+    <loc>https://www.digital26.online/contact</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://digital26.online/llms.txt</loc>
+    <loc>https://www.digital26.online/privacy</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://www.digital26.online/terms</loc>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://www.digital26.online/llms.txt</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>

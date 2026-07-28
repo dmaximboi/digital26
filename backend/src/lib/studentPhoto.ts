@@ -5,6 +5,7 @@ import ImageKit, { toFile } from "@imagekit/nodejs";
 import sharp from "sharp";
 import { env } from "../config/env.js";
 
+const TARGET_BYTES = 300 * 1024;
 
 export function studentPhotoPublicPath(filename: string): string {
   return `/api/public/files/students/${filename}`;
@@ -15,10 +16,6 @@ export function studentPhotoAbsoluteUrl(publicPath: string): string {
   return `${env.API_URL.replace(/\/$/, "")}${publicPath}`;
 }
 
-/**
- * Returns an ImageKit URL with on-the-fly transforms for display.
- * Only applies to ImageKit-hosted URLs; local paths are returned as-is.
- */
 export function optimizedPhotoUrl(url: string, width = 400, quality = 70): string {
   if (!url.startsWith("http") || !url.includes("imagekit.io")) return url;
   const sep = url.includes("?") ? "&" : "?";
@@ -36,6 +33,49 @@ function getImageKit() {
   return new ImageKit({ privateKey: env.IMAGEKIT_PRIVATE_KEY });
 }
 
+async function compressToTarget(tempPath: string, maxBytes = TARGET_BYTES): Promise<Buffer> {
+  let width = 800;
+  let height = 1000;
+  let quality = 75;
+
+  let best: Buffer | null = null;
+
+  for (let attempt = 0; attempt < 14; attempt++) {
+    const buf = await sharp(tempPath)
+      .rotate()
+      .resize(width, height, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality, mozjpeg: true, chromaSubsampling: "4:2:0" })
+      .toBuffer();
+
+    best = buf;
+    if (buf.length <= maxBytes) return buf;
+
+    if (quality > 40) {
+      quality = Math.max(38, quality - 8);
+    } else {
+      width = Math.max(240, Math.round(width * 0.82));
+      height = Math.max(240, Math.round(height * 0.82));
+      quality = 68;
+    }
+  }
+
+  if (best && best.length > maxBytes) {
+    width = 220;
+    height = 280;
+    quality = 32;
+    best = await sharp(tempPath)
+      .rotate()
+      .resize(width, height, { fit: "inside", withoutEnlargement: true })
+      .jpeg({ quality, mozjpeg: true, chromaSubsampling: "4:2:0" })
+      .toBuffer();
+  }
+
+  if (!best || best.length > maxBytes) {
+    throw new Error("Image could not be compressed to 300KB");
+  }
+
+  return best;
+}
 
 export async function compressAndStoreStudentPhoto(
   tempPath: string,
@@ -43,17 +83,11 @@ export async function compressAndStoreStudentPhoto(
   opts?: { folder?: string; tags?: string[]; publicKind?: "students" | "evidence" },
 ): Promise<{ filename: string; diskPath?: string; publicPath: string }> {
   const filename = `${Date.now()}-portrait.jpg`;
-  const compressed = await sharp(tempPath)
-    .rotate()
-    .resize(600, 750, { fit: "inside", withoutEnlargement: true })
-    .jpeg({ quality: 65, mozjpeg: true })
-    .toBuffer();
+  const compressed = await compressToTarget(tempPath);
 
   try {
     await unlink(tempPath);
-  } catch {
-    
-  }
+  } catch {}
 
   if (imagekitEnabled()) {
     const client = getImageKit();
@@ -93,7 +127,6 @@ export async function compressAndStoreStudentPhoto(
   };
 }
 
-
 export async function loadPhotoBytes(opts: {
   photoPath?: string;
   photoUrl?: string;
@@ -120,7 +153,6 @@ export async function loadPhotoBytes(opts: {
     return null;
   }
 }
-
 
 export function openLocalPhotoStream(diskPath: string) {
   return createReadStream(diskPath);

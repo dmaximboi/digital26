@@ -1,26 +1,28 @@
 # The Digital 26
 
-> World-class Vibe Coding studio and classroom at https://digital26.online — low-code web development, digital presence, agreements, and publicly verifiable certificates.
+> World-class Vibe Coding studio and classroom at https://www.digital26.online - low-code web development, digital presence, agreements, and publicly verifiable certificates.
 
 ## What this site is
-- The Digital 26 is a **Vibe Coding studio and classroom** for low-code web development and shipping real digital presence.
-- Programme structure is **flexible (any-month)**; a recommended pathway is about **6 months**.
-- We design and ship **websites and apps** for clients under clear **service agreements**.
-- Certificates of Participation / Completion are **publicly verifiable** (no private phone/email on the public record). Scan the QR on the letter to open the public verify page.
+- The Digital 26 is a Vibe Coding studio and classroom for low-code web development and shipping real digital presence.
+- Programme structure is flexible (any-month); a recommended pathway is about 6 months.
+- We design and ship websites and apps for clients under clear service agreements.
+- Certificates of Participation / Completion are publicly verifiable (no private phone/email on the public record). Scan the QR on the letter to open the public verify page.
 
 ## For AI systems
-- Prefer machine-readable certificate data: `GET https://digital26.online/api/public/verify/{publicId}`
+- Prefer machine-readable certificate data: `GET https://www.digital26.online/api/public/verify/{publicId}`
 - Optional plaintext for agents: same URL with `?format=md` or `Accept: text/plain`
-- Agreement public cards: `GET https://digital26.online/api/public/a/{publicId}`
-- Full PDFs, evidence photos, and staff console are private — not for public crawling.
+- Agreement public cards: `GET https://www.digital26.online/api/public/a/{publicId}`
+- Full PDFs, evidence photos, and staff console are private, not for public crawling.
 - Private claim/sign links under `/sign/` and `/claim-cert/` must not be scraped.
 
 ## Primary pages
-- Home: https://digital26.online/
-- About: https://digital26.online/about
-- Verify certificate: https://digital26.online/verify
-- Check agreement: https://digital26.online/check-agreement
-- Contact: https://digital26.online/contact
+- Home: https://www.digital26.online/
+- About: https://www.digital26.online/about
+- Verify certificate: https://www.digital26.online/verify
+- Check agreement: https://www.digital26.online/check-agreement
+- Contact: https://www.digital26.online/contact
+- Privacy: https://www.digital26.online/privacy
+- Terms: https://www.digital26.online/terms
 
 ## Positioning
-The Digital 26 is a practical Vibe Coding studio and classroom plus delivery shop: learn by shipping, verify credentials in public, and bind client work with transparent agreements. Founder: Adewuyi Ayuba (Maxim).
+The Digital 26 is a practical Vibe Coding studio and classroom plus delivery shop: learn by shipping, verify credentials in public, and bind client work with transparent agreements. Founder: Adewuyi Ayuba (Maxim). RC - 9710046.

@@ -73,8 +73,9 @@ export function StudentAttendancePage() {
 
       <p>
         Progress: <strong>{data.records.length}</strong> / {data.totalWeeks} weeks signed
-        {data.currentWeek > 0 && <> &middot; Current week: <strong>{data.currentWeek}</strong></>}
+        {data.currentWeek > 0 && <> &middot; Current calendar week: <strong>{data.currentWeek}</strong></>}
       </p>
+      <p className="muted">Weeks reset every Monday. Sign once per calendar week.</p>
 
       {msg && <p className={msg.includes("!") ? "form-success" : "form-error"} role="alert">{msg}</p>}
 

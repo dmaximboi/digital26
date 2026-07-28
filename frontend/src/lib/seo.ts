@@ -1,5 +1,5 @@
 const SITE = (
-  import.meta.env.VITE_PUBLIC_SITE_URL || "https://digital26.online"
+  import.meta.env.VITE_PUBLIC_SITE_URL || "https://www.digital26.online"
 ).replace(/\/$/, "");
 
 const DEFAULT_DESC =
