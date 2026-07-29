@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/authApi";
 
 type Msg = {
@@ -13,6 +14,8 @@ type Msg = {
 };
 
 export function AdminMessagesPage() {
+  const { user } = useAuth();
+  const canWrite = Boolean(user?.canWrite);
   const [items, setItems] = useState<Msg[]>([]);
   const [unread, setUnread] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +68,7 @@ export function AdminMessagesPage() {
   function toggle(id: string) {
     setOpenId((cur) => (cur === id ? null : id));
     const msg = items.find((m) => m.id === id);
-    if (msg && !msg.readAt) void markRead(id);
+    if (canWrite && msg && !msg.readAt) void markRead(id);
   }
 
   return (
@@ -106,14 +109,16 @@ export function AdminMessagesPage() {
                     <a className="btn" href={`mailto:${m.email}`}>
                       Reply by email
                     </a>
-                    <button
-                      type="button"
-                      className="btn"
-                      disabled={busy === m.id}
-                      onClick={() => void remove(m.id)}
-                    >
-                      Delete
-                    </button>
+                    {canWrite && (
+                      <button
+                        type="button"
+                        className="btn"
+                        disabled={busy === m.id}
+                        onClick={() => void remove(m.id)}
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

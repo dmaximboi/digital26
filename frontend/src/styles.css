@@ -1425,6 +1425,45 @@ dd {
 .rejection-note { margin-top: 1rem; padding: 1rem; background: rgba(255,107,99,.06); border-radius: 10px; border-left: 3px solid var(--danger); }
 
 .dashboard-approved { max-width: 640px; margin: 2rem auto; }
+.progress-hub {
+  margin: 1.5rem 0 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid rgba(255, 158, 0, 0.28);
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(255, 158, 0, 0.08), rgba(255, 255, 255, 0.02));
+}
+.progress-hub__stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+.progress-hub__label {
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.2rem;
+}
+.progress-hub__value {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  color: var(--text);
+}
+.progress-hub__bar {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.progress-hub__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+.progress-hub__hint { margin: 0.65rem 0 0; font-size: 0.85rem; }
 .dashboard-cards { display: grid; gap: 1rem; margin-top: 1.5rem; }
 @media (min-width: 540px) { .dashboard-cards { grid-template-columns: 1fr 1fr; } }
 .dashboard-card {

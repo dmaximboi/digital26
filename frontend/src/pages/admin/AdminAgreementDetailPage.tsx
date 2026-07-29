@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
 import { apiDownload, apiFetch } from "../../lib/authApi";
 import { EvidenceGallery } from "../../components/EvidenceGallery";
 
@@ -31,6 +32,8 @@ type Detail = {
 type Contact = { email: string | null; phone: string | null };
 
 export function AdminAgreementDetailPage() {
+  const { user } = useAuth();
+  const canWrite = Boolean(user?.canWrite);
   const { id = "" } = useParams();
   const [data, setData] = useState<Detail | null>(null);
   const [contact, setContact] = useState<Contact | null>(null);
@@ -94,10 +97,12 @@ export function AdminAgreementDetailPage() {
               <>
                 {contact.email ?? "n/a"} · {contact.phone ?? "n/a"}
               </>
-            ) : (
+            ) : canWrite ? (
               <button type="button" className="btn" disabled={revealBusy} onClick={() => void reveal()}>
                 {revealBusy ? "Revealing…" : "Reveal email / phone"}
               </button>
+            ) : (
+              <span className="muted">Hidden (read-only)</span>
             )}
           </dd>
         </div>

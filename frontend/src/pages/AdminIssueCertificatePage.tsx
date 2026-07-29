@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 import { apiFetch, apiPostForm } from "../lib/authApi";
 import { DocBrandHeader } from "../components/BrandMark";
 import { compressImage } from "../lib/compressImage";
@@ -23,6 +25,7 @@ type IssueResult = {
 };
 
 export function AdminIssueCertificatePage() {
+  const { user, loading: authLoading } = useAuth();
   const [students, setStudents] = useState<ApprovedStudent[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [type, setType] = useState("COMPLETION");
@@ -33,11 +36,15 @@ export function AdminIssueCertificatePage() {
   const [loadingStudents, setLoadingStudents] = useState(true);
 
   useEffect(() => {
+    if (!user?.canWrite) return;
     apiFetch<{ items: ApprovedStudent[] }>("/api/ops/approved-students")
       .then((d) => setStudents(d.items))
       .catch((e) => setError(e.message))
       .finally(() => setLoadingStudents(false));
-  }, []);
+  }, [user?.canWrite]);
+
+  if (authLoading) return <p className="muted">Loading...</p>;
+  if (!user?.canWrite) return <Navigate to="/admin/certificates" replace />;
 
   const selected = students.find((s) => s.id === selectedId) ?? null;
 

@@ -1,4 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext";
 import { apiPostForm } from "../lib/authApi";
 import { DocBrandHeader } from "../components/BrandMark";
 import { compressImage } from "../lib/compressImage";
@@ -15,6 +17,7 @@ type CreateResult = {
 };
 
 export function AdminCreateAgreementPage() {
+  const { user, loading: authLoading } = useAuth();
   const [clientEmail, setClientEmail] = useState("");
   const [clientName, setClientName] = useState("");
   const [proofs, setProofs] = useState<File[]>([]);
@@ -25,6 +28,9 @@ export function AdminCreateAgreementPage() {
   useEffect(() => {
     document.title = "Create agreement | The Digital 26";
   }, []);
+
+  if (authLoading) return <p className="muted">Loading...</p>;
+  if (!user?.canWrite) return <Navigate to="/admin/agreements" replace />;
 
   async function onProofs(list: FileList | null) {
     if (!list) {

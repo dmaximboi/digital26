@@ -7,12 +7,22 @@ import type { AuthedRequest } from "../middleware/requireAuth.js";
 import { compressAndStoreStudentPhoto } from "../lib/studentPhoto.js";
 import { authLimiter } from "../middleware/security.js";
 import { issueEmailOtp, verifyEmailOtp } from "../lib/otp.js";
-import { sendOtpEmail } from "../lib/mail.js";
+import { sendOtpEmail, sendStudentDecisionEmail } from "../lib/mail.js";
 import { writeAudit } from "../lib/audit.js";
 import multer from "multer";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 import { env } from "../config/env.js";
+
+function programmeLabel(programme: string, customMonths: number | null): string {
+  if (programme === "CUSTOM" && customMonths) return `${customMonths}-Month Custom`;
+  return programme === "FIVE_MONTH" ? "5-Month Accelerated" : "6-Month Standard";
+}
+
+function studentDashboardUrl(): string {
+  const base = (env.PUBLIC_SITE_URL || env.APP_URL || "https://www.digital26.online").replace(/\/$/, "");
+  return `${base}/dashboard`;
+}
 
 export const studentsRouter = Router();
 
@@ -319,6 +329,10 @@ const chatSchema = z.object({ body: z.string().min(1).max(500) });
 studentsRouter.post("/student/chat", authLimiter, requireAuth, async (req: AuthedRequest, res) => {
   try {
     const isAdmin = req.userRole === "ADMIN" || req.userRole === "READONLY";
+    if (req.userRole === "READONLY") {
+      res.status(403).json({ error: "Read-only admins cannot post to class chat" });
+      return;
+    }
     if (!isAdmin) {
       const profile = await prisma.studentProfile.findUnique({
         where: { userId: req.userId! },
@@ -443,7 +457,10 @@ studentsRouter.get("/ops/students", requireAdmin, async (_req, res) => {
 studentsRouter.post("/ops/students/:id/approve", authLimiter, requireAdminWrite, async (req: AuthedRequest, res) => {
   try {
     const id = String(req.params.id);
-    const profile = await prisma.studentProfile.findUnique({ where: { id } });
+    const profile = await prisma.studentProfile.findUnique({
+      where: { id },
+      include: { user: { select: { email: true } } },
+    });
     if (!profile) {
       res.status(404).json({ error: "Student not found" });
       return;
@@ -463,6 +480,14 @@ studentsRouter.post("/ops/students/:id/approve", authLimiter, requireAdminWrite,
 
     await writeAudit({ adminEmail: req.userEmail!, action: "student.approve", targetId: id });
 
+    void sendStudentDecisionEmail({
+      to: profile.user.email,
+      fullName: profile.fullName,
+      decision: "approved",
+      programmeLabel: programmeLabel(profile.programme, profile.customMonths),
+      dashboardUrl: studentDashboardUrl(),
+    }).catch((err) => console.error("[ops.students.approve.email]", err));
+
     res.json({ ok: true, status: "APPROVED", startDate });
   } catch (err) {
     console.error("[ops.students.approve]", err);
@@ -474,7 +499,10 @@ studentsRouter.post("/ops/students/:id/reject", authLimiter, requireAdminWrite, 
   try {
     const id = String(req.params.id);
     const note = typeof req.body?.note === "string" ? req.body.note.trim() : null;
-    const profile = await prisma.studentProfile.findUnique({ where: { id } });
+    const profile = await prisma.studentProfile.findUnique({
+      where: { id },
+      include: { user: { select: { email: true } } },
+    });
     if (!profile) {
       res.status(404).json({ error: "Student not found" });
       return;
@@ -491,6 +519,15 @@ studentsRouter.post("/ops/students/:id/reject", authLimiter, requireAdminWrite, 
     });
 
     await writeAudit({ adminEmail: req.userEmail!, action: "student.reject", targetId: id });
+
+    void sendStudentDecisionEmail({
+      to: profile.user.email,
+      fullName: profile.fullName,
+      decision: "rejected",
+      programmeLabel: programmeLabel(profile.programme, profile.customMonths),
+      rejectionNote: note,
+      dashboardUrl: studentDashboardUrl(),
+    }).catch((err) => console.error("[ops.students.reject.email]", err));
 
     res.json({ ok: true, status: "REJECTED" });
   } catch (err) {

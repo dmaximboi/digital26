@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/authApi";
 
 type StorageStats = {
@@ -14,6 +15,8 @@ type StorageStats = {
 };
 
 export function AdminStoragePage() {
+  const { user } = useAuth();
+  const canWrite = Boolean(user?.canWrite);
   const [stats, setStats] = useState<StorageStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState("");
@@ -177,58 +180,66 @@ export function AdminStoragePage() {
         </div>
       )}
 
-      <section className="storage-actions">
-        <h3>Maintenance (safe)</h3>
-        <p className="muted">
-          Deletes expired OTP codes and site visits older than 30 days, then clears in-memory cache.
-          This lowers Neon egress without removing real student or cert data.
-        </p>
-        <button className="btn primary" type="button" disabled={Boolean(busy)} onClick={() => void maintain()}>
-          {busy === "maintain" ? "Running..." : "Run maintenance"}
-        </button>
-      </section>
+      {canWrite ? (
+        <>
+          <section className="storage-actions">
+            <h3>Maintenance (safe)</h3>
+            <p className="muted">
+              Deletes expired OTP codes and site visits older than 30 days, then clears in-memory cache.
+              This lowers Neon egress without removing real student or cert data.
+            </p>
+            <button className="btn primary" type="button" disabled={Boolean(busy)} onClick={() => void maintain()}>
+              {busy === "maintain" ? "Running..." : "Run maintenance"}
+            </button>
+          </section>
 
-      <section className="storage-actions">
-        <h3>Delete one ImageKit image</h3>
-        <div className="student-msg-input">
-          <input
-            className="form-input"
-            value={deleteUrl}
-            onChange={(e) => setDeleteUrl(e.target.value)}
-            placeholder="https://ik.imagekit.io/..."
-            disabled={Boolean(busy)}
-          />
-          <button className="btn" type="button" disabled={Boolean(busy) || !deleteUrl.trim()} onClick={() => void deleteOne()}>
-            {busy === "delete" ? "Deleting..." : "Delete"}
-          </button>
-        </div>
-      </section>
+          <section className="storage-actions">
+            <h3>Delete one ImageKit image</h3>
+            <div className="student-msg-input">
+              <input
+                className="form-input"
+                value={deleteUrl}
+                onChange={(e) => setDeleteUrl(e.target.value)}
+                placeholder="https://ik.imagekit.io/..."
+                disabled={Boolean(busy)}
+              />
+              <button className="btn" type="button" disabled={Boolean(busy) || !deleteUrl.trim()} onClick={() => void deleteOne()}>
+                {busy === "delete" ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </section>
 
-      <section className="storage-actions danger-zone">
-        <h3>Full wipe (except admin)</h3>
-        <p className="muted">
-          Removes certificates, agreements, people, students, chats, contact messages, visits, OTPs,
-          audit logs, local uploads, and ImageKit media. Keeps admin allowlist and admin/readonly users.
+          <section className="storage-actions danger-zone">
+            <h3>Full wipe (except admin)</h3>
+            <p className="muted">
+              Removes certificates, agreements, people, students, chats, contact messages, visits, OTPs,
+              audit logs, local uploads, and ImageKit media. Keeps admin allowlist and admin/readonly users.
+            </p>
+            <label className="form-label">
+              Type WIPE to confirm
+              <input
+                className="form-input"
+                value={confirmText}
+                onChange={(e) => setConfirmText(e.target.value)}
+                disabled={Boolean(busy)}
+                placeholder="WIPE"
+              />
+            </label>
+            <button
+              className="btn danger"
+              type="button"
+              disabled={Boolean(busy) || confirmText !== "WIPE"}
+              onClick={() => void wipe()}
+            >
+              {busy === "wipe" ? "Wiping..." : "Wipe all content"}
+            </button>
+          </section>
+        </>
+      ) : (
+        <p className="muted" style={{ marginTop: "1.5rem" }}>
+          Read-only access — storage cleanup actions are hidden.
         </p>
-        <label className="form-label">
-          Type WIPE to confirm
-          <input
-            className="form-input"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            disabled={Boolean(busy)}
-            placeholder="WIPE"
-          />
-        </label>
-        <button
-          className="btn danger"
-          type="button"
-          disabled={Boolean(busy) || confirmText !== "WIPE"}
-          onClick={() => void wipe()}
-        >
-          {busy === "wipe" ? "Wiping..." : "Wipe all content"}
-        </button>
-      </section>
+      )}
     </div>
   );
 }

@@ -66,6 +66,8 @@ export function StudentChatPage() {
     }
   }
 
+  const isAdmin = user?.role === "ADMIN" || user?.role === "READONLY";
+  const canPost = isAdmin ? Boolean(user?.canWrite) : true;
   const isUnlimited = user?.role === "ADMIN" || user?.role === "READONLY";
 
   if (loading) {
@@ -74,10 +76,13 @@ export function StudentChatPage() {
 
   return (
     <section className="panel chat-page">
-      <Link to="/dashboard" className="back-link">&larr; Dashboard</Link>
+      <Link to={isAdmin ? "/admin" : "/dashboard"} className="back-link">&larr; {isAdmin ? "Admin" : "Dashboard"}</Link>
       <h1>Class Chat</h1>
       {user?.role !== "ADMIN" && user?.role !== "READONLY" && (
         <p className="muted">Messages remaining today: <strong>{remaining}</strong> / 10</p>
+      )}
+      {isAdmin && !canPost && (
+        <p className="muted">Read-only access — you can view chat but not post.</p>
       )}
 
       <div className="chat-messages">
@@ -103,20 +108,22 @@ export function StudentChatPage() {
 
       {error && <p className="form-error" role="alert">{error}</p>}
 
-      <form className="chat-input" onSubmit={send}>
-        <input
-          type="text"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder={isUnlimited || remaining > 0 ? "Type a message..." : "Daily limit reached"}
-          maxLength={500}
-          disabled={(!isUnlimited && remaining <= 0) || busy}
-          className="form-input"
-        />
-        <button type="submit" className="btn primary" disabled={!body.trim() || busy || (!isUnlimited && remaining <= 0)}>
-          Send
-        </button>
-      </form>
+      {canPost ? (
+        <form className="chat-input" onSubmit={send}>
+          <input
+            type="text"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder={isUnlimited || remaining > 0 ? "Type a message..." : "Daily limit reached"}
+            maxLength={500}
+            disabled={(!isUnlimited && remaining <= 0) || busy}
+            className="form-input"
+          />
+          <button type="submit" className="btn primary" disabled={!body.trim() || busy || (!isUnlimited && remaining <= 0)}>
+            Send
+          </button>
+        </form>
+      ) : null}
     </section>
   );
 }

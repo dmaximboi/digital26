@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/authApi";
 
 type Person = {
@@ -23,6 +24,8 @@ type Person = {
 type Contact = { email: string | null; phone: string | null };
 
 export function AdminClientsPage() {
+  const { user } = useAuth();
+  const canWrite = Boolean(user?.canWrite);
   const [items, setItems] = useState<Person[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<Record<string, Contact>>({});
@@ -71,7 +74,7 @@ export function AdminClientsPage() {
                 <>
                   {revealed[p.id]?.email ?? "n/a"} · {revealed[p.id]?.phone ?? "no phone"}
                 </>
-              ) : (
+              ) : canWrite ? (
                 <button
                   type="button"
                   className="btn"
@@ -80,6 +83,8 @@ export function AdminClientsPage() {
                 >
                   {busyId === p.id ? "Revealing…" : "Reveal contact"}
                 </button>
+              ) : (
+                <span className="muted">Hidden (read-only)</span>
               )}
             </p>
             <p>

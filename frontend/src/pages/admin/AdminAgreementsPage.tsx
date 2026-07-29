@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
 import { apiDownload, apiFetch } from "../../lib/authApi";
 
 type Item = {
@@ -18,6 +19,8 @@ type Item = {
 };
 
 export function AdminAgreementsPage() {
+  const { user } = useAuth();
+  const canWrite = Boolean(user?.canWrite);
   const [q, setQ] = useState("");
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -54,9 +57,11 @@ export function AdminAgreementsPage() {
             first.
           </p>
         </div>
-        <Link className="btn primary" to={`/admin/agreements/new`}>
-          New agreement + proofs
-        </Link>
+        {canWrite && (
+          <Link className="btn primary" to={`/admin/agreements/new`}>
+            New agreement + proofs
+          </Link>
+        )}
       </div>
 
       <div className="lookup-row" style={{ marginBottom: "1rem" }}>

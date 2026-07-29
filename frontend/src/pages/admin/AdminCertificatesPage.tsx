@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
 import { apiDownload, apiFetch } from "../../lib/authApi";
 import { EvidenceGallery } from "../../components/EvidenceGallery";
 
@@ -26,6 +27,8 @@ type Item = {
 };
 
 export function AdminCertificatesPage() {
+  const { user } = useAuth();
+  const canWrite = Boolean(user?.canWrite);
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -91,9 +94,11 @@ export function AdminCertificatesPage() {
             automatically.
           </p>
         </div>
-        <Link className="btn primary" to={`/admin/certificates/new`}>
-          Issue Certificate
-        </Link>
+        {canWrite && (
+          <Link className="btn primary" to={`/admin/certificates/new`}>
+            Issue Certificate
+          </Link>
+        )}
       </div>
 
       {error && <p className="status error">{error}</p>}
@@ -165,7 +170,7 @@ export function AdminCertificatesPage() {
                     )}
                   </td>
                   <td>
-                    {c.status === "VALID" && c.publicId && (
+                    {canWrite && c.status === "VALID" && c.publicId && (
                       <button
                         type="button"
                         className="btn"

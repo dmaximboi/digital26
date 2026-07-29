@@ -24,6 +24,13 @@ type StudentMsg = {
   createdAt: string;
 };
 
+type Progress = {
+  records: Array<{ weekNumber: number; signedAt: string }>;
+  totalWeeks: number;
+  currentWeek: number;
+  startDate: string | null;
+};
+
 export function StudentDashboardPage() {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
@@ -32,6 +39,7 @@ export function StudentDashboardPage() {
   const [messages, setMessages] = useState<StudentMsg[]>([]);
   const [msgBody, setMsgBody] = useState("");
   const [msgBusy, setMsgBusy] = useState(false);
+  const [progress, setProgress] = useState<Progress | null>(null);
 
   useEffect(() => {
     setPageMeta({ title: "Dashboard The Digital 26", description: "Your student dashboard." });
@@ -62,6 +70,13 @@ export function StudentDashboardPage() {
     apiFetch<{ messages: StudentMsg[] }>("/api/student/messages")
       .then((d) => setMessages(d.messages))
       .catch(() => {});
+  }, [profile]);
+
+  useEffect(() => {
+    if (!profile || profile.status !== "APPROVED") return;
+    apiFetch<Progress>("/api/student/attendance")
+      .then(setProgress)
+      .catch(() => setProgress(null));
   }, [profile]);
 
   async function sendMessage() {
@@ -191,6 +206,15 @@ export function StudentDashboardPage() {
     );
   }
 
+  const signed = progress?.records.length ?? 0;
+  const totalWeeks = progress?.totalWeeks ?? 0;
+  const currentWeek = progress?.currentWeek ?? 0;
+  const weeksElapsed = totalWeeks > 0 ? Math.min(Math.max(currentWeek, 0), totalWeeks) : 0;
+  const attendancePct =
+    weeksElapsed > 0 ? Math.round((signed / weeksElapsed) * 100) : 0;
+  const programmePct =
+    totalWeeks > 0 ? Math.min(100, Math.round((weeksElapsed / totalWeeks) * 100)) : 0;
+
   return (
     <section className="panel dashboard-approved">
       <h1>Welcome, {profile.fullName}!</h1>
@@ -201,6 +225,31 @@ export function StudentDashboardPage() {
 
       {profile.startDate && (
         <p className="muted">Started: {new Date(profile.startDate).toLocaleDateString()}</p>
+      )}
+
+      {progress && totalWeeks > 0 && (
+        <div className="progress-hub" aria-label="Programme progress">
+          <div className="progress-hub__stats">
+            <div>
+              <span className="progress-hub__label">Week</span>
+              <strong className="progress-hub__value">
+                {Math.min(Math.max(currentWeek, 1), totalWeeks)} / {totalWeeks}
+              </strong>
+            </div>
+            <div>
+              <span className="progress-hub__label">Attendance</span>
+              <strong className="progress-hub__value">
+                {signed} signed · {attendancePct}%
+              </strong>
+            </div>
+          </div>
+          <div className="progress-hub__bar" role="progressbar" aria-valuenow={programmePct} aria-valuemin={0} aria-valuemax={100}>
+            <span style={{ width: `${programmePct}%` }} />
+          </div>
+          <p className="muted progress-hub__hint">
+            Programme {programmePct}% through · attendance rate based on weeks so far
+          </p>
+        </div>
       )}
 
       <div className="dashboard-cards">

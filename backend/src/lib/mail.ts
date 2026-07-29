@@ -191,3 +191,53 @@ export async function sendCertificateClaimEmail(opts: {
   });
   return { delivered: result.delivered, error: result.error };
 }
+
+export async function sendStudentDecisionEmail(opts: {
+  to: string;
+  fullName: string;
+  decision: "approved" | "rejected";
+  programmeLabel: string;
+  rejectionNote?: string | null;
+  dashboardUrl: string;
+}): Promise<{ delivered: boolean; error?: string }> {
+  if (opts.decision === "approved") {
+    const result = await trySendMail({
+      to: opts.to,
+      subject: "You're approved — Digital 26",
+      text: [
+        `Hi ${opts.fullName},`,
+        "",
+        "Great news — your Digital 26 application has been approved.",
+        `Programme: ${opts.programmeLabel}`,
+        "",
+        "Sign in to your dashboard to track attendance and join class chat:",
+        opts.dashboardUrl,
+        "",
+        "Welcome aboard,",
+        "The Digital 26 team",
+      ].join("\n"),
+    });
+    return { delivered: result.delivered, error: result.error };
+  }
+
+  const noteLines = opts.rejectionNote?.trim()
+    ? ["", `Note from admin: ${opts.rejectionNote.trim()}`]
+    : [];
+  const contactUrl = opts.dashboardUrl.replace(/\/dashboard\/?$/, "/contact");
+  const result = await trySendMail({
+    to: opts.to,
+    subject: "Update on your Digital 26 application",
+    text: [
+      `Hi ${opts.fullName},`,
+      "",
+      "Unfortunately, your Digital 26 application was not approved at this time.",
+      ...noteLines,
+      "",
+      "If you have questions, reply to this email or use the contact form on our site:",
+      contactUrl,
+      "",
+      "The Digital 26 team",
+    ].join("\n"),
+  });
+  return { delivered: result.delivered, error: result.error };
+}

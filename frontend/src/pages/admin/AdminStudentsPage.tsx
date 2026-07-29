@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/authApi";
 
 type StudentItem = {
@@ -28,6 +29,8 @@ type StudentMsg = {
 };
 
 export function AdminStudentsPage() {
+  const { user } = useAuth();
+  const canWrite = Boolean(user?.canWrite);
   const [items, setItems] = useState<StudentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
@@ -163,6 +166,7 @@ export function AdminStudentsPage() {
     <div>
       <div className="ops-page-head">
         <h2 className="ops-page-title">Students</h2>
+        {!canWrite && <p className="muted">Read-only access — approve and edit actions are hidden.</p>}
       </div>
 
       {error && <p className="form-error">{error}</p>}
@@ -189,12 +193,16 @@ export function AdminStudentsPage() {
                   <p className="muted">Applied: {new Date(s.createdAt).toLocaleDateString()}</p>
                 </div>
                 <div className="student-card__actions">
-                  <button className="btn primary" onClick={() => approve(s.id)} disabled={busy === s.id}>
-                    Approve
-                  </button>
-                  <button className="btn danger" onClick={() => reject(s.id)} disabled={busy === s.id}>
-                    Reject
-                  </button>
+                  {canWrite && (
+                    <>
+                      <button className="btn primary" onClick={() => approve(s.id)} disabled={busy === s.id}>
+                        Approve
+                      </button>
+                      <button className="btn danger" onClick={() => reject(s.id)} disabled={busy === s.id}>
+                        Reject
+                      </button>
+                    </>
+                  )}
                   <button className="btn" onClick={() => void openChat(s.id)}>
                     {chatOpen === s.id ? "Close chat" : `Chat (${s.messageCount})`}
                   </button>
@@ -211,21 +219,23 @@ export function AdminStudentsPage() {
                         </div>
                       ))}
                     </div>
-                    <div className="student-msg-input">
-                      <input
-                        type="text"
-                        value={chatBody}
-                        onChange={(e) => setChatBody(e.target.value)}
-                        placeholder="Reply to student..."
-                        maxLength={500}
-                        disabled={chatBusy}
-                        className="form-input"
-                        onKeyDown={(e) => { if (e.key === "Enter") void sendChatMsg(); }}
-                      />
-                      <button className="btn primary" onClick={() => void sendChatMsg()} disabled={!chatBody.trim() || chatBusy}>
-                        Send
-                      </button>
-                    </div>
+                    {canWrite && (
+                      <div className="student-msg-input">
+                        <input
+                          type="text"
+                          value={chatBody}
+                          onChange={(e) => setChatBody(e.target.value)}
+                          placeholder="Reply to student..."
+                          maxLength={500}
+                          disabled={chatBusy}
+                          className="form-input"
+                          onKeyDown={(e) => { if (e.key === "Enter") void sendChatMsg(); }}
+                        />
+                        <button className="btn primary" onClick={() => void sendChatMsg()} disabled={!chatBody.trim() || chatBusy}>
+                          Send
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -255,7 +265,7 @@ export function AdminStudentsPage() {
                   <td>{s.fullName}</td>
                   <td>{s.user.email}</td>
                   <td>
-                    {editProg === s.id ? (
+                    {canWrite && editProg === s.id ? (
                       <div className="inline-edit">
                         <select value={progValue} onChange={(e) => setProgValue(e.target.value)}>
                           <option value="FIVE_MONTH">5-Month</option>
@@ -270,7 +280,10 @@ export function AdminStudentsPage() {
                         <button className="btn" onClick={() => setEditProg(null)}>Cancel</button>
                       </div>
                     ) : (
-                      <span onClick={() => { setEditProg(s.id); setProgValue(s.programme); setCustomMonths(String(s.customMonths || "")); }} className="editable">
+                      <span
+                        onClick={canWrite ? () => { setEditProg(s.id); setProgValue(s.programme); setCustomMonths(String(s.customMonths || "")); } : undefined}
+                        className={canWrite ? "editable" : undefined}
+                      >
                         {progLabel(s)}
                       </span>
                     )}
@@ -282,9 +295,11 @@ export function AdminStudentsPage() {
                     <button className="btn" onClick={() => void openChat(s.id)}>
                       Chat ({s.messageCount})
                     </button>
-                    <button className="btn danger" onClick={() => revoke(s.id)} disabled={busy === s.id}>
-                      Revoke
-                    </button>
+                    {canWrite && (
+                      <button className="btn danger" onClick={() => revoke(s.id)} disabled={busy === s.id}>
+                        Revoke
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -303,12 +318,14 @@ export function AdminStudentsPage() {
                   </div>
                 ))}
               </div>
-              <div className="student-msg-input">
-                <input type="text" value={chatBody} onChange={(e) => setChatBody(e.target.value)}
-                  placeholder="Reply..." maxLength={500} disabled={chatBusy} className="form-input"
-                  onKeyDown={(e) => { if (e.key === "Enter") void sendChatMsg(); }} />
-                <button className="btn primary" onClick={() => void sendChatMsg()} disabled={!chatBody.trim() || chatBusy}>Send</button>
-              </div>
+              {canWrite && (
+                <div className="student-msg-input">
+                  <input type="text" value={chatBody} onChange={(e) => setChatBody(e.target.value)}
+                    placeholder="Reply..." maxLength={500} disabled={chatBusy} className="form-input"
+                    onKeyDown={(e) => { if (e.key === "Enter") void sendChatMsg(); }} />
+                  <button className="btn primary" onClick={() => void sendChatMsg()} disabled={!chatBody.trim() || chatBusy}>Send</button>
+                </div>
+              )}
             </div>
           )}
         </>
@@ -328,9 +345,11 @@ export function AdminStudentsPage() {
                   <td>{s.user.email}</td>
                   <td>{progLabel(s)}</td>
                   <td>
-                    <button className="btn primary" onClick={() => reconsider(s.id)} disabled={busy === s.id}>
-                      Reconsider
-                    </button>
+                    {canWrite && (
+                      <button className="btn primary" onClick={() => reconsider(s.id)} disabled={busy === s.id}>
+                        Reconsider
+                      </button>
+                    )}
                     <button className="btn" onClick={() => void openChat(s.id)}>
                       Chat ({s.messageCount})
                     </button>
@@ -352,12 +371,14 @@ export function AdminStudentsPage() {
                   </div>
                 ))}
               </div>
-              <div className="student-msg-input">
-                <input type="text" value={chatBody} onChange={(e) => setChatBody(e.target.value)}
-                  placeholder="Reply..." maxLength={500} disabled={chatBusy} className="form-input"
-                  onKeyDown={(e) => { if (e.key === "Enter") void sendChatMsg(); }} />
-                <button className="btn primary" onClick={() => void sendChatMsg()} disabled={!chatBody.trim() || chatBusy}>Send</button>
-              </div>
+              {canWrite && (
+                <div className="student-msg-input">
+                  <input type="text" value={chatBody} onChange={(e) => setChatBody(e.target.value)}
+                    placeholder="Reply..." maxLength={500} disabled={chatBusy} className="form-input"
+                    onKeyDown={(e) => { if (e.key === "Enter") void sendChatMsg(); }} />
+                  <button className="btn primary" onClick={() => void sendChatMsg()} disabled={!chatBody.trim() || chatBusy}>Send</button>
+                </div>
+              )}
             </div>
           )}
         </>

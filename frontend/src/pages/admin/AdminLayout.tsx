@@ -33,6 +33,7 @@ export function AdminLayout() {
     return <Navigate to="/dashboard" replace />;
   }
 
+  const canWrite = user.canWrite;
   const links = [
     { to: "/admin", label: "Dashboard", end: true as const },
     { to: "/admin/students", label: "Students" },
@@ -44,8 +45,12 @@ export function AdminLayout() {
     { to: "/admin/storage", label: "Storage" },
     { to: "/admin/clients", label: "Clients" },
     { to: "/admin/audit", label: "Audit" },
-    { to: "/admin/agreements/new", label: "New agreement" },
-    { to: "/admin/certificates/new", label: "Issue cert" },
+    ...(canWrite
+      ? [
+          { to: "/admin/agreements/new", label: "New agreement" },
+          { to: "/admin/certificates/new", label: "Issue cert" },
+        ]
+      : []),
   ];
 
   return (
@@ -54,7 +59,7 @@ export function AdminLayout() {
         <div className="ops-top__brand">
           <BrandMark size="sm" showText />
           <div>
-            <p className="eyebrow">Admin Panel</p>
+            <p className="eyebrow">Admin Panel{!canWrite ? " · Read-only" : ""}</p>
             <p className="muted ops-top__email">{user.email}</p>
           </div>
         </div>

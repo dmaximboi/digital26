@@ -112,6 +112,7 @@ authRouter.post("/auth/google", authLimiter, async (req, res) => {
         role: user.role,
         studentStatus: user.student?.status ?? null,
         hasProfile: Boolean(user.student),
+        canWrite: isEnvAdmin || isDbAdmin,
       },
     });
   } catch (err) {
