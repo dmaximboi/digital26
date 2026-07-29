@@ -1,9 +1,10 @@
 import { createReadStream } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
-import ImageKit, { toFile } from "@imagekit/nodejs";
+import { toFile } from "@imagekit/nodejs";
 import sharp from "sharp";
 import { env } from "../config/env.js";
+import { getImageKit, imagekitEnabled } from "./imagekit.js";
 
 const TARGET_BYTES = 300 * 1024;
 
@@ -22,22 +23,10 @@ export function optimizedPhotoUrl(url: string, width = 400, quality = 70): strin
   return `${url}${sep}tr=w-${width},q-${quality},f-webp`;
 }
 
-function imagekitEnabled(): boolean {
-  return Boolean(env.IMAGEKIT_PRIVATE_KEY && env.IMAGEKIT_URL_ENDPOINT);
-}
-
-function getImageKit() {
-  if (!env.IMAGEKIT_PRIVATE_KEY) {
-    throw new Error("IMAGEKIT_PRIVATE_KEY is not set");
-  }
-  return new ImageKit({ privateKey: env.IMAGEKIT_PRIVATE_KEY });
-}
-
 async function compressToTarget(tempPath: string, maxBytes = TARGET_BYTES): Promise<Buffer> {
   let width = 800;
   let height = 1000;
   let quality = 75;
-
   let best: Buffer | null = null;
 
   for (let attempt = 0; attempt < 14; attempt++) {
@@ -81,7 +70,7 @@ export async function compressAndStoreStudentPhoto(
   tempPath: string,
   uploadDir: string,
   opts?: { folder?: string; tags?: string[]; publicKind?: "students" | "evidence" },
-): Promise<{ filename: string; diskPath?: string; publicPath: string }> {
+): Promise<{ filename: string; diskPath?: string; publicPath: string; fileId?: string }> {
   const filename = `${Date.now()}-portrait.jpg`;
   const compressed = await compressToTarget(tempPath);
 
@@ -109,6 +98,7 @@ export async function compressAndStoreStudentPhoto(
     return {
       filename: result.name || filename,
       publicPath: url,
+      fileId: (result as { fileId?: string }).fileId,
     };
   }
 
@@ -157,3 +147,5 @@ export async function loadPhotoBytes(opts: {
 export function openLocalPhotoStream(diskPath: string) {
   return createReadStream(diskPath);
 }
+
+export { imagekitEnabled, getImageKit };

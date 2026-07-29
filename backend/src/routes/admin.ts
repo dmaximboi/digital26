@@ -8,6 +8,12 @@ import { buildAgreementPdf, buildCertificatePdf } from "../lib/pdf.js";
 import { isValidPublicId } from "../lib/publicId.js";
 import { studentPhotoAbsoluteUrl } from "../lib/studentPhoto.js";
 import { env } from "../config/env.js";
+import {
+  getStorageStats,
+  runStorageMaintenance,
+  wipeContentKeepAdmins,
+} from "../lib/storageCleanup.js";
+import { deleteImageKitByUrl } from "../lib/imagekit.js";
 
 export const adminRouter = Router();
 
@@ -522,5 +528,75 @@ adminRouter.get("/ops/files/:kind/:filename", requireAdmin, async (req, res) => 
   } catch (err) {
     console.error("[ops.files]", err);
     res.status(500).json({ error: "Failed to build PDF" });
+  }
+});
+
+adminRouter.get("/ops/storage/stats", requireAdmin, async (_req, res) => {
+  try {
+    const stats = await getStorageStats();
+    res.json(stats);
+  } catch (err) {
+    console.error("[storage.stats]", err);
+    res.status(500).json({ error: "Failed to load storage stats" });
+  }
+});
+
+adminRouter.post("/ops/storage/maintain", authLimiter, requireAdminWrite, async (req: AuthedRequest, res) => {
+  try {
+    const result = await runStorageMaintenance();
+    await writeAudit({
+      adminEmail: req.userEmail!,
+      action: "storage.maintain",
+      metadata: result,
+    });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error("[storage.maintain]", err);
+    res.status(500).json({ error: "Maintenance failed" });
+  }
+});
+
+adminRouter.post("/ops/storage/imagekit/delete", authLimiter, requireAdminWrite, async (req: AuthedRequest, res) => {
+  try {
+    const url = typeof req.body?.url === "string" ? req.body.url.trim() : "";
+    if (!url) {
+      res.status(400).json({ error: "Image URL required" });
+      return;
+    }
+    const ok = await deleteImageKitByUrl(url);
+    await writeAudit({
+      adminEmail: req.userEmail!,
+      action: "storage.imagekit_delete",
+      metadata: { url, ok },
+    });
+    res.json({ ok, url });
+  } catch (err) {
+    console.error("[storage.imagekit.delete]", err);
+    res.status(500).json({ error: "Failed to delete ImageKit file" });
+  }
+});
+
+adminRouter.post("/ops/storage/wipe", authLimiter, requireAdminWrite, async (req: AuthedRequest, res) => {
+  try {
+    const confirm = typeof req.body?.confirm === "string" ? req.body.confirm.trim() : "";
+    if (confirm !== "WIPE") {
+      res.status(400).json({ error: 'Type confirm: "WIPE" to proceed' });
+      return;
+    }
+
+    const result = await wipeContentKeepAdmins();
+    await writeAudit({
+      adminEmail: req.userEmail!,
+      action: "storage.wipe",
+      metadata: result,
+    });
+    res.json({
+      ok: true,
+      message: "Content wiped. Admin allowlist and admin accounts kept.",
+      ...result,
+    });
+  } catch (err) {
+    console.error("[storage.wipe]", err);
+    res.status(500).json({ error: "Wipe failed" });
   }
 });

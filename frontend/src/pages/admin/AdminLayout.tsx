@@ -41,6 +41,7 @@ export function AdminLayout() {
     { to: "/admin/agreements", label: "Agreements" },
     { to: "/admin/certificates", label: "Certificates" },
     { to: "/admin/chat", label: "Class Chat" },
+    { to: "/admin/storage", label: "Storage" },
     { to: "/admin/clients", label: "Clients" },
     { to: "/admin/audit", label: "Audit" },
     { to: "/admin/agreements/new", label: "New agreement" },

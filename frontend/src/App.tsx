@@ -27,6 +27,7 @@ import { AdminAuditLogPage } from "./pages/admin/AdminAuditLogPage";
 import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
 import { AdminVisitsPage } from "./pages/admin/AdminVisitsPage";
 import { AdminStudentsPage } from "./pages/admin/AdminStudentsPage";
+import { AdminStoragePage } from "./pages/admin/AdminStoragePage";
 import { AdminCreateAgreementPage } from "./pages/AdminCreateAgreementPage";
 import { AdminIssueCertificatePage } from "./pages/AdminIssueCertificatePage";
 import { useVisitorBeacon } from "./lib/visitorBeacon";
@@ -73,6 +74,7 @@ function AppRoutes() {
         <Route path="certificates" element={<AdminCertificatesPage />} />
         <Route path="certificates/new" element={<AdminIssueCertificatePage />} />
         <Route path="chat" element={<StudentChatPage />} />
+        <Route path="storage" element={<AdminStoragePage />} />
         <Route path="clients" element={<AdminClientsPage />} />
         <Route path="audit" element={<AdminAuditLogPage />} />
       </Route>

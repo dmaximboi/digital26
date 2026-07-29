@@ -2,6 +2,7 @@ import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { bootstrapStaffAllowlist } from "./lib/admins.js";
 import { isResendConfigured, mailTransportLabel } from "./lib/mail.js";
+import { runStorageMaintenance } from "./lib/storageCleanup.js";
 
 const app = createApp();
 
@@ -29,4 +30,18 @@ app.listen(env.PORT, () => {
   void bootstrapStaffAllowlist()
     .then(() => console.log("[auth] staff allowlist bootstrapped"))
     .catch((err) => console.warn("[auth] allowlist bootstrap failed:", err));
+
+  const MAINTAIN_MS = 12 * 60 * 60 * 1000;
+  const runMaintain = () => {
+    void runStorageMaintenance()
+      .then((r) =>
+        console.log(
+          `[storage] auto-maintain: otps=${r.expiredOtps} visits=${r.oldVisits}`,
+        ),
+      )
+      .catch((err) => console.warn("[storage] auto-maintain failed:", err));
+  };
+  setTimeout(runMaintain, 60_000);
+  const timer = setInterval(runMaintain, MAINTAIN_MS);
+  if (typeof timer === "object" && "unref" in timer) timer.unref();
 });
