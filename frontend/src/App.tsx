@@ -1,7 +1,8 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
+import { BottomNav } from "./components/BottomNav";
 import { HomePage } from "./pages/HomePage";
 import { VerifyPage } from "./pages/VerifyPage";
 import { CheckAgreementPage } from "./pages/CheckAgreementPage";
@@ -37,7 +38,6 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Public pages */}
       <Route path="/" element={<HomePage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/verify" element={<VerifyPage />} />
@@ -49,20 +49,16 @@ function AppRoutes() {
       <Route path="/sign/:sessionId" element={<SignPage />} />
       <Route path="/claim-cert/:sessionId" element={<ClaimCertPage />} />
 
-      {/* Legal */}
       <Route path="/privacy" element={<PrivacyPage />} />
       <Route path="/terms" element={<TermsPage />} />
 
-      {/* Auth */}
       <Route path="/signin" element={<SignInPage />} />
       <Route path="/apply" element={<ApplyPage />} />
 
-      {/* Student dashboard */}
       <Route path="/dashboard" element={<StudentDashboardPage />} />
       <Route path="/dashboard/attendance" element={<StudentAttendancePage />} />
       <Route path="/dashboard/chat" element={<StudentChatPage />} />
 
-      {/* Admin panel */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboardPage />} />
         <Route path="students" element={<AdminStudentsPage />} />
@@ -79,23 +75,32 @@ function AppRoutes() {
         <Route path="audit" element={<AdminAuditLogPage />} />
       </Route>
 
-      {/* Legacy redirects */}
       <Route path="/ops/*" element={<Navigate to="/" replace />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
 
+function Shell() {
+  const location = useLocation();
+  const isAdmin = location.pathname.startsWith("/admin");
+
+  return (
+    <div className={`app-shell${isAdmin ? " app-shell--admin" : ""}`}>
+      {!isAdmin && <SiteHeader />}
+      <main>
+        <AppRoutes />
+      </main>
+      {!isAdmin && <SiteFooter />}
+      {!isAdmin && <BottomNav />}
+    </div>
+  );
+}
+
 export function App() {
   return (
     <AuthProvider>
-      <div className="app-shell">
-        <SiteHeader />
-        <main>
-          <AppRoutes />
-        </main>
-        <SiteFooter />
-      </div>
+      <Shell />
     </AuthProvider>
   );
 }

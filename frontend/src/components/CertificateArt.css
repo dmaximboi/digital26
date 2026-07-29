@@ -80,10 +80,10 @@
 
 .d26-cert__logo {
   position: absolute;
-  top: 4.5%;
-  left: 8%;
-  width: clamp(48px, 8vw, 72px);
-  height: clamp(48px, 8vw, 72px);
+  top: 4.2%;
+  left: 7.5%;
+  width: clamp(56px, 9vw, 84px);
+  height: clamp(56px, 9vw, 84px);
   z-index: 6;
 }
 .d26-cert__logo img {
@@ -91,17 +91,18 @@
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
-  filter: drop-shadow(0 0 6px rgba(240, 165, 0, 0.3));
+  filter: drop-shadow(0 0 8px rgba(240, 165, 0, 0.35));
   background: #000;
 }
 
 .d26-cert__photo {
   position: absolute;
-  top: 4.5%;
-  right: 8%;
-  width: clamp(48px, 8vw, 72px);
-  height: clamp(56px, 9vw, 84px);
-  border: 1.5px solid rgba(240, 165, 0, 0.4);
+  top: 4.2%;
+  right: 7.5%;
+  width: clamp(44px, 7vw, 64px);
+  height: clamp(44px, 7vw, 64px);
+  border: 1.5px solid rgba(240, 165, 0, 0.45);
+  border-radius: 50%;
   z-index: 6;
   overflow: hidden;
   background: rgba(240, 165, 0, 0.04);
@@ -110,15 +111,17 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
 }
 .d26-cert__photo-ph {
   height: 100%;
   display: grid;
   place-items: center;
-  font-size: 0.65rem;
-  letter-spacing: 0.12em;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
+  border-radius: 50%;
 }
 
 .d26-cert__content {

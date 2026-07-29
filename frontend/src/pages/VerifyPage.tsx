@@ -4,6 +4,7 @@ import { apiGet } from "../lib/api";
 import { DocBrandHeader } from "../components/BrandMark";
 import { CertificateArt } from "../components/CertificateArt";
 import { PublicRecordQr } from "../components/PublicRecordQr";
+import { OneTimeTemplateDownload } from "../components/OneTimeTemplateDownload";
 import {
   certificateJsonLd,
   removeJsonLd,
@@ -20,6 +21,7 @@ type CertPublic = {
   issueDate: string;
   status: string;
   photoUrl?: string | null;
+  canDownloadTemplatePng?: boolean;
 };
 
 export function VerifyPage() {
@@ -130,6 +132,14 @@ export function VerifyPage() {
             />
           </div>
           <PublicRecordQr url={siteUrl(`/verify/${result.publicId}`)} />
+          <OneTimeTemplateDownload
+            kind="certificate"
+            publicId={result.publicId}
+            available={Boolean(result.canDownloadTemplatePng)}
+            onConsumed={() =>
+              setResult((prev) => (prev ? { ...prev, canDownloadTemplatePng: false } : prev))
+            }
+          />
         </div>
       )}
     </section>

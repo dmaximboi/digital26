@@ -4,6 +4,7 @@ import { apiGet } from "../lib/api";
 import { DocBrandHeader } from "../components/BrandMark";
 import { AgreementArt } from "../components/AgreementArt";
 import { PublicRecordQr } from "../components/PublicRecordQr";
+import { OneTimeTemplateDownload } from "../components/OneTimeTemplateDownload";
 
 type AgreementPublic = {
   publicId: string;
@@ -11,6 +12,7 @@ type AgreementPublic = {
   dealTag?: string | null;
   signedAt: string;
   signature: string;
+  canDownloadTemplatePng?: boolean;
 };
 
 const SITE =
@@ -96,6 +98,14 @@ export function CheckAgreementPage() {
             checkUrl={`${SITE}/check-agreement/${result.publicId}`}
           />
           <PublicRecordQr url={`${SITE}/check-agreement/${result.publicId}`} />
+          <OneTimeTemplateDownload
+            kind="agreement"
+            publicId={result.publicId}
+            available={Boolean(result.canDownloadTemplatePng)}
+            onConsumed={() =>
+              setResult((prev) => (prev ? { ...prev, canDownloadTemplatePng: false } : prev))
+            }
+          />
         </div>
       )}
     </section>

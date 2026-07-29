@@ -57,6 +57,7 @@ model Agreement {
   requestingIp    String?   @map("requesting_ip")
   passkeyAttempts Int       @default(0) @map("passkey_attempts")
   lockedUntil     DateTime? @map("locked_until")
+  templatePngDownloadedAt DateTime? @map("template_png_downloaded_at")
   createdAt       DateTime  @default(now()) @map("created_at")
 
   person Person           @relation(fields: [personId], references: [id], onDelete: Restrict)
@@ -98,6 +99,7 @@ model Certificate {
   claimSessionId String?           @unique @map("claim_session_id")
   claimExpiresAt DateTime?         @map("claim_expires_at")
   claimedAt      DateTime?         @map("claimed_at")
+  templatePngDownloadedAt DateTime? @map("template_png_downloaded_at")
   createdAt      DateTime          @default(now()) @map("created_at")
 
   person Person?             @relation(fields: [personId], references: [id], onDelete: Restrict)

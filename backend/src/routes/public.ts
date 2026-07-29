@@ -149,6 +149,20 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     return;
   }
 
+  let canDownloadTemplatePng = false;
+  try {
+    const row = await prisma.certificate.findUnique({
+      where: { publicId },
+      select: { templatePngDownloadedAt: true, status: true },
+    });
+    canDownloadTemplatePng =
+      Boolean(row) && row!.status === "VALID" && !row!.templatePngDownloadedAt;
+  } catch {
+    canDownloadTemplatePng = false;
+  }
+
+  // Download eligibility must not be long-cached
+  res.setHeader("Cache-Control", "no-store");
   res.json({
     publicId: record.publicId,
     name: record.displayName,
@@ -160,7 +174,87 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     verifyUrl: verifyUrl(record.publicId),
     issuer: "The Digital 26",
     program: "Vibe Coding",
+    canDownloadTemplatePng,
   });
+});
+
+publicRouter.get("/verify/:publicId/template-png", publicLookupLimiter, async (req, res) => {
+  const publicId = String(req.params.publicId ?? "").trim();
+  if (!isValidPublicId(publicId)) {
+    res.status(400).json({ error: "Invalid certificate ID format" });
+    return;
+  }
+
+  const claimed = await prisma.certificate.updateMany({
+    where: {
+      publicId,
+      status: "VALID",
+      templatePngDownloadedAt: null,
+    },
+    data: { templatePngDownloadedAt: new Date() },
+  });
+
+  if (claimed.count === 0) {
+    const exists = await prisma.certificate.findUnique({
+      where: { publicId },
+      select: { id: true, templatePngDownloadedAt: true },
+    });
+    if (!exists) {
+      res.status(404).json({ error: "Certificate not found" });
+      return;
+    }
+    res.status(410).json({ error: "One-time template download already used" });
+    return;
+  }
+
+  try {
+    const pub = await prisma.certificatePublic.findUnique({
+      where: { publicId },
+      select: {
+        publicId: true,
+        displayName: true,
+        course: true,
+        type: true,
+        issueDate: true,
+        status: true,
+        photoUrl: true,
+      },
+    });
+    if (!pub) {
+      await prisma.certificate.updateMany({
+        where: { publicId },
+        data: { templatePngDownloadedAt: null },
+      });
+      res.status(404).json({ error: "Certificate not found" });
+      return;
+    }
+
+    const { buildCertificateTemplatePng } = await import("../lib/certPng.js");
+    const png = await buildCertificateTemplatePng({
+      publicId: pub.publicId,
+      displayName: pub.displayName,
+      course: pub.course,
+      type: pub.type,
+      issueDate: pub.issueDate,
+      status: pub.status,
+      photoUrl: pub.photoUrl,
+    });
+
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${publicId}-template.png"`,
+    );
+    res.setHeader("Cache-Control", "no-store");
+    res.send(png);
+  } catch (err) {
+    console.error("[public.verify.template-png]", err);
+    await prisma.certificate.updateMany({
+      where: { publicId },
+      data: { templatePngDownloadedAt: null },
+    });
+    res.status(500).json({ error: "Failed to generate template PNG" });
+  }
 });
 
 publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
@@ -192,7 +286,18 @@ publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
     return;
   }
 
-  res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
+  let canDownloadTemplatePng = false;
+  try {
+    const row = await prisma.agreement.findUnique({
+      where: { publicId },
+      select: { templatePngDownloadedAt: true, consumedAt: true },
+    });
+    canDownloadTemplatePng = Boolean(row?.consumedAt) && !row!.templatePngDownloadedAt;
+  } catch {
+    canDownloadTemplatePng = false;
+  }
+
+  res.setHeader("Cache-Control", "no-store");
 
   res.json({
     publicId: record.publicId,
@@ -202,5 +307,81 @@ publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
     signedAt: record.signedAt,
     signature: record.signatureName,
     issuer: "The Digital 26",
+    canDownloadTemplatePng,
   });
+});
+
+publicRouter.get("/a/:publicId/template-png", publicLookupLimiter, async (req, res) => {
+  const publicId = String(req.params.publicId ?? "").trim();
+  if (!isValidPublicId(publicId)) {
+    res.status(400).json({ error: "Invalid agreement ID format" });
+    return;
+  }
+
+  const claimed = await prisma.agreement.updateMany({
+    where: {
+      publicId,
+      consumedAt: { not: null },
+      templatePngDownloadedAt: null,
+    },
+    data: { templatePngDownloadedAt: new Date() },
+  });
+
+  if (claimed.count === 0) {
+    const exists = await prisma.agreement.findUnique({
+      where: { publicId },
+      select: { id: true, templatePngDownloadedAt: true },
+    });
+    if (!exists) {
+      res.status(404).json({ error: "Agreement not found" });
+      return;
+    }
+    res.status(410).json({ error: "One-time template download already used" });
+    return;
+  }
+
+  try {
+    const pub = await prisma.agreementPublic.findUnique({
+      where: { publicId },
+      select: {
+        publicId: true,
+        displayName: true,
+        dealTag: true,
+        signatureName: true,
+        signedAt: true,
+      },
+    });
+    if (!pub) {
+      await prisma.agreement.updateMany({
+        where: { publicId },
+        data: { templatePngDownloadedAt: null },
+      });
+      res.status(404).json({ error: "Agreement not found" });
+      return;
+    }
+
+    const { buildAgreementTemplatePng } = await import("../lib/certPng.js");
+    const png = await buildAgreementTemplatePng({
+      publicId: pub.publicId,
+      displayName: pub.displayName,
+      dealTag: pub.dealTag,
+      signatureName: pub.signatureName,
+      signedAt: pub.signedAt,
+    });
+
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${publicId}-template.png"`,
+    );
+    res.setHeader("Cache-Control", "no-store");
+    res.send(png);
+  } catch (err) {
+    console.error("[public.agreement.template-png]", err);
+    await prisma.agreement.updateMany({
+      where: { publicId },
+      data: { templatePngDownloadedAt: null },
+    });
+    res.status(500).json({ error: "Failed to generate template PNG" });
+  }
 });

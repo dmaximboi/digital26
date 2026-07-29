@@ -162,7 +162,7 @@ export function AdminCertificatesPage() {
                           disabled={busyId === `png:${c.publicId}`}
                           onClick={() => void downloadPng(c.publicId!)}
                         >
-                          {busyId === `png:${c.publicId}` ? "..." : "4K PNG"}
+                          {busyId === `png:${c.publicId}` ? "..." : "Template PNG"}
                         </button>
                       </div>
                     ) : (
