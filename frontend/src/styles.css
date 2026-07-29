@@ -1698,6 +1698,107 @@ dd {
 }
 .storage-actions h3 { margin: 0 0 .5rem; }
 
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 2rem 1.25rem;
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(255, 158, 0, 0.14), transparent 55%),
+    #050507;
+  transform: none !important;
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+.app-splash--out {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.app-splash__glow {
+  position: absolute;
+  width: min(420px, 70vw);
+  height: min(420px, 70vw);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 158, 0, 0.18), transparent 68%);
+  filter: blur(8px);
+  pointer-events: none;
+}
+.app-splash__logo {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 28px rgba(255, 158, 0, 0.35);
+  animation: splash-pulse 1.4s ease-in-out infinite;
+}
+.app-splash__brand {
+  position: relative;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+.app-splash__meme {
+  position: relative;
+  margin: 0.35rem 0 0.5rem;
+  min-height: 1.4em;
+  max-width: 22rem;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: clamp(0.85rem, 3.4vw, 1.05rem);
+  color: #f0ebe0;
+  animation: splash-meme-in 0.22s ease;
+}
+.app-splash__bar {
+  position: relative;
+  width: min(240px, 70vw);
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.app-splash__bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #a07000, var(--accent));
+  transition: width 0.05s linear;
+}
+.app-splash__pct {
+  position: relative;
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+@keyframes splash-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+@keyframes splash-meme-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .one-time-dl {
   margin: 1.25rem auto 0;
   max-width: 28rem;

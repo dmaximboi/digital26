@@ -3,6 +3,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
 import { BottomNav } from "./components/BottomNav";
+import { AppSplash } from "./components/AppSplash";
 import { HomePage } from "./pages/HomePage";
 import { VerifyPage } from "./pages/VerifyPage";
 import { CheckAgreementPage } from "./pages/CheckAgreementPage";
@@ -87,6 +88,7 @@ function Shell() {
 
   return (
     <div className={`app-shell${isAdmin ? " app-shell--admin" : ""}`}>
+      <AppSplash />
       {!isAdmin && <SiteHeader />}
       <main>
         <AppRoutes />

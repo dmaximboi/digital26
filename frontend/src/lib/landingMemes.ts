@@ -1,0 +1,21 @@
+/** Phrases from the CodingLaptop meme snippets on the landing page. */
+export const LANDING_MEMES = [
+  'const digital26 = "vibe";',
+  'await build("web");',
+  "ship(loyal);",
+  "fn craft() {",
+  'design("site");',
+  "deploy();",
+  "agree -> build -> ship",
+  'trust = "true";',
+  "output.best();",
+  "client.wants(web);",
+  "we.deliver(loyal);",
+  "verify(publicId);",
+  "npm run build",
+  "git push origin main",
+  "live.on(digital26);",
+  "learn.vibe();",
+  "code.with(heart);",
+  "graduate.proud();",
+] as const;
