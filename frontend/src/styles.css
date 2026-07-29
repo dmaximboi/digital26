@@ -49,13 +49,14 @@ a {
 
 .app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: grid;
-  grid-template-rows: auto 1fr auto auto;
-  padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+  grid-template-rows: auto 1fr auto;
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .app-shell--admin {
-  padding-bottom: 0;
+  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .site-header,
@@ -1712,14 +1713,20 @@ dd {
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 80;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  z-index: 1000;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 0;
-  padding: 0.35rem 0.25rem calc(0.35rem + env(safe-area-inset-bottom));
-  background: rgba(8, 8, 10, 0.96);
+  padding: 0.35rem 0.25rem calc(0.35rem + env(safe-area-inset-bottom, 0px));
+  background: rgba(8, 8, 10, 0.98);
   border-top: 1px solid rgba(255, 158, 0, 0.18);
   backdrop-filter: blur(12px);
+  /* Keep bar on the viewport, never the scrolling page height */
+  transform: none !important;
+  inset-inline: 0;
 }
 .bottom-nav__item {
   display: flex;
@@ -1789,14 +1796,17 @@ dd {
 }
 
 .ops-shell--bottom-nav {
-  padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
-  position: relative;
+  padding-bottom: 1rem;
 }
 .ops-top--slim {
   margin-bottom: 0.75rem;
 }
 .bottom-nav--admin {
   width: 100%;
+}
+.bottom-nav__backdrop,
+.bottom-nav__sheet {
+  transform: none !important;
 }
 
 @media (min-width: 1100px) {

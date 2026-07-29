@@ -1,4 +1,6 @@
-import { NavLink, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
 type Tab = {
@@ -17,6 +19,17 @@ const PUBLIC_TABS: Tab[] = [
     match: (p) => p.startsWith("/check-agreement") || p.startsWith("/a/"),
   },
   { to: "/contact", label: "Contact" },
+];
+
+const ADMIN_TABS: Tab[] = [
+  { to: "/admin", label: "Home", end: true },
+  { to: "/admin/students", label: "Students" },
+  { to: "/admin/messages", label: "Inbox" },
+  {
+    to: "/admin/certificates",
+    label: "Certs",
+    match: (p) => p.startsWith("/admin/certificates"),
+  },
 ];
 
 function TabIcon({ name }: { name: string }) {
@@ -40,6 +53,7 @@ function TabIcon({ name }: { name: string }) {
         </svg>
       );
     case "Verify":
+    case "Certs":
       return (
         <svg {...common}>
           <rect x="4" y="3" width="16" height="18" rx="2" />
@@ -54,10 +68,26 @@ function TabIcon({ name }: { name: string }) {
         </svg>
       );
     case "Contact":
+    case "Inbox":
       return (
         <svg {...common}>
           <path d="M4 5h16v14H4z" />
           <path d="m4 7 8 6 8-6" />
+        </svg>
+      );
+    case "Students":
+      return (
+        <svg {...common}>
+          <circle cx="9" cy="8" r="3" />
+          <circle cx="17" cy="9" r="2.5" />
+          <path d="M3 19c1.5-3 4-4.5 6-4.5S13.5 16 15 19" />
+          <path d="M14 14.5c1.2 0 3 .8 4 3.5" />
+        </svg>
+      );
+    case "More":
+      return (
+        <svg {...common}>
+          <path d="M4 7h16M4 12h16M4 17h16" />
         </svg>
       );
     default:
@@ -76,13 +106,13 @@ function isActiveTab(tab: Tab, pathname: string): boolean {
   return pathname === tab.to || pathname.startsWith(`${tab.to}/`);
 }
 
-export function BottomNav() {
+function PublicBottomNav() {
   const { user, loading } = useAuth();
   const location = useLocation();
   const isAdmin = user?.role === "ADMIN" || user?.role === "READONLY";
   const isStudent = user?.role === "STUDENT" && user.hasProfile;
-
-  const accountTo = !loading && isAdmin ? "/admin" : !loading && (isStudent || user) ? "/dashboard" : "/signin";
+  const accountTo =
+    !loading && isAdmin ? "/admin" : !loading && (isStudent || user) ? "/dashboard" : "/signin";
   const accountLabel = !loading && isAdmin ? "Admin" : !loading && user ? "You" : "Sign in";
 
   return (
@@ -115,5 +145,114 @@ export function BottomNav() {
         <span>{accountLabel}</span>
       </NavLink>
     </nav>
+  );
+}
+
+function AdminBottomNav() {
+  const { user, signOut } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const canWrite = Boolean(user?.canWrite);
+
+  useEffect(() => {
+    setMoreOpen(false);
+  }, [location.pathname]);
+
+  return (
+    <>
+      <nav className="bottom-nav bottom-nav--admin" aria-label="Admin">
+        {ADMIN_TABS.map((tab) => (
+          <NavLink
+            key={tab.to}
+            to={tab.to}
+            end={tab.end}
+            className={() =>
+              isActiveTab(tab, location.pathname) ? "bottom-nav__item is-active" : "bottom-nav__item"
+            }
+          >
+            <TabIcon name={tab.label} />
+            <span>{tab.label}</span>
+          </NavLink>
+        ))}
+        <button
+          type="button"
+          className={moreOpen ? "bottom-nav__item is-active" : "bottom-nav__item"}
+          onClick={() => setMoreOpen((v) => !v)}
+        >
+          <TabIcon name="More" />
+          <span>More</span>
+        </button>
+      </nav>
+
+      {moreOpen && (
+        <>
+          <button
+            type="button"
+            className="bottom-nav__backdrop"
+            aria-label="Close menu"
+            onClick={() => setMoreOpen(false)}
+          />
+          <div className="bottom-nav__sheet" role="menu">
+            <NavLink to="/admin/agreements" onClick={() => setMoreOpen(false)}>
+              Agreements
+            </NavLink>
+            <NavLink to="/admin/chat" onClick={() => setMoreOpen(false)}>
+              Class Chat
+            </NavLink>
+            <NavLink to="/admin/storage" onClick={() => setMoreOpen(false)}>
+              Storage
+            </NavLink>
+            <NavLink to="/admin/clients" onClick={() => setMoreOpen(false)}>
+              Clients
+            </NavLink>
+            <NavLink to="/admin/visits" onClick={() => setMoreOpen(false)}>
+              Visitors
+            </NavLink>
+            <NavLink to="/admin/audit" onClick={() => setMoreOpen(false)}>
+              Audit
+            </NavLink>
+            {canWrite && (
+              <>
+                <NavLink to="/admin/agreements/new" onClick={() => setMoreOpen(false)}>
+                  New agreement
+                </NavLink>
+                <NavLink to="/admin/certificates/new" onClick={() => setMoreOpen(false)}>
+                  Issue cert
+                </NavLink>
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                setMoreOpen(false);
+                signOut();
+                navigate("/");
+              }}
+            >
+              Sign out
+            </button>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
+/** Viewport-fixed bottom bar (ported to body so panel transforms can't unstick it). */
+export function BottomNav() {
+  const location = useLocation();
+  const isAdminRoute = location.pathname.startsWith("/admin");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    isAdminRoute ? <AdminBottomNav /> : <PublicBottomNav />,
+    document.body,
   );
 }

@@ -92,7 +92,7 @@ function Shell() {
         <AppRoutes />
       </main>
       {!isAdmin && <SiteFooter />}
-      {!isAdmin && <BottomNav />}
+      <BottomNav />
     </div>
   );
 }
