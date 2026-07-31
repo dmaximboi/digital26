@@ -22,6 +22,7 @@ type CertPublic = {
   status: string;
   photoUrl?: string | null;
   canDownloadTemplatePng?: boolean;
+  downloadToken?: string | null;
 };
 
 export function VerifyPage() {
@@ -136,8 +137,11 @@ export function VerifyPage() {
             kind="certificate"
             publicId={result.publicId}
             available={Boolean(result.canDownloadTemplatePng)}
+            downloadToken={result.downloadToken}
             onConsumed={() =>
-              setResult((prev) => (prev ? { ...prev, canDownloadTemplatePng: false } : prev))
+              setResult((prev) =>
+                prev ? { ...prev, canDownloadTemplatePng: false, downloadToken: null } : prev,
+              )
             }
           />
         </div>

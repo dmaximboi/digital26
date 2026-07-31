@@ -13,6 +13,7 @@ type AgreementPublic = {
   signedAt: string;
   signature: string;
   canDownloadTemplatePng?: boolean;
+  downloadToken?: string | null;
 };
 
 const SITE =
@@ -68,8 +69,11 @@ export function AgreementPublicPage() {
             kind="agreement"
             publicId={result.publicId}
             available={Boolean(result.canDownloadTemplatePng)}
+            downloadToken={result.downloadToken}
             onConsumed={() =>
-              setResult((prev) => (prev ? { ...prev, canDownloadTemplatePng: false } : prev))
+              setResult((prev) =>
+                prev ? { ...prev, canDownloadTemplatePng: false, downloadToken: null } : prev,
+              )
             }
           />
         </div>

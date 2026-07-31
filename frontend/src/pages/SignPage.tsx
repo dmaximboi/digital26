@@ -3,6 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { apiGet, apiPost, apiPostForm } from "../lib/api";
 import { DocBrandHeader } from "../components/BrandMark";
 import { AgreementArt } from "../components/AgreementArt";
+import { OneTimeTemplateDownload } from "../components/OneTimeTemplateDownload";
+import { PublicRecordQr } from "../components/PublicRecordQr";
 import { compressImage } from "../lib/compressImage";
 
 type StatusResponse =
@@ -203,25 +205,7 @@ export function SignPage() {
   }
 
   if (done) {
-    return (
-      <section className="panel">
-        <h1>Agreement letter confirmed</h1>
-        <p className="lede">Your signing link has expired. Your public letter is ready.</p>
-        <article className="result-card">
-          <dl>
-            <div>
-              <dt>ID</dt>
-              <dd>{done.publicId}</dd>
-            </div>
-          </dl>
-          <p>
-            <Link className="btn primary" to={`/a/${done.publicId}`}>
-              View agreement letter
-            </Link>
-          </p>
-        </article>
-      </section>
-    );
+    return <SignedAgreementResult publicId={done.publicId} />;
   }
 
   if (!unlocked) {
@@ -400,6 +384,63 @@ export function SignPage() {
           </div>
         </aside>
       </div>
+    </section>
+  );
+}
+
+function SignedAgreementResult({ publicId }: { publicId: string }) {
+  const [data, setData] = useState<{
+    publicId: string;
+    name: string;
+    dealTag?: string | null;
+    signedAt: string;
+    signature: string;
+    canDownloadTemplatePng?: boolean;
+    downloadToken?: string | null;
+  } | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    apiGet<NonNullable<typeof data>>(`/api/public/a/${encodeURIComponent(publicId)}`)
+      .then(setData)
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load"));
+  }, [publicId]);
+
+  return (
+    <section className="panel">
+      <h1>Agreement letter confirmed</h1>
+      <p className="lede">Your signing link has expired. Your public letter is ready.</p>
+      {error && <p className="status error">{error}</p>}
+      {!data && !error && <p className="muted">Loading letter…</p>}
+      {data && (
+        <div className="verify-result">
+          <AgreementArt
+            publicId={data.publicId}
+            displayName={data.name}
+            dealTag={data.dealTag}
+            signedAt={data.signedAt}
+            signature={data.signature}
+            checkUrl={`${SITE}/check-agreement/${data.publicId}`}
+          />
+          <PublicRecordQr url={`${SITE}/check-agreement/${data.publicId}`} />
+          <OneTimeTemplateDownload
+            kind="agreement"
+            publicId={data.publicId}
+            available={Boolean(data.canDownloadTemplatePng)}
+            downloadToken={data.downloadToken}
+            onConsumed={() =>
+              setData((prev) =>
+                prev ? { ...prev, canDownloadTemplatePng: false, downloadToken: null } : prev,
+              )
+            }
+          />
+          <p style={{ marginTop: "1rem" }}>
+            <Link className="btn" to={`/a/${data.publicId}`}>
+              Open public page
+            </Link>
+          </p>
+        </div>
+      )}
     </section>
   );
 }

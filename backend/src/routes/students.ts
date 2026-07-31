@@ -9,15 +9,11 @@ import { authLimiter } from "../middleware/security.js";
 import { issueEmailOtp, verifyEmailOtp } from "../lib/otp.js";
 import { sendOtpEmail, sendStudentDecisionEmail } from "../lib/mail.js";
 import { writeAudit } from "../lib/audit.js";
+import { programmeLabel, programmeWeeks, PROGRAMME_CODES } from "../lib/programme.js";
 import multer from "multer";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 import { env } from "../config/env.js";
-
-function programmeLabel(programme: string, customMonths: number | null): string {
-  if (programme === "CUSTOM" && customMonths) return `${customMonths}-Month Custom`;
-  return programme === "FIVE_MONTH" ? "5-Month Accelerated" : "6-Month Standard";
-}
 
 function studentDashboardUrl(): string {
   const base = (env.PUBLIC_SITE_URL || env.APP_URL || "https://www.digital26.online").replace(/\/$/, "");
@@ -602,8 +598,7 @@ studentsRouter.post("/ops/students/:id/update-programme", authLimiter, requireAd
       return;
     }
 
-    const validProgrammes = ["FIVE_MONTH", "SIX_MONTH", "CUSTOM"];
-    if (!validProgrammes.includes(programme)) {
+    if (!PROGRAMME_CODES.includes(programme as (typeof PROGRAMME_CODES)[number])) {
       res.status(400).json({ error: "Invalid programme type" });
       return;
     }
@@ -695,11 +690,6 @@ studentsRouter.get("/ops/students/:id/attendance", requireAdmin, async (req, res
     res.status(500).json({ error: "Failed to load attendance" });
   }
 });
-
-function programmeWeeks(programme: string, customMonths: number | null): number {
-  if (programme === "CUSTOM" && customMonths) return customMonths * 4;
-  return programme === "FIVE_MONTH" ? 22 : 26;
-}
 
 function startOfWeekMonday(d: Date): Date {
   const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());

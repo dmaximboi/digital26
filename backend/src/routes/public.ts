@@ -4,9 +4,13 @@ import { z } from "zod";
 import { prisma } from "../db/prisma.js";
 import { env } from "../config/env.js";
 import { isValidPublicId } from "../lib/publicId.js";
-import { publicLookupLimiter, gateLimiter } from "../middleware/security.js";
+import { publicLookupLimiter, templateDownloadLimiter, gateLimiter } from "../middleware/security.js";
 import { optimizedPhotoUrl } from "../lib/studentPhoto.js";
 import { cacheFetch } from "../lib/cache.js";
+import {
+  issueTemplateDownloadToken,
+  verifyTemplateDownloadToken,
+} from "../lib/downloadToken.js";
 
 export const publicRouter = Router();
 
@@ -150,6 +154,7 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
   }
 
   let canDownloadTemplatePng = false;
+  let downloadToken: string | null = null;
   try {
     const row = await prisma.certificate.findUnique({
       where: { publicId },
@@ -157,6 +162,9 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     });
     canDownloadTemplatePng =
       Boolean(row) && row!.status === "VALID" && !row!.templatePngDownloadedAt;
+    if (canDownloadTemplatePng) {
+      downloadToken = issueTemplateDownloadToken("certificate", publicId).token;
+    }
   } catch {
     canDownloadTemplatePng = false;
   }
@@ -175,13 +183,23 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     issuer: "The Digital 26",
     program: "Vibe Coding",
     canDownloadTemplatePng,
+    downloadToken,
   });
 });
 
-publicRouter.get("/verify/:publicId/template-png", publicLookupLimiter, async (req, res) => {
+publicRouter.post(
+  "/verify/:publicId/template-png",
+  templateDownloadLimiter,
+  async (req, res) => {
   const publicId = String(req.params.publicId ?? "").trim();
   if (!isValidPublicId(publicId)) {
     res.status(400).json({ error: "Invalid certificate ID format" });
+    return;
+  }
+
+  const token = typeof req.body?.token === "string" ? req.body.token : "";
+  if (!verifyTemplateDownloadToken("certificate", publicId, token)) {
+    res.status(403).json({ error: "Invalid or expired download token" });
     return;
   }
 
@@ -246,6 +264,7 @@ publicRouter.get("/verify/:publicId/template-png", publicLookupLimiter, async (r
       `attachment; filename="${publicId}-template.png"`,
     );
     res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
     res.send(png);
   } catch (err) {
     console.error("[public.verify.template-png]", err);
@@ -287,12 +306,16 @@ publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
   }
 
   let canDownloadTemplatePng = false;
+  let downloadToken: string | null = null;
   try {
     const row = await prisma.agreement.findUnique({
       where: { publicId },
       select: { templatePngDownloadedAt: true, consumedAt: true },
     });
     canDownloadTemplatePng = Boolean(row?.consumedAt) && !row!.templatePngDownloadedAt;
+    if (canDownloadTemplatePng) {
+      downloadToken = issueTemplateDownloadToken("agreement", publicId).token;
+    }
   } catch {
     canDownloadTemplatePng = false;
   }
@@ -308,13 +331,23 @@ publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
     signature: record.signatureName,
     issuer: "The Digital 26",
     canDownloadTemplatePng,
+    downloadToken,
   });
 });
 
-publicRouter.get("/a/:publicId/template-png", publicLookupLimiter, async (req, res) => {
+publicRouter.post(
+  "/a/:publicId/template-png",
+  templateDownloadLimiter,
+  async (req, res) => {
   const publicId = String(req.params.publicId ?? "").trim();
   if (!isValidPublicId(publicId)) {
     res.status(400).json({ error: "Invalid agreement ID format" });
+    return;
+  }
+
+  const token = typeof req.body?.token === "string" ? req.body.token : "";
+  if (!verifyTemplateDownloadToken("agreement", publicId, token)) {
+    res.status(403).json({ error: "Invalid or expired download token" });
     return;
   }
 
@@ -375,6 +408,7 @@ publicRouter.get("/a/:publicId/template-png", publicLookupLimiter, async (req, r
       `attachment; filename="${publicId}-template.png"`,
     );
     res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
     res.send(png);
   } catch (err) {
     console.error("[public.agreement.template-png]", err);

@@ -5,7 +5,7 @@ import { apiFetch, apiPostForm } from "../lib/authApi";
 import { compressImage } from "../lib/compressImage";
 import { setPageMeta } from "../lib/seo";
 
-type Programme = "FIVE_MONTH" | "SIX_MONTH";
+type Programme = "THREE_MONTH" | "FOUR_MONTH" | "FIVE_MONTH" | "SIX_MONTH";
 
 export function ApplyPage() {
   const { user, loading } = useAuth();
@@ -15,7 +15,7 @@ export function ApplyPage() {
   const [phone, setPhone] = useState("");
   const [parentPhone, setParentPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [programme, setProgramme] = useState<Programme>("SIX_MONTH");
+  const [programme, setProgramme] = useState<Programme>("THREE_MONTH");
   const [classMode, setClassMode] = useState<"PHYSICAL" | "ONLINE">("PHYSICAL");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -191,6 +191,38 @@ export function ApplyPage() {
         <fieldset className="programme-choice">
           <legend>Choose Your Programme *</legend>
 
+          <label className={`programme-card ${programme === "THREE_MONTH" ? "selected" : ""}`}>
+            <input type="radio" name="programme" value="THREE_MONTH" checked={programme === "THREE_MONTH"}
+              onChange={() => setProgramme("THREE_MONTH")} />
+            <div className="programme-card__content">
+              <h3>3-Month Intensive</h3>
+              <p className="programme-card__price">Constant &amp; very much class</p>
+              <ul className="programme-card__features">
+                <li>3-year mentorship support</li>
+                <li>High-frequency live classes</li>
+                <li>Hands-on project shipping</li>
+                <li>Priority mentor access</li>
+                <li>Certificate of completion</li>
+              </ul>
+            </div>
+          </label>
+
+          <label className={`programme-card ${programme === "FOUR_MONTH" ? "selected" : ""}`}>
+            <input type="radio" name="programme" value="FOUR_MONTH" checked={programme === "FOUR_MONTH"}
+              onChange={() => setProgramme("FOUR_MONTH")} />
+            <div className="programme-card__content">
+              <h3>4-Month Advanced</h3>
+              <p className="programme-card__price">Impressive learning &amp; vast schedule</p>
+              <ul className="programme-card__features">
+                <li>2-year mentorship support</li>
+                <li>Richer curriculum than 3-month</li>
+                <li>Broader weekly schedule</li>
+                <li>1-on-1 project reviews</li>
+                <li>Certificate of completion</li>
+              </ul>
+            </div>
+          </label>
+
           <label className={`programme-card ${programme === "FIVE_MONTH" ? "selected" : ""}`}>
             <input type="radio" name="programme" value="FIVE_MONTH" checked={programme === "FIVE_MONTH"}
               onChange={() => setProgramme("FIVE_MONTH")} />
@@ -198,10 +230,10 @@ export function ApplyPage() {
               <h3>5-Month Accelerated</h3>
               <p className="programme-card__price">Intensive Vibe Coding</p>
               <ul className="programme-card__features">
-                <li>1-year lifetime mentorship included</li>
+                <li>1-year mentorship support</li>
                 <li>Priority 1-on-1 project reviews</li>
                 <li>Weekly live Q&A with mentor</li>
-                <li>Premium templates & resources</li>
+                <li>Premium templates &amp; resources</li>
                 <li>Fast-track career support</li>
               </ul>
             </div>
@@ -214,10 +246,10 @@ export function ApplyPage() {
               <h3>6-Month Standard</h3>
               <p className="programme-card__price">Complete Vibe Coding</p>
               <ul className="programme-card__features">
-                <li>Community support (no personal mentor)</li>
+                <li>6-month mentorship support</li>
                 <li>Self-paced project reviews</li>
                 <li>Recorded session access</li>
-                <li>Standard templates & resources</li>
+                <li>Standard templates &amp; resources</li>
                 <li>Certificate of completion</li>
               </ul>
             </div>

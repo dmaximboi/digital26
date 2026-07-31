@@ -9,7 +9,7 @@ type Profile = {
   fullName: string;
   phone: string;
   photoUrl: string | null;
-  programme: "FIVE_MONTH" | "SIX_MONTH" | "CUSTOM";
+  programme: "THREE_MONTH" | "FOUR_MONTH" | "FIVE_MONTH" | "SIX_MONTH" | "CUSTOM";
   customMonths: number | null;
   classMode: "PHYSICAL" | "ONLINE";
   status: "PENDING" | "APPROVED" | "REJECTED";
@@ -97,6 +97,8 @@ export function StudentDashboardPage() {
   }
 
   function programmeName(p: Profile) {
+    if (p.programme === "THREE_MONTH") return "3-Month Intensive";
+    if (p.programme === "FOUR_MONTH") return "4-Month Advanced";
     if (p.programme === "CUSTOM" && p.customMonths) return `${p.customMonths}-Month Custom`;
     return p.programme === "FIVE_MONTH" ? "5-Month Accelerated" : "6-Month Standard";
   }

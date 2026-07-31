@@ -220,6 +220,8 @@ enum StudentStatus {
 }
 
 enum ProgrammeType {
+  THREE_MONTH
+  FOUR_MONTH
   FIVE_MONTH
   SIX_MONTH
   CUSTOM

@@ -6,23 +6,32 @@ type Props = {
   kind: "certificate" | "agreement";
   publicId: string;
   available: boolean;
+  downloadToken?: string | null;
   onConsumed?: () => void;
 };
 
-export function OneTimeTemplateDownload({ kind, publicId, available, onConsumed }: Props) {
-  const [visible, setVisible] = useState(available);
+export function OneTimeTemplateDownload({
+  kind,
+  publicId,
+  available,
+  downloadToken,
+  onConsumed,
+}: Props) {
+  const [visible, setVisible] = useState(available && Boolean(downloadToken));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [token, setToken] = useState(downloadToken || "");
 
   useEffect(() => {
-    setVisible(available);
+    setVisible(available && Boolean(downloadToken));
+    setToken(downloadToken || "");
     setError("");
-  }, [available, publicId]);
+  }, [available, publicId, downloadToken]);
 
   if (!visible) return null;
 
   async function download() {
-    if (busy) return;
+    if (busy || !token) return;
     setBusy(true);
     setError("");
     try {
@@ -30,7 +39,11 @@ export function OneTimeTemplateDownload({ kind, publicId, available, onConsumed 
         kind === "certificate"
           ? `/api/public/verify/${encodeURIComponent(publicId)}/template-png`
           : `/api/public/a/${encodeURIComponent(publicId)}/template-png`;
-      const res = await fetch(`${API_BASE}${path}`);
+      const res = await fetch(`${API_BASE}${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      });
       if (res.status === 410) {
         setVisible(false);
         onConsumed?.();
@@ -60,11 +73,11 @@ export function OneTimeTemplateDownload({ kind, publicId, available, onConsumed 
 
   return (
     <div className="one-time-dl">
-      <button type="button" className="btn primary" disabled={busy} onClick={() => void download()}>
+      <button type="button" className="btn primary" disabled={busy || !token} onClick={() => void download()}>
         {busy ? "Preparing PNG…" : "Download template PNG (one time)"}
       </button>
       <p className="muted one-time-dl__hint">
-        Exact on-screen template with QR. This button disappears forever after one download.
+        Exact on-screen template with QR. Secured one-time download — button disappears forever after use.
       </p>
       {error && (
         <p className="form-error" role="alert">

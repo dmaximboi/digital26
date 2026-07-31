@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/authApi";
+import { programmeShort, programmeWeeks } from "../../lib/programme";
 
 type StudentItem = {
   id: string;
@@ -10,7 +11,7 @@ type StudentItem = {
   photoUrl: string | null;
   parentPhone: string | null;
   address: string | null;
-  programme: "FIVE_MONTH" | "SIX_MONTH" | "CUSTOM";
+  programme: "THREE_MONTH" | "FOUR_MONTH" | "FIVE_MONTH" | "SIX_MONTH" | "CUSTOM";
   customMonths: number | null;
   classMode: "PHYSICAL" | "ONLINE";
   status: "PENDING" | "APPROVED" | "REJECTED";
@@ -154,8 +155,7 @@ export function AdminStudentsPage() {
   }
 
   function progLabel(s: StudentItem) {
-    if (s.programme === "CUSTOM" && s.customMonths) return `${s.customMonths}M Custom`;
-    return s.programme === "FIVE_MONTH" ? "5M" : "6M";
+    return programmeShort(s.programme, s.customMonths);
   }
 
   const pending = items.filter((s) => s.status === "PENDING");
@@ -268,6 +268,8 @@ export function AdminStudentsPage() {
                     {canWrite && editProg === s.id ? (
                       <div className="inline-edit">
                         <select value={progValue} onChange={(e) => setProgValue(e.target.value)}>
+                          <option value="THREE_MONTH">3-Month</option>
+                          <option value="FOUR_MONTH">4-Month</option>
                           <option value="FIVE_MONTH">5-Month</option>
                           <option value="SIX_MONTH">6-Month</option>
                           <option value="CUSTOM">Custom</option>
@@ -289,7 +291,7 @@ export function AdminStudentsPage() {
                     )}
                   </td>
                   <td>{s.classMode === "ONLINE" ? "Online" : "Physical"}</td>
-                  <td>{s.attendanceCount} / {s.programme === "FIVE_MONTH" ? 22 : s.programme === "SIX_MONTH" ? 26 : (s.customMonths || 6) * 4}</td>
+                  <td>{s.attendanceCount} / {programmeWeeks(s.programme, s.customMonths)}</td>
                   <td>{s.startDate ? new Date(s.startDate).toLocaleDateString() : ""}</td>
                   <td>
                     <button className="btn" onClick={() => void openChat(s.id)}>

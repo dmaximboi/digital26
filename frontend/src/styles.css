@@ -1426,6 +1426,7 @@ dd {
 
 @media (min-width: 640px) {
   .programme-choice { grid-template-columns: 1fr 1fr; }
+  .programme-choice.class-mode-choice { grid-template-columns: 1fr 1fr; }
 }
 
 /* Student dashboard */

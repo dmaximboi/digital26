@@ -167,6 +167,14 @@ export const publicLookupLimiter = rateLimit({
   message: { error: "Too many lookup requests. Try again later." },
 });
 
+export const templateDownloadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: env.isProd ? 8 : 40,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many download attempts. Try again later." },
+});
+
 export const contactLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   max: env.isProd ? 8 : 40,

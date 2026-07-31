@@ -2,7 +2,7 @@ import { Router } from "express";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 import { z } from "zod";
-import { CertificateStatus, CertificateType, StudentStatus } from "@prisma/client";
+import { CertificateStatus, CertificateType, ProgrammeType, StudentStatus } from "@prisma/client";
 import { prisma } from "../db/prisma.js";
 import { env } from "../config/env.js";
 import { nextPublicId } from "../lib/publicId.js";
@@ -15,7 +15,9 @@ import { EvidenceKind } from "@prisma/client";
 import { evidenceUpload, storeEvidenceFiles } from "../lib/evidence.js";
 import { buildCertificatePng4k } from "../lib/certPng.js";
 import { trySendMail } from "../lib/mail.js";
-import { studentPhotoAbsoluteUrl } from "../lib/studentPhoto.js";
+import { compressAndStoreStudentPhoto, studentPhotoAbsoluteUrl } from "../lib/studentPhoto.js";
+import { programmeCourseName, PROGRAMME_CODES } from "../lib/programme.js";
+import { issueTemplateDownloadToken } from "../lib/downloadToken.js";
 
 export const certificatesRouter = Router();
 
@@ -26,6 +28,8 @@ const issueSchema = z.object({
   studentProfileId: z.string().min(1),
   type: z.nativeEnum(CertificateType),
   course: z.string().min(2).max(200).optional(),
+  programme: z.enum(["THREE_MONTH", "FOUR_MONTH", "FIVE_MONTH", "SIX_MONTH", "CUSTOM"]).optional(),
+  customMonths: z.coerce.number().int().min(1).max(24).optional(),
 });
 
 certificatesRouter.post(
@@ -35,6 +39,7 @@ certificatesRouter.post(
   (req, res, next) => {
     evidenceUpload.fields([
       { name: "together", maxCount: 1 },
+      { name: "portrait", maxCount: 1 },
     ])(req, res, (err: unknown) => {
       if (err) {
         res.status(400).json({
@@ -55,6 +60,7 @@ certificatesRouter.post(
 
       const bag = req.files as Record<string, Express.Multer.File[]> | undefined;
       const togetherFile = bag?.together?.[0];
+      const portraitFile = bag?.portrait?.[0];
       if (!togetherFile) {
         res.status(400).json({
           error: "Upload 1 photo of admin and student together",
@@ -80,15 +86,46 @@ certificatesRouter.post(
         return;
       }
 
-      const programmeName =
-        profile.programme === "FIVE_MONTH"
-          ? "5-Month Accelerated Vibe Coding"
-          : "6-Month Standard Vibe Coding";
-      const courseName = data.course || programmeName;
+      const programmeOverride =
+        data.programme && PROGRAMME_CODES.includes(data.programme)
+          ? data.programme
+          : profile.programme;
+      const customMonths =
+        programmeOverride === "CUSTOM"
+          ? (data.customMonths ?? profile.customMonths ?? null)
+          : null;
 
-      const photoUrl = profile.photoUrl
+      if (
+        data.programme &&
+        (data.programme !== profile.programme || customMonths !== profile.customMonths)
+      ) {
+        await prisma.studentProfile.update({
+          where: { id: profile.id },
+          data: {
+            programme: programmeOverride as ProgrammeType,
+            customMonths,
+          },
+        });
+      }
+
+      const courseName =
+        data.course?.trim() ||
+        programmeCourseName(programmeOverride, customMonths);
+
+      let photoUrl = profile.photoUrl
         ? (profile.photoUrl.startsWith("http") ? profile.photoUrl : studentPhotoAbsoluteUrl(profile.photoUrl))
         : null;
+
+      if (portraitFile) {
+        const stored = await compressAndStoreStudentPhoto(portraitFile.path, uploadDir);
+        photoUrl = stored.publicPath.startsWith("http")
+          ? stored.publicPath
+          : studentPhotoAbsoluteUrl(stored.publicPath);
+        await prisma.studentProfile.update({
+          where: { id: profile.id },
+          data: { photoUrl: stored.publicPath },
+        });
+      }
 
       const result = await prisma.$transaction(async (tx) => {
         const publicId = await nextPublicId(tx);
@@ -183,6 +220,7 @@ certificatesRouter.post(
         });
       } catch {}
 
+      const download = issueTemplateDownloadToken("certificate", result.publicId);
       res.status(201).json({
         ok: true,
         publicId: result.publicId,
@@ -191,8 +229,12 @@ certificatesRouter.post(
         course: courseName,
         studentName: profile.fullName,
         studentEmail: profile.user.email,
+        photoUrl,
+        issueDate: result.issueDate,
         verifyUrl,
         pdfUrl,
+        canDownloadTemplatePng: true,
+        downloadToken: download.token,
       });
     } catch (err) {
       console.error("[certificate.issue]", err);
@@ -284,6 +326,7 @@ certificatesRouter.get("/ops/approved-students", requireAdmin, async (_req, res)
         fullName: s.fullName,
         email: s.user.email,
         programme: s.programme,
+        customMonths: s.customMonths,
         photoUrl: s.photoUrl,
       })),
     });
