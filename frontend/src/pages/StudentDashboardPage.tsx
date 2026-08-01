@@ -15,6 +15,8 @@ type Profile = {
   status: "PENDING" | "APPROVED" | "REJECTED";
   rejectionNote: string | null;
   startDate: string | null;
+  registrationPaidAt?: string | null;
+  registrationPaid?: boolean;
 };
 
 type StudentMsg = {
@@ -40,6 +42,8 @@ export function StudentDashboardPage() {
   const [msgBody, setMsgBody] = useState("");
   const [msgBusy, setMsgBusy] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
+  const [payBusy, setPayBusy] = useState(false);
+  const [payError, setPayError] = useState("");
 
   useEffect(() => {
     setPageMeta({ title: "Dashboard The Digital 26", description: "Your student dashboard." });
@@ -48,6 +52,12 @@ export function StudentDashboardPage() {
   useEffect(() => {
     if (!loading && !user) navigate("/signin", { replace: true });
   }, [loading, user, navigate]);
+
+  async function refreshProfile() {
+    const d = await apiFetch<{ profile: Profile | null }>("/api/student/me");
+    setProfile(d.profile);
+    return d.profile;
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -59,10 +69,34 @@ export function StudentDashboardPage() {
       navigate("/apply", { replace: true });
       return;
     }
-    apiFetch<{ profile: Profile | null }>("/api/student/me")
-      .then((d) => setProfile(d.profile))
-      .catch(() => {})
-      .finally(() => setFetching(false));
+
+    const params = new URLSearchParams(window.location.search);
+    const checkoutId = params.get("checkout_id");
+    const paid = params.get("paid");
+
+    (async () => {
+      try {
+        if (checkoutId) {
+          await fetch(
+            `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}/api/public/payments/sync?checkout_id=${encodeURIComponent(checkoutId)}`,
+          );
+        } else if (paid === "1") {
+          await new Promise((r) => setTimeout(r, 1000));
+        }
+        await refreshProfile();
+      } catch {
+        /* ignore */
+      } finally {
+        setFetching(false);
+        if (checkoutId || paid || params.get("cancelled")) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("checkout_id");
+          url.searchParams.delete("paid");
+          url.searchParams.delete("cancelled");
+          window.history.replaceState({}, "", url.pathname);
+        }
+      }
+    })();
   }, [user, navigate]);
 
   useEffect(() => {
@@ -72,12 +106,15 @@ export function StudentDashboardPage() {
       .catch(() => {});
   }, [profile]);
 
+  const registrationPaid = Boolean(profile?.registrationPaid || profile?.registrationPaidAt);
+  const fullyActive = profile?.status === "APPROVED" && registrationPaid;
+
   useEffect(() => {
-    if (!profile || profile.status !== "APPROVED") return;
+    if (!profile || !fullyActive) return;
     apiFetch<Progress>("/api/student/attendance")
       .then(setProgress)
       .catch(() => setProgress(null));
-  }, [profile]);
+  }, [profile, fullyActive]);
 
   async function sendMessage() {
     if (!msgBody.trim() || msgBusy) return;
@@ -96,6 +133,27 @@ export function StudentDashboardPage() {
     }
   }
 
+  async function payRegistration() {
+    if (payBusy) return;
+    setPayError("");
+    setPayBusy(true);
+    try {
+      const data = await apiFetch<{
+        checkoutUrl?: string;
+        alreadyPaid?: boolean;
+      }>("/api/student/payments/registration", { method: "POST", body: "{}" });
+      if (data.alreadyPaid) {
+        await refreshProfile();
+        return;
+      }
+      if (!data.checkoutUrl) throw new Error("No checkout URL returned");
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      setPayError(err instanceof Error ? err.message : "Payment failed to start");
+      setPayBusy(false);
+    }
+  }
+
   function programmeName(p: Profile) {
     if (p.programme === "THREE_MONTH") return "3-Month Intensive";
     if (p.programme === "FOUR_MONTH") return "4-Month Advanced";
@@ -103,60 +161,44 @@ export function StudentDashboardPage() {
     return p.programme === "FIVE_MONTH" ? "5-Month Accelerated" : "6-Month Standard";
   }
 
+  function MessagesBlock() {
+    return (
+      <div className="student-msg-box">
+        <h3>Messages</h3>
+        <div className="student-msg-list">
+          {messages.length === 0 && <p className="muted">No messages yet.</p>}
+          {messages.map((m) => (
+            <div key={m.id} className={`student-msg ${m.fromAdmin ? "from-admin" : "from-student"}`}>
+              <span className="student-msg__label">{m.fromAdmin ? "Admin" : "You"}</span>
+              <p className="student-msg__body">{m.body}</p>
+              <time className="student-msg__time">{new Date(m.createdAt).toLocaleString()}</time>
+            </div>
+          ))}
+        </div>
+        <div className="student-msg-input">
+          <input
+            type="text"
+            value={msgBody}
+            onChange={(e) => setMsgBody(e.target.value)}
+            placeholder="Send a message to admin..."
+            maxLength={500}
+            disabled={msgBusy}
+            className="form-input"
+            onKeyDown={(e) => { if (e.key === "Enter") void sendMessage(); }}
+          />
+          <button className="btn primary" onClick={() => void sendMessage()} disabled={!msgBody.trim() || msgBusy}>
+            Send
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (loading || fetching) {
     return <section className="panel" aria-busy="true"><p className="muted">Loading...</p></section>;
   }
   if (!profile) {
     return <section className="panel"><p>No profile found.</p></section>;
-  }
-
-  if (profile.status === "PENDING") {
-    return (
-      <section className="panel dashboard-status pending">
-        <div className="status-icon">&#9203;</div>
-        <h1>Account Pending Review</h1>
-        <p className="lede">
-          Your application has been submitted and is under admin review.
-          You'll be able to access the class once approved.
-        </p>
-        <div className="status-details">
-          <p><strong>Name:</strong> {profile.fullName}</p>
-          <p><strong>Programme:</strong> {programmeName(profile)}</p>
-          <p><strong>Class:</strong> {profile.classMode === "ONLINE" ? "Online" : "Physical"}</p>
-        </div>
-
-        <div className="student-msg-box">
-          <h3>Messages</h3>
-          <div className="student-msg-list">
-            {messages.length === 0 && <p className="muted">No messages yet.</p>}
-            {messages.map((m) => (
-              <div key={m.id} className={`student-msg ${m.fromAdmin ? "from-admin" : "from-student"}`}>
-                <span className="student-msg__label">{m.fromAdmin ? "Admin" : "You"}</span>
-                <p className="student-msg__body">{m.body}</p>
-                <time className="student-msg__time">{new Date(m.createdAt).toLocaleString()}</time>
-              </div>
-            ))}
-          </div>
-          <div className="student-msg-input">
-            <input
-              type="text"
-              value={msgBody}
-              onChange={(e) => setMsgBody(e.target.value)}
-              placeholder="Send a message to admin..."
-              maxLength={500}
-              disabled={msgBusy}
-              className="form-input"
-              onKeyDown={(e) => { if (e.key === "Enter") void sendMessage(); }}
-            />
-            <button className="btn primary" onClick={() => void sendMessage()} disabled={!msgBody.trim() || msgBusy}>
-              Send
-            </button>
-          </div>
-        </div>
-
-        <button className="btn" onClick={signOut} style={{ marginTop: "1rem" }}>Sign out</button>
-      </section>
-    );
   }
 
   if (profile.status === "REJECTED") {
@@ -172,37 +214,75 @@ export function StudentDashboardPage() {
             <p><strong>Note from admin:</strong> {profile.rejectionNote}</p>
           </div>
         )}
+        <MessagesBlock />
+        <p className="muted">If you believe this is an error, please <Link to="/contact">contact us</Link>.</p>
+        <button className="btn" onClick={signOut} style={{ marginTop: "1rem" }}>Sign out</button>
+      </section>
+    );
+  }
 
-        <div className="student-msg-box">
-          <h3>Messages</h3>
-          <div className="student-msg-list">
-            {messages.length === 0 && <p className="muted">No messages yet.</p>}
-            {messages.map((m) => (
-              <div key={m.id} className={`student-msg ${m.fromAdmin ? "from-admin" : "from-student"}`}>
-                <span className="student-msg__label">{m.fromAdmin ? "Admin" : "You"}</span>
-                <p className="student-msg__body">{m.body}</p>
-                <time className="student-msg__time">{new Date(m.createdAt).toLocaleString()}</time>
-              </div>
-            ))}
-          </div>
-          <div className="student-msg-input">
-            <input
-              type="text"
-              value={msgBody}
-              onChange={(e) => setMsgBody(e.target.value)}
-              placeholder="Send a message to admin..."
-              maxLength={500}
-              disabled={msgBusy}
-              className="form-input"
-              onKeyDown={(e) => { if (e.key === "Enter") void sendMessage(); }}
-            />
-            <button className="btn primary" onClick={() => void sendMessage()} disabled={!msgBody.trim() || msgBusy}>
-              Send
-            </button>
-          </div>
+  if (!fullyActive) {
+    const adminDone = profile.status === "APPROVED";
+    return (
+      <section className="panel dashboard-status pending">
+        <div className="status-icon">&#9203;</div>
+        <h1>Account Pending</h1>
+        <p className="lede">
+          Complete both steps below before you can access attendance and class chat.
+        </p>
+
+        <ul className="pending-checklist">
+          <li className={adminDone ? "done" : ""}>
+            <span className="pending-checklist__mark" aria-hidden="true">
+              {adminDone ? "✓" : "1"}
+            </span>
+            <div>
+              <strong>Admin review</strong>
+              <p className="muted">
+                {adminDone
+                  ? "Approved — you are cleared by an admin."
+                  : "Your application is waiting for admin approval."}
+              </p>
+            </div>
+          </li>
+          <li className={registrationPaid ? "done" : ""}>
+            <span className="pending-checklist__mark" aria-hidden="true">
+              {registrationPaid ? "✓" : "2"}
+            </span>
+            <div>
+              <strong>Registration payment ($3 USD)</strong>
+              <p className="muted">
+                {registrationPaid
+                  ? "Paid — thank you."
+                  : "One-time fee. Charged in your local currency at checkout via Bachs."}
+              </p>
+              {!registrationPaid && (
+                <button
+                  className="btn primary"
+                  type="button"
+                  disabled={payBusy}
+                  onClick={() => void payRegistration()}
+                  style={{ marginTop: "0.75rem" }}
+                >
+                  {payBusy ? "Redirecting…" : "Pay $3 registration"}
+                </button>
+              )}
+              {payError && (
+                <p className="status error" role="alert" style={{ marginTop: "0.5rem" }}>
+                  {payError}
+                </p>
+              )}
+            </div>
+          </li>
+        </ul>
+
+        <div className="status-details">
+          <p><strong>Name:</strong> {profile.fullName}</p>
+          <p><strong>Programme:</strong> {programmeName(profile)}</p>
+          <p><strong>Class:</strong> {profile.classMode === "ONLINE" ? "Online" : "Physical"}</p>
         </div>
 
-        <p className="muted">If you believe this is an error, please <Link to="/contact">contact us</Link>.</p>
+        <MessagesBlock />
         <button className="btn" onClick={signOut} style={{ marginTop: "1rem" }}>Sign out</button>
       </section>
     );
@@ -221,7 +301,7 @@ export function StudentDashboardPage() {
     <section className="panel dashboard-approved">
       <h1>Welcome, {profile.fullName}!</h1>
       <p className="lede">
-        Your account has been approved. You are enrolled in the{" "}
+        Your account is active. You are enrolled in the{" "}
         <strong>{programmeName(profile)}</strong> programme ({profile.classMode === "ONLINE" ? "Online" : "Physical"}).
       </p>
 

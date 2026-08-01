@@ -31,9 +31,13 @@ Frontend (Vercel) needs only:
 - `VITE_PUBLIC_SITE_URL`
 - Optional: `VITE_CONSOLE_PATH` (same value as server `CONSOLE_PATH`; if unset, the client checks `/api/public/gate`)
 
-Email on Render free tier: set `RESEND_API_KEY` from https://resend.com (SMTP ports 587/465 are blocked on free Render). Until you verify `digital26.online` in Resend, use:
+Email on Render: use **Resend HTTPS API** (`RESEND_API_KEY`) — not SMTP. Render free blocks SMTP ports 587/465; Resend works because it is normal HTTPS outbound.
 
-`EMAIL_FROM=The Digital 26 <onboarding@resend.dev>`
+1. Create a key at https://resend.com
+2. Verify domain `digital26.online` in Resend → Domains
+3. Set `EMAIL_FROM=The Digital 26 <noreply@digital26.online>` (must match the verified domain)
+
+Student apply no longer needs an email OTP — Google Sign-In already verifies the address. Resend is still used for admin decision emails, agreement passkeys, etc.
 
 ## Security notes
 

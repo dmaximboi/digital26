@@ -16,6 +16,8 @@ type StudentItem = {
   classMode: "PHYSICAL" | "ONLINE";
   status: "PENDING" | "APPROVED" | "REJECTED";
   startDate: string | null;
+  registrationPaid?: boolean;
+  registrationPaidAt?: string | null;
   attendanceCount: number;
   messageCount: number;
   createdAt: string;
@@ -190,7 +192,10 @@ export function AdminStudentsPage() {
                   <p className="programme-badge">
                     {progLabel(s)} · {s.classMode === "ONLINE" ? "Online" : "Physical"}
                   </p>
-                  <p className="muted">Applied: {new Date(s.createdAt).toLocaleDateString()}</p>
+                  <p className="muted">
+                    Applied: {new Date(s.createdAt).toLocaleDateString()} ·{" "}
+                    {s.registrationPaid ? "Registration paid" : "Registration unpaid"}
+                  </p>
                 </div>
                 <div className="student-card__actions">
                   {canWrite && (
@@ -254,6 +259,7 @@ export function AdminStudentsPage() {
                 <th>Email</th>
                 <th>Programme</th>
                 <th>Class</th>
+                <th>Paid</th>
                 <th>Attendance</th>
                 <th>Started</th>
                 <th>Actions</th>
@@ -291,6 +297,7 @@ export function AdminStudentsPage() {
                     )}
                   </td>
                   <td>{s.classMode === "ONLINE" ? "Online" : "Physical"}</td>
+                  <td>{s.registrationPaid ? "Yes" : "No"}</td>
                   <td>{s.attendanceCount} / {programmeWeeks(s.programme, s.customMonths)}</td>
                   <td>{s.startDate ? new Date(s.startDate).toLocaleDateString() : ""}</td>
                   <td>

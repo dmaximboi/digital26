@@ -49,6 +49,9 @@ const envSchema = z.object({
   IMAGEKIT_URL_ENDPOINT: z.string().url().optional(),
   IMAGEKIT_FOLDER: z.string().default("digital26/students"),
   JSON_BODY_LIMIT: z.string().default("100kb"),
+  BACHS_API_KEY: z.string().optional(),
+  BACHS_WEBHOOK_SECRET: z.string().optional(),
+  BACHS_API_BASE: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

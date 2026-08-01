@@ -5,9 +5,8 @@ import { prisma } from "../db/prisma.js";
 import { requireAuth, requireAdmin, requireAdminWrite } from "../middleware/requireAuth.js";
 import type { AuthedRequest } from "../middleware/requireAuth.js";
 import { compressAndStoreStudentPhoto } from "../lib/studentPhoto.js";
-import { authLimiter } from "../middleware/security.js";
-import { issueEmailOtp, verifyEmailOtp } from "../lib/otp.js";
-import { sendOtpEmail, sendStudentDecisionEmail } from "../lib/mail.js";
+import { authLimiter, otpLimiter } from "../middleware/security.js";
+import { sendStudentDecisionEmail } from "../lib/mail.js";
 import { writeAudit } from "../lib/audit.js";
 import { programmeLabel, programmeWeeks, PROGRAMME_CODES } from "../lib/programme.js";
 import multer from "multer";
@@ -47,9 +46,10 @@ const photoUpload = multer({
   },
 });
 
+// Apply OTP endpoint kept for older clients; Google sign-in already proves email ownership.
 studentsRouter.post(
   "/student/apply/otp",
-  authLimiter,
+  otpLimiter,
   requireAuth,
   async (req: AuthedRequest, res) => {
     try {
@@ -67,20 +67,15 @@ studentsRouter.post(
         return;
       }
 
-      const issued = await issueEmailOtp({
-        email: email.toLowerCase(),
-        purpose: "student_apply",
+      // Prefer Google-verified email — no inbox delivery required to continue apply.
+      res.json({
+        ok: true,
+        skipped: true,
+        message: "Email already verified with Google. You can submit your application.",
       });
-      if ("error" in issued) {
-        res.status(429).json({ error: issued.error });
-        return;
-      }
-
-      await sendOtpEmail({ to: email, code: issued.code });
-      res.json({ ok: true, message: "Verification code sent to your email" });
     } catch (err) {
       console.error("[student.apply.otp]", err);
-      res.status(500).json({ error: "Failed to send verification code" });
+      res.status(500).json({ error: "Could not verify email status" });
     }
   },
 );
@@ -92,7 +87,8 @@ const applySchema = z.object({
   address: z.string().min(5).max(500).optional(),
   programme: z.nativeEnum(ProgrammeType),
   classMode: z.enum(["PHYSICAL", "ONLINE"]).default("PHYSICAL"),
-  otpCode: z.string().regex(/^\d{6}$/),
+  // Optional for backward compatibility; ignored (Google auth already verified email).
+  otpCode: z.string().regex(/^\d{6}$/).optional(),
 });
 
 studentsRouter.post(
@@ -112,7 +108,7 @@ studentsRouter.post(
     try {
       const parsed = applySchema.safeParse(req.body);
       if (!parsed.success) {
-        res.status(400).json({ error: "Invalid application data. Make sure all fields and OTP code are filled." });
+        res.status(400).json({ error: "Invalid application data. Make sure all required fields are filled." });
         return;
       }
 
@@ -130,14 +126,9 @@ studentsRouter.post(
         return;
       }
 
-      const email = req.userEmail!.toLowerCase();
-      const otp = await verifyEmailOtp({
-        email,
-        purpose: "student_apply",
-        code: parsed.data.otpCode,
-      });
-      if (!otp.ok) {
-        res.status(400).json({ error: otp.error });
+      // Email ownership is already proven by Google Sign-In (requireAuth + googleId).
+      if (!req.userEmail) {
+        res.status(400).json({ error: "Signed-in email is required" });
         return;
       }
 
@@ -178,11 +169,19 @@ studentsRouter.get("/student/me", requireAuth, async (req: AuthedRequest, res) =
         parentPhone: true, address: true, programme: true,
         customMonths: true, classMode: true,
         status: true, rejectionNote: true, startDate: true,
+        registrationPaidAt: true,
         createdAt: true,
       },
     });
 
-    res.json({ profile });
+    res.json({
+      profile: profile
+        ? {
+            ...profile,
+            registrationPaid: Boolean(profile.registrationPaidAt),
+          }
+        : null,
+    });
   } catch (err) {
     console.error("[student.me]", err);
     res.json({ profile: null });
@@ -244,8 +243,10 @@ studentsRouter.post("/student/attendance", authLimiter, requireAuth, async (req:
     const profile = await prisma.studentProfile.findUnique({
       where: { userId: req.userId! },
     });
-    if (!profile || profile.status !== StudentStatus.APPROVED) {
-      res.status(403).json({ error: "Only approved students can sign attendance" });
+    if (!profile || profile.status !== StudentStatus.APPROVED || !profile.registrationPaidAt) {
+      res.status(403).json({
+        error: "Only approved students who paid the registration fee can sign attendance",
+      });
       return;
     }
     if (!profile.startDate) {
@@ -333,8 +334,10 @@ studentsRouter.post("/student/chat", authLimiter, requireAuth, async (req: Authe
       const profile = await prisma.studentProfile.findUnique({
         where: { userId: req.userId! },
       });
-      if (!profile || profile.status !== StudentStatus.APPROVED) {
-        res.status(403).json({ error: "Only approved students can chat" });
+      if (!profile || profile.status !== StudentStatus.APPROVED || !profile.registrationPaidAt) {
+        res.status(403).json({
+          error: "Only approved students who paid the registration fee can chat",
+        });
         return;
       }
     }
@@ -377,8 +380,10 @@ studentsRouter.get("/student/chat", requireAuth, async (req: AuthedRequest, res)
     const isAdmin = req.userRole === "ADMIN" || req.userRole === "READONLY";
     if (!isAdmin) {
       const profile = await prisma.studentProfile.findUnique({ where: { userId: req.userId! } });
-      if (!profile || profile.status !== StudentStatus.APPROVED) {
-        res.status(403).json({ error: "Only approved students can view chat" });
+      if (!profile || profile.status !== StudentStatus.APPROVED || !profile.registrationPaidAt) {
+        res.status(403).json({
+          error: "Only approved students who paid the registration fee can view chat",
+        });
         return;
       }
     }
@@ -435,6 +440,8 @@ studentsRouter.get("/ops/students", requireAdmin, async (_req, res) => {
         classMode: s.classMode,
         status: s.status,
         startDate: s.startDate,
+        registrationPaidAt: s.registrationPaidAt,
+        registrationPaid: Boolean(s.registrationPaidAt),
         reviewedAt: s.reviewedAt,
         reviewedBy: s.reviewedBy,
         rejectionNote: s.rejectionNote,

@@ -10,11 +10,22 @@ import { adminRouter } from "./routes/admin.js";
 import { filesRouter } from "./routes/files.js";
 import { contactPublicRouter, contactAdminRouter } from "./routes/contact.js";
 import { studentsRouter } from "./routes/students.js";
+import { bachsWebhookHandler, paymentsRouter } from "./routes/payments.js";
 
 export function createApp() {
   const app = express();
 
   applySecurity(app);
+
+  // Bachs webhook needs the raw body for HMAC verification (must be before express.json).
+  app.post(
+    "/api/public/payments/bachs/webhook",
+    express.raw({ type: "application/json" }),
+    (req, res) => {
+      void bachsWebhookHandler(req, res);
+    },
+  );
+
   app.use(express.json({ limit: "64kb" }));
   app.use(express.urlencoded({ extended: false, limit: "32kb" }));
   app.use(globalLimiter);
@@ -35,6 +46,7 @@ export function createApp() {
   app.use("/api/public", publicRouter);
   app.use("/api/public", filesRouter);
   app.use("/api/public", contactPublicRouter);
+  app.use("/api", paymentsRouter);
   app.use("/api", studentsRouter);
   app.use("/api", agreementsRouter);
   app.use("/api", certificatesRouter);

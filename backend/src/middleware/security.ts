@@ -153,7 +153,7 @@ export const authLimiter = rateLimit({
 
 export const otpLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: env.isProd ? 6 : 30,
+  max: env.isProd ? 12 : 40,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many code requests. Try again later." },

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { apiFetch, apiPostForm } from "../lib/authApi";
+import { apiPostForm } from "../lib/authApi";
 import { compressImage } from "../lib/compressImage";
 import { setPageMeta } from "../lib/seo";
 
@@ -19,9 +19,6 @@ export function ApplyPage() {
   const [classMode, setClassMode] = useState<"PHYSICAL" | "ONLINE">("PHYSICAL");
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [otpBusy, setOtpBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -62,27 +59,12 @@ export function ApplyPage() {
     }
   }
 
-  async function sendOtp() {
-    if (otpBusy) return;
-    setError("");
-    setOtpBusy(true);
-    try {
-      await apiFetch("/api/student/apply/otp", { method: "POST", body: "{}", headers: { "Content-Type": "application/json" } });
-      setOtpSent(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send code");
-    } finally {
-      setOtpBusy(false);
-    }
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     if (!photo) { setError("Please upload your passport photo"); return; }
     if (!fullName.trim()) { setError("Full name is required"); return; }
     if (!phone.trim()) { setError("Phone number is required"); return; }
-    if (!otpCode || otpCode.length !== 6) { setError("Enter the 6-digit verification code"); return; }
 
     setBusy(true);
     try {
@@ -93,7 +75,6 @@ export function ApplyPage() {
       form.append("address", address.trim());
       form.append("programme", programme);
       form.append("classMode", classMode);
-      form.append("otpCode", otpCode);
       form.append("photo", photo);
 
       await apiPostForm("/api/student/apply", form);
@@ -111,49 +92,22 @@ export function ApplyPage() {
   return (
     <section className="panel apply-page">
       <h1 className="apply-title">Apply to The Digital 26</h1>
-      <p className="lede">Fill in your details to join our Vibe Coding programme. Your account will be reviewed by an admin.</p>
+      <p className="lede">
+        Fill in your details to join our Vibe Coding programme. After you apply, your account stays
+        pending until an admin approves you and you pay the $3 registration fee.
+      </p>
 
       {error && <p className="form-error" role="alert">{error}</p>}
 
       <form className="apply-form" onSubmit={handleSubmit}>
         <div className="form-row">
           <label className="form-label">
-            Email (from Google)
+            Email (verified with Google)
             <input type="email" value={user.email} disabled className="form-input" />
           </label>
-        </div>
-
-        <div className="form-row otp-verify-row">
-          <p className="form-label">Verify your email</p>
-          <div className="otp-block">
-            <button
-              className="btn"
-              type="button"
-              disabled={otpBusy || busy}
-              onClick={() => void sendOtp()}
-            >
-              {otpBusy ? "Sending..." : otpSent ? "Resend code" : "Send verification code"}
-            </button>
-            {otpSent && (
-              <p className="muted">
-                Code sent to {user.email}. Check inbox and spam folder.
-              </p>
-            )}
-            <label className="otp-code-label">
-              6-digit code
-              <input
-                className="otp-code-input"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                placeholder="000000"
-                inputMode="numeric"
-                pattern="\d{6}"
-                maxLength={6}
-                required
-                disabled={busy}
-              />
-            </label>
-          </div>
+          <p className="muted" style={{ marginTop: "0.35rem" }}>
+            No email code needed — Google Sign-In already verified this address.
+          </p>
         </div>
 
         <div className="form-row">

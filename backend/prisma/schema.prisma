@@ -25,6 +25,19 @@ enum CertificateStatus {
   REVOKED
 }
 
+enum PaymentKind {
+  REGISTRATION
+  CERTIFICATE
+  AGREEMENT
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  EXPIRED
+}
+
 model Person {
   id        String   @id @default(cuid())
   name      String
@@ -58,6 +71,7 @@ model Agreement {
   passkeyAttempts Int       @default(0) @map("passkey_attempts")
   lockedUntil     DateTime? @map("locked_until")
   templatePngDownloadedAt DateTime? @map("template_png_downloaded_at")
+  viewPaidAt      DateTime? @map("view_paid_at")
   createdAt       DateTime  @default(now()) @map("created_at")
 
   person Person           @relation(fields: [personId], references: [id], onDelete: Restrict)
@@ -100,6 +114,7 @@ model Certificate {
   claimExpiresAt DateTime?         @map("claim_expires_at")
   claimedAt      DateTime?         @map("claimed_at")
   templatePngDownloadedAt DateTime? @map("template_png_downloaded_at")
+  viewPaidAt     DateTime?         @map("view_paid_at")
   createdAt      DateTime          @default(now()) @map("created_at")
 
   person Person?             @relation(fields: [personId], references: [id], onDelete: Restrict)
@@ -265,14 +280,43 @@ model StudentProfile {
   reviewedBy      String?       @map("reviewed_by")
   rejectionNote   String?       @map("rejection_note") @db.Text
   startDate       DateTime?     @map("start_date")
+  registrationPaidAt DateTime?  @map("registration_paid_at")
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
   user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   attendance Attendance[]
   messages   StudentMessage[]
+  payments   PaymentOrder[]
 
   @@map("student_profiles")
+}
+
+model PaymentOrder {
+  id            String        @id @default(cuid())
+  kind          PaymentKind
+  status        PaymentStatus @default(PENDING)
+  amountUsd     String        @map("amount_usd")
+  currency      String        @default("USD")
+  reference     String        @unique
+  checkoutId    String?       @unique @map("checkout_id")
+  chargeId      String?       @map("charge_id")
+  customerEmail String?       @map("customer_email")
+  userId        String?       @map("user_id")
+  profileId     String?       @map("profile_id")
+  publicId      String?       @map("public_id")
+  eventId       String?       @unique @map("event_id")
+  paidAt        DateTime?     @map("paid_at")
+  metadata      Json?
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  profile StudentProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@index([publicId, kind])
+  @@index([profileId])
+  @@index([status])
+  @@map("payment_orders")
 }
 
 model StudentMessage {

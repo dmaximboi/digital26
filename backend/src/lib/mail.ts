@@ -46,6 +46,14 @@ function friendlyMailError(raw: string): string {
   if (msg.includes("not configured") || msg.includes("no email transport")) {
     return "Email is not configured. Set RESEND_API_KEY on Render and redeploy.";
   }
+  if (
+    msg.includes("only send testing emails") ||
+    msg.includes("verify a domain") ||
+    msg.includes("domain is not verified") ||
+    msg.includes("not authorized to send")
+  ) {
+    return "Email provider rejected the send. Verify your domain in Resend and set EMAIL_FROM to an address on that domain (e.g. Digital 26 <noreply@digital26.online>).";
+  }
   return raw;
 }
 
@@ -83,12 +91,15 @@ async function sendViaResend(args: SendArgs): Promise<void> {
   const body = (await res.json().catch(() => ({}))) as {
     message?: string;
     name?: string;
-    error?: { message?: string };
+    error?: string | { message?: string };
   };
 
   if (!res.ok) {
+    const nested =
+      typeof body.error === "object" && body.error ? body.error.message : undefined;
+    const flat = typeof body.error === "string" ? body.error : undefined;
     throw new Error(
-      body.error?.message || body.message || body.name || `Resend failed (${res.status})`,
+      body.message || nested || flat || body.name || `Resend failed (${res.status})`,
     );
   }
 }
@@ -156,18 +167,33 @@ export async function sendPasskeyEmail(opts: {
 }
 
 export async function sendOtpEmail(opts: { to: string; code: string }): Promise<void> {
-  const result = await trySendMail({
-    to: opts.to,
-    subject: "The Digital 26 verification code",
-    text: [
-      `Your Digital 26 verification code is: ${opts.code}`,
-      "",
-      "Enter this 6-digit code on the website. It expires in 10 minutes.",
-      "If you did not request this, ignore this email.",
-    ].join("\n"),
-  });
-  if (!result.delivered) {
-    throw new Error(result.error || "Failed to send verification email");
+  const text = [
+    `Your Digital 26 verification code is: ${opts.code}`,
+    "",
+    "Enter this 6-digit code on the website. It expires in 10 minutes.",
+    "If you did not request this, ignore this email.",
+  ].join("\n");
+
+  const html = `
+    <div style="font-family:Georgia,serif;max-width:480px;margin:0 auto;padding:24px;color:#1a1a1a">
+      <p style="margin:0 0 12px;font-size:16px">Your Digital 26 verification code:</p>
+      <p style="margin:0 0 20px;font-size:36px;letter-spacing:0.35em;font-weight:700;font-family:ui-monospace,Consolas,monospace">${opts.code}</p>
+      <p style="margin:0;font-size:14px;color:#555">Enter this 6-digit code on the website. It expires in 10 minutes.</p>
+    </div>
+  `;
+
+  // Prefer hard failure (not trySendMail) so the API can return the real Resend error.
+  try {
+    await sendMail({
+      to: opts.to,
+      subject: "The Digital 26 verification code",
+      text,
+      html,
+    });
+  } catch (err) {
+    throw new Error(
+      friendlyMailError(err instanceof Error ? err.message : "Failed to send verification email"),
+    );
   }
 }
 

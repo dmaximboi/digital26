@@ -11,6 +11,7 @@ import {
   issueTemplateDownloadToken,
   verifyTemplateDownloadToken,
 } from "../lib/downloadToken.js";
+import { PAYMENT_AMOUNTS_USD } from "../lib/payments.js";
 
 export const publicRouter = Router();
 
@@ -130,7 +131,28 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     return;
   }
 
-  let photoUrl = record.photoUrl;
+  let accessPaid = false;
+  let canDownloadTemplatePng = false;
+  let downloadToken: string | null = null;
+  try {
+    const row = await prisma.certificate.findUnique({
+      where: { publicId },
+      select: { templatePngDownloadedAt: true, status: true, viewPaidAt: true },
+    });
+    accessPaid = Boolean(row?.viewPaidAt);
+    canDownloadTemplatePng =
+      accessPaid &&
+      Boolean(row) &&
+      row!.status === "VALID" &&
+      !row!.templatePngDownloadedAt;
+    if (canDownloadTemplatePng) {
+      downloadToken = issueTemplateDownloadToken("certificate", publicId).token;
+    }
+  } catch {
+    canDownloadTemplatePng = false;
+  }
+
+  let photoUrl = accessPaid ? record.photoUrl : null;
   if (record.status !== "VALID") {
     photoUrl = null;
   } else if (photoUrl && !photoUrl.startsWith("http") && !photoUrl.startsWith("/")) {
@@ -140,7 +162,6 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     photoUrl = optimizedPhotoUrl(photoUrl, 400, 70);
   }
 
-  res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
   res.setHeader("Access-Control-Allow-Origin", "*");
 
   const wantsText =
@@ -149,39 +170,38 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     /text\/plain|text\/markdown/i.test(String(req.headers.accept ?? ""));
 
   if (wantsText) {
+    if (!accessPaid) {
+      res.type("text/markdown; charset=utf-8").send(
+        [
+          `# Certificate ${record.publicId}`,
+          "",
+          `Status: ${record.status}`,
+          `Type: ${record.type}`,
+          "",
+          `Full certificate art unlocks after a one-time $${PAYMENT_AMOUNTS_USD.CERTIFICATE} USD payment (charged in local currency at checkout).`,
+        ].join("\n"),
+      );
+      return;
+    }
     res.type("text/markdown; charset=utf-8").send(certMarkdown(record));
     return;
   }
 
-  let canDownloadTemplatePng = false;
-  let downloadToken: string | null = null;
-  try {
-    const row = await prisma.certificate.findUnique({
-      where: { publicId },
-      select: { templatePngDownloadedAt: true, status: true },
-    });
-    canDownloadTemplatePng =
-      Boolean(row) && row!.status === "VALID" && !row!.templatePngDownloadedAt;
-    if (canDownloadTemplatePng) {
-      downloadToken = issueTemplateDownloadToken("certificate", publicId).token;
-    }
-  } catch {
-    canDownloadTemplatePng = false;
-  }
-
-  // Download eligibility must not be long-cached
+  // Download / paywall eligibility must not be long-cached
   res.setHeader("Cache-Control", "no-store");
   res.json({
     publicId: record.publicId,
-    name: record.displayName,
-    course: record.course,
+    name: accessPaid ? record.displayName : "Locked",
+    course: accessPaid ? record.course : null,
     type: record.type,
-    issueDate: record.issueDate,
+    issueDate: accessPaid ? record.issueDate : null,
     status: record.status,
     photoUrl,
     verifyUrl: verifyUrl(record.publicId),
     issuer: "The Digital 26",
     program: "Vibe Coding",
+    accessPaid,
+    amountUsd: PAYMENT_AMOUNTS_USD.CERTIFICATE,
     canDownloadTemplatePng,
     downloadToken,
   });
@@ -203,10 +223,22 @@ publicRouter.post(
     return;
   }
 
+  const unpaid = await prisma.certificate.findUnique({
+    where: { publicId },
+    select: { viewPaidAt: true },
+  });
+  if (!unpaid?.viewPaidAt) {
+    res.status(402).json({
+      error: `Pay $${PAYMENT_AMOUNTS_USD.CERTIFICATE} USD to unlock this certificate before downloading`,
+    });
+    return;
+  }
+
   const claimed = await prisma.certificate.updateMany({
     where: {
       publicId,
       status: "VALID",
+      viewPaidAt: { not: null },
       templatePngDownloadedAt: null,
     },
     data: { templatePngDownloadedAt: new Date() },
@@ -305,14 +337,17 @@ publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
     return;
   }
 
+  let accessPaid = false;
   let canDownloadTemplatePng = false;
   let downloadToken: string | null = null;
   try {
     const row = await prisma.agreement.findUnique({
       where: { publicId },
-      select: { templatePngDownloadedAt: true, consumedAt: true },
+      select: { templatePngDownloadedAt: true, consumedAt: true, viewPaidAt: true },
     });
-    canDownloadTemplatePng = Boolean(row?.consumedAt) && !row!.templatePngDownloadedAt;
+    accessPaid = Boolean(row?.viewPaidAt);
+    canDownloadTemplatePng =
+      accessPaid && Boolean(row?.consumedAt) && !row!.templatePngDownloadedAt;
     if (canDownloadTemplatePng) {
       downloadToken = issueTemplateDownloadToken("agreement", publicId).token;
     }
@@ -324,12 +359,14 @@ publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
 
   res.json({
     publicId: record.publicId,
-    name: record.displayName,
-    dealType: record.dealType,
-    dealTag: record.dealTag,
-    signedAt: record.signedAt,
-    signature: record.signatureName,
+    name: accessPaid ? record.displayName : "Locked",
+    dealType: accessPaid ? record.dealType : null,
+    dealTag: accessPaid ? record.dealTag : null,
+    signedAt: accessPaid ? record.signedAt : null,
+    signature: accessPaid ? record.signatureName : null,
     issuer: "The Digital 26",
+    accessPaid,
+    amountUsd: PAYMENT_AMOUNTS_USD.AGREEMENT,
     canDownloadTemplatePng,
     downloadToken,
   });
@@ -351,10 +388,22 @@ publicRouter.post(
     return;
   }
 
+  const unpaid = await prisma.agreement.findUnique({
+    where: { publicId },
+    select: { viewPaidAt: true },
+  });
+  if (!unpaid?.viewPaidAt) {
+    res.status(402).json({
+      error: `Pay $${PAYMENT_AMOUNTS_USD.AGREEMENT} USD to unlock this agreement before downloading`,
+    });
+    return;
+  }
+
   const claimed = await prisma.agreement.updateMany({
     where: {
       publicId,
       consumedAt: { not: null },
+      viewPaidAt: { not: null },
       templatePngDownloadedAt: null,
     },
     data: { templatePngDownloadedAt: new Date() },

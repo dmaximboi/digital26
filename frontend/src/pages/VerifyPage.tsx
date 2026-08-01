@@ -1,10 +1,11 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { apiGet } from "../lib/api";
 import { DocBrandHeader } from "../components/BrandMark";
 import { CertificateArt } from "../components/CertificateArt";
 import { PublicRecordQr } from "../components/PublicRecordQr";
 import { OneTimeTemplateDownload } from "../components/OneTimeTemplateDownload";
+import { DocumentPaywall } from "../components/DocumentPaywall";
 import {
   certificateJsonLd,
   removeJsonLd,
@@ -16,11 +17,13 @@ import {
 type CertPublic = {
   publicId: string;
   name: string;
-  course: string;
+  course: string | null;
   type: string;
-  issueDate: string;
+  issueDate: string | null;
   status: string;
   photoUrl?: string | null;
+  accessPaid?: boolean;
+  amountUsd?: string;
   canDownloadTemplatePng?: boolean;
   downloadToken?: string | null;
 };
@@ -42,6 +45,31 @@ export function VerifyPage() {
     });
   }, [routeId]);
 
+  const load = useCallback(async (id: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiGet<CertPublic>(`/api/public/verify/${encodeURIComponent(id)}`);
+      setResult(data);
+      if (data.accessPaid) {
+        setJsonLd("d26-jsonld-cert", certificateJsonLd({
+          ...data,
+          course: data.course || "",
+          issueDate: data.issueDate || new Date().toISOString(),
+          name: data.name,
+        }));
+      } else {
+        removeJsonLd("d26-jsonld-cert");
+      }
+    } catch (err: unknown) {
+      setResult(null);
+      removeJsonLd("d26-jsonld-cert");
+      setError(err instanceof Error ? err.message : "Lookup failed");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!routeId) {
       setResult(null);
@@ -49,33 +77,8 @@ export function VerifyPage() {
       removeJsonLd("d26-jsonld-cert");
       return;
     }
-
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-
-    apiGet<CertPublic>(`/api/public/verify/${encodeURIComponent(routeId)}`)
-      .then((data) => {
-        if (!cancelled) {
-          setResult(data);
-          setJsonLd("d26-jsonld-cert", certificateJsonLd(data));
-        }
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          setResult(null);
-          removeJsonLd("d26-jsonld-cert");
-          setError(err instanceof Error ? err.message : "Lookup failed");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [routeId]);
+    void load(routeId);
+  }, [routeId, load]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -121,29 +124,42 @@ export function VerifyPage() {
           <p className={`badge ${result.status === "VALID" ? "ok" : "bad"}`}>
             {result.status}
           </p>
-          <div className="verify-cert-wrap">
-            <CertificateArt
+          <p className="muted">ID: {result.publicId} · {result.type}</p>
+
+          {!result.accessPaid ? (
+            <DocumentPaywall
+              kind="CERTIFICATE"
               publicId={result.publicId}
-              displayName={result.name}
-              type={result.type}
-              course={result.course}
-              issueDate={result.issueDate}
-              photoUrl={result.photoUrl}
-              verifyUrl={siteUrl(`/verify/${result.publicId}`)}
+              amountUsd={result.amountUsd || "1.00"}
+              onUnlocked={() => void load(result.publicId)}
             />
-          </div>
-          <PublicRecordQr url={siteUrl(`/verify/${result.publicId}`)} />
-          <OneTimeTemplateDownload
-            kind="certificate"
-            publicId={result.publicId}
-            available={Boolean(result.canDownloadTemplatePng)}
-            downloadToken={result.downloadToken}
-            onConsumed={() =>
-              setResult((prev) =>
-                prev ? { ...prev, canDownloadTemplatePng: false, downloadToken: null } : prev,
-              )
-            }
-          />
+          ) : (
+            <>
+              <div className="verify-cert-wrap">
+                <CertificateArt
+                  publicId={result.publicId}
+                  displayName={result.name}
+                  type={result.type}
+                  course={result.course || ""}
+                  issueDate={result.issueDate || ""}
+                  photoUrl={result.photoUrl}
+                  verifyUrl={siteUrl(`/verify/${result.publicId}`)}
+                />
+              </div>
+              <PublicRecordQr url={siteUrl(`/verify/${result.publicId}`)} />
+              <OneTimeTemplateDownload
+                kind="certificate"
+                publicId={result.publicId}
+                available={Boolean(result.canDownloadTemplatePng)}
+                downloadToken={result.downloadToken}
+                onConsumed={() =>
+                  setResult((prev) =>
+                    prev ? { ...prev, canDownloadTemplatePng: false, downloadToken: null } : prev,
+                  )
+                }
+              />
+            </>
+          )}
         </div>
       )}
     </section>
