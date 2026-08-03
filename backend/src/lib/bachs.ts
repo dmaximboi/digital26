@@ -3,7 +3,7 @@ import { env } from "../config/env.js";
 
 export type BachsCheckoutSession = {
   checkout_id: string;
-  checkout_url: string;
+  checkout_url?: string;
   status: string;
   expires_at?: string;
   created_at?: string;

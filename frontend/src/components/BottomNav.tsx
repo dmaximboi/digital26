@@ -21,6 +21,25 @@ const PUBLIC_TABS: Tab[] = [
   { to: "/contact", label: "Contact" },
 ];
 
+const STUDENT_TABS: Tab[] = [
+  { to: "/dashboard", label: "Home", end: true },
+  {
+    to: "/dashboard/payment",
+    label: "Pay",
+    match: (p) => p.startsWith("/dashboard/payment"),
+  },
+  {
+    to: "/dashboard/attendance",
+    label: "Attend",
+    match: (p) => p.startsWith("/dashboard/attendance"),
+  },
+  {
+    to: "/dashboard/chat",
+    label: "Chat",
+    match: (p) => p.startsWith("/dashboard/chat"),
+  },
+];
+
 const ADMIN_TABS: Tab[] = [
   { to: "/admin", label: "Home", end: true },
   { to: "/admin/students", label: "Students" },
@@ -75,6 +94,28 @@ function TabIcon({ name }: { name: string }) {
           <path d="m4 7 8 6 8-6" />
         </svg>
       );
+    case "Pay":
+      return (
+        <svg {...common}>
+          <rect x="3" y="6" width="18" height="12" rx="2" />
+          <path d="M3 10h18" />
+          <path d="M7 15h3" />
+        </svg>
+      );
+    case "Attend":
+      return (
+        <svg {...common}>
+          <path d="M8 7V4h8v3" />
+          <rect x="4" y="7" width="16" height="13" rx="2" />
+          <path d="m9 14 2 2 4-4" />
+        </svg>
+      );
+    case "Chat":
+      return (
+        <svg {...common}>
+          <path d="M4 5h16v11H8l-4 3V5z" />
+        </svg>
+      );
     case "Students":
       return (
         <svg {...common}>
@@ -111,6 +152,32 @@ function PublicBottomNav() {
   const location = useLocation();
   const isAdmin = user?.role === "ADMIN" || user?.role === "READONLY";
   const isStudent = user?.role === "STUDENT" && user.hasProfile;
+  const onStudentArea =
+    location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/apply");
+
+  // Signed-in students get a dedicated dashboard nav that always includes Payment.
+  if (!loading && isStudent && onStudentArea) {
+    return (
+      <nav className="bottom-nav" aria-label="Student">
+        {STUDENT_TABS.map((tab) => (
+          <NavLink
+            key={tab.to}
+            to={tab.to}
+            end={tab.end}
+            className={() =>
+              isActiveTab(tab, location.pathname)
+                ? "bottom-nav__item is-active"
+                : "bottom-nav__item"
+            }
+          >
+            <TabIcon name={tab.label} />
+            <span>{tab.label}</span>
+          </NavLink>
+        ))}
+      </nav>
+    );
+  }
+
   const accountTo =
     !loading && isAdmin ? "/admin" : !loading && (isStudent || user) ? "/dashboard" : "/signin";
   const accountLabel = !loading && isAdmin ? "Admin" : !loading && user ? "You" : "Sign in";

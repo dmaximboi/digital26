@@ -28,10 +28,21 @@ export function StudentAttendancePage() {
 
   useEffect(() => {
     if (!user) return;
+    apiFetch<{ fullyActive?: boolean; registrationPaid?: boolean }>("/api/student/payments/status")
+      .then((s) => {
+        if (!s.fullyActive) {
+          navigate(s.registrationPaid ? "/dashboard" : "/dashboard/payment", { replace: true });
+        }
+      })
+      .catch(() => {});
     apiFetch<AttendanceData>("/api/student/attendance")
       .then(setData)
-      .catch(() => {});
-  }, [user]);
+      .catch((err) => {
+        if (err instanceof Error && /paid|approved/i.test(err.message)) {
+          navigate("/dashboard/payment", { replace: true });
+        }
+      });
+  }, [user, navigate]);
 
   async function signAttendance() {
     setBusy(true);

@@ -144,6 +144,76 @@ paymentsRouter.post(
   },
 );
 
+paymentsRouter.get(
+  "/student/payments/status",
+  requireAuth,
+  async (req: AuthedRequest, res) => {
+    try {
+      const profile = await prisma.studentProfile.findUnique({
+        where: { userId: req.userId! },
+        select: {
+          id: true,
+          status: true,
+          registrationPaidAt: true,
+          fullName: true,
+          programme: true,
+          classMode: true,
+        },
+      });
+
+      if (!profile) {
+        res.status(404).json({ error: "Submit your application first" });
+        return;
+      }
+
+      const latest = await prisma.paymentOrder.findFirst({
+        where: {
+          profileId: profile.id,
+          kind: PaymentKind.REGISTRATION,
+        },
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          status: true,
+          amountUsd: true,
+          reference: true,
+          checkoutId: true,
+          paidAt: true,
+          createdAt: true,
+        },
+      });
+
+      const registrationPaid = Boolean(profile.registrationPaidAt);
+      const adminApproved = profile.status === "APPROVED";
+      const rejected = profile.status === "REJECTED";
+      const paymentsEnabled = isBachsConfigured();
+
+      res.json({
+        kind: "REGISTRATION",
+        amountUsd: PAYMENT_AMOUNTS_USD.REGISTRATION,
+        label: paymentLabel(PaymentKind.REGISTRATION),
+        registrationPaid,
+        registrationPaidAt: profile.registrationPaidAt,
+        adminApproved,
+        rejected,
+        studentStatus: profile.status,
+        paymentsEnabled,
+        canPay: paymentsEnabled && !registrationPaid && !rejected,
+        fullyActive: adminApproved && registrationPaid,
+        profile: {
+          fullName: profile.fullName,
+          programme: profile.programme,
+          classMode: profile.classMode,
+        },
+        latestOrder: latest,
+      });
+    } catch (err) {
+      console.error("[payments.status]", err);
+      res.status(500).json({ error: "Failed to load payment status" });
+    }
+  },
+);
+
 paymentsRouter.post(
   "/student/payments/registration",
   authLimiter,
@@ -165,6 +235,10 @@ paymentsRouter.post(
         res.status(404).json({ error: "Submit your application first" });
         return;
       }
+      if (profile.status === "REJECTED") {
+        res.status(403).json({ error: "Rejected applications cannot pay registration" });
+        return;
+      }
       if (profile.registrationPaidAt) {
         res.json({ ok: true, alreadyPaid: true });
         return;
@@ -174,6 +248,45 @@ paymentsRouter.post(
       if (!email) {
         res.status(400).json({ error: "Email required for payment" });
         return;
+      }
+
+      // Reuse a recent open checkout for this student (prevents checkout spam).
+      const recentOpen = await prisma.paymentOrder.findFirst({
+        where: {
+          profileId: profile.id,
+          kind: PaymentKind.REGISTRATION,
+          status: PaymentStatus.PENDING,
+          checkoutId: { not: null },
+          createdAt: { gte: new Date(Date.now() - 45 * 60 * 1000) },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (recentOpen?.checkoutId) {
+        try {
+          const remote = await getBachsCheckout(recentOpen.checkoutId);
+          const status = String(remote.status || "").toUpperCase();
+          if (status === "OPEN" && remote.checkout_url) {
+            res.json({
+              ok: true,
+              reused: true,
+              checkoutId: recentOpen.checkoutId,
+              checkoutUrl: remote.checkout_url,
+              amountUsd: recentOpen.amountUsd,
+              label: paymentLabel(PaymentKind.REGISTRATION),
+            });
+            return;
+          }
+          if (status === "COMPLETED" || status === "PAID" || status === "SUCCEEDED") {
+            await fulfillPaymentOrder({
+              checkoutId: recentOpen.checkoutId,
+              reference: recentOpen.reference,
+            });
+            res.json({ ok: true, alreadyPaid: true });
+            return;
+          }
+        } catch {
+          /* create a fresh checkout below */
+        }
       }
 
       const amountUsd = PAYMENT_AMOUNTS_USD.REGISTRATION;
@@ -196,8 +309,8 @@ paymentsRouter.post(
         amountUsd,
         customerEmail: email,
         customerName: profile.fullName || profile.user.name || email.split("@")[0] || "Student",
-        successUrl: `${siteBase()}/dashboard?paid=1`,
-        cancelUrl: `${siteBase()}/dashboard?cancelled=1`,
+        successUrl: `${siteBase()}/dashboard/payment?paid=1`,
+        cancelUrl: `${siteBase()}/dashboard/payment?cancelled=1`,
         reference,
         metadata: {
           kind: "REGISTRATION",
@@ -225,6 +338,71 @@ paymentsRouter.post(
       res.status(500).json({
         error: err instanceof Error ? err.message : "Failed to start checkout",
       });
+    }
+  },
+);
+
+/** Authenticated sync — only the owning student can confirm their registration checkout. */
+paymentsRouter.post(
+  "/student/payments/sync",
+  authLimiter,
+  requireAuth,
+  async (req: AuthedRequest, res) => {
+    try {
+      const checkoutId =
+        typeof req.body?.checkout_id === "string" ? req.body.checkout_id.trim() : "";
+      if (!checkoutId) {
+        res.status(400).json({ error: "checkout_id required" });
+        return;
+      }
+
+      const order = await prisma.paymentOrder.findFirst({
+        where: {
+          checkoutId,
+          userId: req.userId!,
+          kind: PaymentKind.REGISTRATION,
+        },
+      });
+      if (!order) {
+        res.status(404).json({ error: "Payment not found for this account" });
+        return;
+      }
+
+      if (order.status !== PaymentStatus.PAID && isBachsConfigured()) {
+        try {
+          const remote = await getBachsCheckout(checkoutId);
+          const status = String(remote.status || "").toUpperCase();
+          if (status === "COMPLETED" || status === "PAID" || status === "SUCCEEDED") {
+            await fulfillPaymentOrder({
+              checkoutId,
+              reference: order.reference,
+            });
+          }
+        } catch (err) {
+          console.warn("[payments.student.sync.remote]", err);
+        }
+      }
+
+      const profile = await prisma.studentProfile.findUnique({
+        where: { userId: req.userId! },
+        select: { registrationPaidAt: true, status: true },
+      });
+      const fresh = await prisma.paymentOrder.findUnique({
+        where: { id: order.id },
+        select: { status: true, paidAt: true },
+      });
+
+      res.json({
+        ok: true,
+        status: fresh?.status ?? order.status,
+        paidAt: fresh?.paidAt ?? null,
+        registrationPaid: Boolean(profile?.registrationPaidAt),
+        fullyActive:
+          profile?.status === "APPROVED" && Boolean(profile.registrationPaidAt),
+      });
+    } catch (err) {
+      console.error("[payments.student.sync]", err);
+      res.status(500).json({ error: "Failed to sync payment" });
     }
   },
 );

@@ -37,10 +37,23 @@ export function StudentChatPage() {
 
   useEffect(() => {
     if (!user) return;
-    loadMessages();
+    if (user.role === "ADMIN" || user.role === "READONLY") {
+      loadMessages();
+      const interval = setInterval(loadMessages, 15_000);
+      return () => clearInterval(interval);
+    }
+    apiFetch<{ fullyActive?: boolean }>("/api/student/payments/status")
+      .then((s) => {
+        if (!s.fullyActive) {
+          navigate("/dashboard/payment", { replace: true });
+          return;
+        }
+        loadMessages();
+      })
+      .catch(() => loadMessages());
     const interval = setInterval(loadMessages, 15_000);
     return () => clearInterval(interval);
-  }, [user]);
+  }, [user, navigate]);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });

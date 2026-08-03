@@ -15,6 +15,7 @@ import { ClaimCertPage } from "./pages/ClaimCertPage";
 import { SignInPage } from "./pages/SignInPage";
 import { ApplyPage } from "./pages/ApplyPage";
 import { StudentDashboardPage } from "./pages/StudentDashboardPage";
+import { StudentPaymentPage } from "./pages/StudentPaymentPage";
 import { StudentAttendancePage } from "./pages/StudentAttendancePage";
 import { StudentChatPage } from "./pages/StudentChatPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
@@ -57,6 +58,7 @@ function AppRoutes() {
       <Route path="/apply" element={<ApplyPage />} />
 
       <Route path="/dashboard" element={<StudentDashboardPage />} />
+      <Route path="/dashboard/payment" element={<StudentPaymentPage />} />
       <Route path="/dashboard/attendance" element={<StudentAttendancePage />} />
       <Route path="/dashboard/chat" element={<StudentChatPage />} />
 

@@ -42,8 +42,6 @@ export function StudentDashboardPage() {
   const [msgBody, setMsgBody] = useState("");
   const [msgBusy, setMsgBusy] = useState(false);
   const [progress, setProgress] = useState<Progress | null>(null);
-  const [payBusy, setPayBusy] = useState(false);
-  const [payError, setPayError] = useState("");
 
   useEffect(() => {
     setPageMeta({ title: "Dashboard The Digital 26", description: "Your student dashboard." });
@@ -52,12 +50,6 @@ export function StudentDashboardPage() {
   useEffect(() => {
     if (!loading && !user) navigate("/signin", { replace: true });
   }, [loading, user, navigate]);
-
-  async function refreshProfile() {
-    const d = await apiFetch<{ profile: Profile | null }>("/api/student/me");
-    setProfile(d.profile);
-    return d.profile;
-  }
 
   useEffect(() => {
     if (!user) return;
@@ -70,33 +62,10 @@ export function StudentDashboardPage() {
       return;
     }
 
-    const params = new URLSearchParams(window.location.search);
-    const checkoutId = params.get("checkout_id");
-    const paid = params.get("paid");
-
-    (async () => {
-      try {
-        if (checkoutId) {
-          await fetch(
-            `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}/api/public/payments/sync?checkout_id=${encodeURIComponent(checkoutId)}`,
-          );
-        } else if (paid === "1") {
-          await new Promise((r) => setTimeout(r, 1000));
-        }
-        await refreshProfile();
-      } catch {
-        /* ignore */
-      } finally {
-        setFetching(false);
-        if (checkoutId || paid || params.get("cancelled")) {
-          const url = new URL(window.location.href);
-          url.searchParams.delete("checkout_id");
-          url.searchParams.delete("paid");
-          url.searchParams.delete("cancelled");
-          window.history.replaceState({}, "", url.pathname);
-        }
-      }
-    })();
+    apiFetch<{ profile: Profile | null }>("/api/student/me")
+      .then((d) => setProfile(d.profile))
+      .catch(() => setProfile(null))
+      .finally(() => setFetching(false));
   }, [user, navigate]);
 
   useEffect(() => {
@@ -130,27 +99,6 @@ export function StudentDashboardPage() {
       setMessages(d.messages);
     } catch {} finally {
       setMsgBusy(false);
-    }
-  }
-
-  async function payRegistration() {
-    if (payBusy) return;
-    setPayError("");
-    setPayBusy(true);
-    try {
-      const data = await apiFetch<{
-        checkoutUrl?: string;
-        alreadyPaid?: boolean;
-      }>("/api/student/payments/registration", { method: "POST", body: "{}" });
-      if (data.alreadyPaid) {
-        await refreshProfile();
-        return;
-      }
-      if (!data.checkoutUrl) throw new Error("No checkout URL returned");
-      window.location.href = data.checkoutUrl;
-    } catch (err) {
-      setPayError(err instanceof Error ? err.message : "Payment failed to start");
-      setPayBusy(false);
     }
   }
 
@@ -221,15 +169,26 @@ export function StudentDashboardPage() {
     );
   }
 
+  const adminDone = profile.status === "APPROVED";
+
   if (!fullyActive) {
-    const adminDone = profile.status === "APPROVED";
     return (
       <section className="panel dashboard-status pending">
         <div className="status-icon">&#9203;</div>
         <h1>Account Pending</h1>
         <p className="lede">
-          Complete both steps below before you can access attendance and class chat.
+          Complete admin approval and registration payment before class access unlocks.
         </p>
+
+        {!registrationPaid && (
+          <Link to="/dashboard/payment" className="payment-banner">
+            <div>
+              <strong>Registration fee due — $3 USD</strong>
+              <p>Open the payment page to pay securely with Bachs (local currency at checkout).</p>
+            </div>
+            <span className="payment-banner__cta">Pay now</span>
+          </Link>
+        )}
 
         <ul className="pending-checklist">
           <li className={adminDone ? "done" : ""}>
@@ -254,27 +213,23 @@ export function StudentDashboardPage() {
               <p className="muted">
                 {registrationPaid
                   ? "Paid — thank you."
-                  : "One-time fee. Charged in your local currency at checkout via Bachs."}
+                  : "Required for attendance and class chat."}
               </p>
               {!registrationPaid && (
-                <button
-                  className="btn primary"
-                  type="button"
-                  disabled={payBusy}
-                  onClick={() => void payRegistration()}
-                  style={{ marginTop: "0.75rem" }}
-                >
-                  {payBusy ? "Redirecting…" : "Pay $3 registration"}
-                </button>
-              )}
-              {payError && (
-                <p className="status error" role="alert" style={{ marginTop: "0.5rem" }}>
-                  {payError}
-                </p>
+                <Link className="btn primary" to="/dashboard/payment" style={{ marginTop: "0.75rem", display: "inline-block" }}>
+                  Go to payment
+                </Link>
               )}
             </div>
           </li>
         </ul>
+
+        <div className="dashboard-cards" style={{ marginTop: "1.25rem" }}>
+          <Link to="/dashboard/payment" className="dashboard-card dashboard-card--pay">
+            <h3>Payment</h3>
+            <p>{registrationPaid ? "View payment status & receipt" : "Pay $3 registration fee"}</p>
+          </Link>
+        </div>
 
         <div className="status-details">
           <p><strong>Name:</strong> {profile.fullName}</p>
@@ -343,6 +298,11 @@ export function StudentDashboardPage() {
         <Link to="/dashboard/chat" className="dashboard-card">
           <h3>Class Chat</h3>
           <p>Chat with fellow students and admin</p>
+        </Link>
+
+        <Link to="/dashboard/payment" className="dashboard-card">
+          <h3>Payment</h3>
+          <p>Registration paid — view receipt</p>
         </Link>
       </div>
 
