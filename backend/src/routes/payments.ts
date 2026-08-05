@@ -4,21 +4,24 @@ import { z } from "zod";
 import { prisma } from "../db/prisma.js";
 import { env } from "../config/env.js";
 import type { AuthedRequest } from "../middleware/requireAuth.js";
-import { requireAuth } from "../middleware/requireAuth.js";
+import { requireAuth, requireAdmin, requireAdminWrite } from "../middleware/requireAuth.js";
 import { authLimiter, publicLookupLimiter } from "../middleware/security.js";
 import {
   createBachsCheckout,
   getBachsCheckout,
   isBachsConfigured,
+  isSuccessfulCheckout,
   verifyBachsWebhookSignature,
 } from "../lib/bachs.js";
 import {
   PAYMENT_AMOUNTS_USD,
-  fulfillPaymentOrder,
+  reconcileProfilePayments,
   newPaymentReference,
   paymentLabel,
+  verifyAndFulfillOrder,
 } from "../lib/payments.js";
 import { isValidPublicId } from "../lib/publicId.js";
+import { writeAudit } from "../lib/audit.js";
 
 export const paymentsRouter = Router();
 
@@ -91,6 +94,7 @@ paymentsRouter.post(
 
       const amountUsd = PAYMENT_AMOUNTS_USD[kind];
       const reference = newPaymentReference(kind as PaymentKind);
+      // No query string — Bachs appends ?checkout_id= itself.
       const successPath =
         kind === "CERTIFICATE"
           ? `/verify/${encodeURIComponent(publicId)}`
@@ -112,8 +116,8 @@ paymentsRouter.post(
         amountUsd,
         customerEmail: email.toLowerCase(),
         customerName: parsed.data.name?.trim() || email.split("@")[0] || "Customer",
-        successUrl: `${siteBase()}${successPath}?paid=1`,
-        cancelUrl: `${siteBase()}${successPath}?cancelled=1`,
+        successUrl: `${siteBase()}${successPath}`,
+        cancelUrl: `${siteBase()}${successPath}`,
         reference,
         metadata: {
           kind,
@@ -166,6 +170,44 @@ paymentsRouter.get(
         return;
       }
 
+      // Always try to recover stuck payments when status is loaded.
+      let reconcile: Awaited<ReturnType<typeof reconcileProfilePayments>> | null = null;
+      if (isBachsConfigured() && !profile.registrationPaidAt) {
+        try {
+          reconcile = await reconcileProfilePayments(profile.id);
+        } catch (err) {
+          console.warn("[payments.status.reconcile]", err);
+        }
+      } else if (profile.registrationPaidAt) {
+        // no-op
+      } else {
+        // Even without Bachs, repair PAID orders with null registrationPaidAt
+        const paidOrder = await prisma.paymentOrder.findFirst({
+          where: {
+            profileId: profile.id,
+            kind: PaymentKind.REGISTRATION,
+            status: PaymentStatus.PAID,
+          },
+        });
+        if (paidOrder) {
+          await prisma.studentProfile.update({
+            where: { id: profile.id },
+            data: { registrationPaidAt: paidOrder.paidAt || new Date() },
+          });
+        }
+      }
+
+      const fresh = await prisma.studentProfile.findUnique({
+        where: { id: profile.id },
+        select: {
+          status: true,
+          registrationPaidAt: true,
+          fullName: true,
+          programme: true,
+          classMode: true,
+        },
+      });
+
       const latest = await prisma.paymentOrder.findFirst({
         where: {
           profileId: profile.id,
@@ -178,14 +220,15 @@ paymentsRouter.get(
           amountUsd: true,
           reference: true,
           checkoutId: true,
+          chargeId: true,
           paidAt: true,
           createdAt: true,
         },
       });
 
-      const registrationPaid = Boolean(profile.registrationPaidAt);
-      const adminApproved = profile.status === "APPROVED";
-      const rejected = profile.status === "REJECTED";
+      const registrationPaid = Boolean(fresh?.registrationPaidAt);
+      const adminApproved = fresh?.status === "APPROVED";
+      const rejected = fresh?.status === "REJECTED";
       const paymentsEnabled = isBachsConfigured();
 
       res.json({
@@ -193,19 +236,20 @@ paymentsRouter.get(
         amountUsd: PAYMENT_AMOUNTS_USD.REGISTRATION,
         label: paymentLabel(PaymentKind.REGISTRATION),
         registrationPaid,
-        registrationPaidAt: profile.registrationPaidAt,
+        registrationPaidAt: fresh?.registrationPaidAt ?? null,
         adminApproved,
         rejected,
-        studentStatus: profile.status,
+        studentStatus: fresh?.status ?? profile.status,
         paymentsEnabled,
         canPay: paymentsEnabled && !registrationPaid && !rejected,
-        fullyActive: adminApproved && registrationPaid,
+        fullyActive: Boolean(adminApproved && registrationPaid),
         profile: {
-          fullName: profile.fullName,
-          programme: profile.programme,
-          classMode: profile.classMode,
+          fullName: fresh?.fullName ?? profile.fullName,
+          programme: fresh?.programme ?? profile.programme,
+          classMode: fresh?.classMode ?? profile.classMode,
         },
         latestOrder: latest,
+        reconcile,
       });
     } catch (err) {
       console.error("[payments.status]", err);
@@ -239,6 +283,20 @@ paymentsRouter.post(
         res.status(403).json({ error: "Rejected applications cannot pay registration" });
         return;
       }
+
+      // Recover first — student may have already paid.
+      const recovered = await reconcileProfilePayments(profile.id);
+      if (recovered.fulfilled > 0) {
+        const again = await prisma.studentProfile.findUnique({
+          where: { id: profile.id },
+          select: { registrationPaidAt: true },
+        });
+        if (again?.registrationPaidAt) {
+          res.json({ ok: true, alreadyPaid: true, reconcile: recovered });
+          return;
+        }
+      }
+
       if (profile.registrationPaidAt) {
         res.json({ ok: true, alreadyPaid: true });
         return;
@@ -250,7 +308,6 @@ paymentsRouter.post(
         return;
       }
 
-      // Reuse a recent open checkout for this student (prevents checkout spam).
       const recentOpen = await prisma.paymentOrder.findFirst({
         where: {
           profileId: profile.id,
@@ -264,8 +321,17 @@ paymentsRouter.post(
       if (recentOpen?.checkoutId) {
         try {
           const remote = await getBachsCheckout(recentOpen.checkoutId);
-          const status = String(remote.status || "").toUpperCase();
-          if (status === "OPEN" && remote.checkout_url) {
+          if (isSuccessfulCheckout(remote)) {
+            await verifyAndFulfillOrder({
+              orderId: recentOpen.id,
+              checkoutId: recentOpen.checkoutId,
+              reference: recentOpen.reference,
+              chargeId: remote.charge?.charge_id,
+            });
+            res.json({ ok: true, alreadyPaid: true });
+            return;
+          }
+          if (String(remote.status).toUpperCase() === "OPEN" && remote.checkout_url) {
             res.json({
               ok: true,
               reused: true,
@@ -276,16 +342,8 @@ paymentsRouter.post(
             });
             return;
           }
-          if (status === "COMPLETED" || status === "PAID" || status === "SUCCEEDED") {
-            await fulfillPaymentOrder({
-              checkoutId: recentOpen.checkoutId,
-              reference: recentOpen.reference,
-            });
-            res.json({ ok: true, alreadyPaid: true });
-            return;
-          }
         } catch {
-          /* create a fresh checkout below */
+          /* create fresh */
         }
       }
 
@@ -309,8 +367,9 @@ paymentsRouter.post(
         amountUsd,
         customerEmail: email,
         customerName: profile.fullName || profile.user.name || email.split("@")[0] || "Student",
-        successUrl: `${siteBase()}/dashboard/payment?paid=1`,
-        cancelUrl: `${siteBase()}/dashboard/payment?cancelled=1`,
+        // Bare path so Bachs can append ?checkout_id= cleanly.
+        successUrl: `${siteBase()}/dashboard/payment`,
+        cancelUrl: `${siteBase()}/dashboard/payment`,
         reference,
         metadata: {
           kind: "REGISTRATION",
@@ -342,63 +401,113 @@ paymentsRouter.post(
   },
 );
 
-/** Authenticated sync — only the owning student can confirm their registration checkout. */
+/** Authenticated reconcile — verifies pending orders against Bachs ledger. */
+paymentsRouter.post(
+  "/student/payments/reconcile",
+  authLimiter,
+  requireAuth,
+  async (req: AuthedRequest, res) => {
+    try {
+      const profile = await prisma.studentProfile.findUnique({
+        where: { userId: req.userId! },
+        select: { id: true, registrationPaidAt: true, status: true },
+      });
+      if (!profile) {
+        res.status(404).json({ error: "Submit your application first" });
+        return;
+      }
+
+      const checkoutId =
+        typeof req.body?.checkout_id === "string" ? req.body.checkout_id.trim() : "";
+
+      let direct: Awaited<ReturnType<typeof verifyAndFulfillOrder>> | null = null;
+      if (checkoutId) {
+        const owned = await prisma.paymentOrder.findFirst({
+          where: {
+            checkoutId,
+            userId: req.userId!,
+            kind: PaymentKind.REGISTRATION,
+          },
+        });
+        if (!owned) {
+          res.status(404).json({ error: "Payment not found for this account" });
+          return;
+        }
+        direct = await verifyAndFulfillOrder({
+          orderId: owned.id,
+          checkoutId,
+          reference: owned.reference,
+          chargeId: owned.chargeId,
+        });
+      }
+
+      const reconcile = await reconcileProfilePayments(profile.id);
+      const fresh = await prisma.studentProfile.findUnique({
+        where: { id: profile.id },
+        select: { registrationPaidAt: true, status: true },
+      });
+
+      res.json({
+        ok: true,
+        registrationPaid: Boolean(fresh?.registrationPaidAt),
+        fullyActive:
+          fresh?.status === "APPROVED" && Boolean(fresh.registrationPaidAt),
+        direct,
+        reconcile,
+      });
+    } catch (err) {
+      console.error("[payments.student.reconcile]", err);
+      res.status(500).json({ error: "Failed to reconcile payment" });
+    }
+  },
+);
+
+/** Legacy alias used by older clients. */
 paymentsRouter.post(
   "/student/payments/sync",
   authLimiter,
   requireAuth,
   async (req: AuthedRequest, res) => {
     try {
+      const profile = await prisma.studentProfile.findUnique({
+        where: { userId: req.userId! },
+        select: { id: true, status: true },
+      });
+      if (!profile) {
+        res.status(404).json({ error: "Submit your application first" });
+        return;
+      }
+
       const checkoutId =
         typeof req.body?.checkout_id === "string" ? req.body.checkout_id.trim() : "";
-      if (!checkoutId) {
-        res.status(400).json({ error: "checkout_id required" });
-        return;
-      }
-
-      const order = await prisma.paymentOrder.findFirst({
-        where: {
-          checkoutId,
-          userId: req.userId!,
-          kind: PaymentKind.REGISTRATION,
-        },
-      });
-      if (!order) {
-        res.status(404).json({ error: "Payment not found for this account" });
-        return;
-      }
-
-      if (order.status !== PaymentStatus.PAID && isBachsConfigured()) {
-        try {
-          const remote = await getBachsCheckout(checkoutId);
-          const status = String(remote.status || "").toUpperCase();
-          if (status === "COMPLETED" || status === "PAID" || status === "SUCCEEDED") {
-            await fulfillPaymentOrder({
-              checkoutId,
-              reference: order.reference,
-            });
-          }
-        } catch (err) {
-          console.warn("[payments.student.sync.remote]", err);
+      if (checkoutId) {
+        const owned = await prisma.paymentOrder.findFirst({
+          where: { checkoutId, userId: req.userId!, kind: PaymentKind.REGISTRATION },
+        });
+        if (owned) {
+          await verifyAndFulfillOrder({
+            orderId: owned.id,
+            checkoutId,
+            reference: owned.reference,
+            chargeId: owned.chargeId,
+          });
         }
       }
 
-      const profile = await prisma.studentProfile.findUnique({
-        where: { userId: req.userId! },
+      const reconcile = await reconcileProfilePayments(profile.id);
+      const fresh = await prisma.studentProfile.findUnique({
+        where: { id: profile.id },
         select: { registrationPaidAt: true, status: true },
-      });
-      const fresh = await prisma.paymentOrder.findUnique({
-        where: { id: order.id },
-        select: { status: true, paidAt: true },
       });
 
       res.json({
         ok: true,
-        status: fresh?.status ?? order.status,
-        paidAt: fresh?.paidAt ?? null,
-        registrationPaid: Boolean(profile?.registrationPaidAt),
+        status: fresh?.registrationPaidAt ? "PAID" : "PENDING",
+        paidAt: fresh?.registrationPaidAt ?? null,
+        registrationPaid: Boolean(fresh?.registrationPaidAt),
         fullyActive:
-          profile?.status === "APPROVED" && Boolean(profile.registrationPaidAt),
+          fresh?.status === "APPROVED" && Boolean(fresh.registrationPaidAt),
+        reconcile,
       });
     } catch (err) {
       console.error("[payments.student.sync]", err);
@@ -416,36 +525,7 @@ paymentsRouter.get("/public/payments/sync", publicLookupLimiter, async (req, res
       return;
     }
 
-    const local = await prisma.paymentOrder.findUnique({
-      where: { checkoutId },
-      select: {
-        id: true,
-        status: true,
-        kind: true,
-        publicId: true,
-        amountUsd: true,
-      },
-    });
-    if (!local) {
-      res.status(404).json({ error: "Payment not found" });
-      return;
-    }
-
-    if (local.status !== PaymentStatus.PAID && isBachsConfigured()) {
-      try {
-        const remote = await getBachsCheckout(checkoutId);
-        const status = String(remote.status || "").toUpperCase();
-        if (status === "COMPLETED" || status === "PAID" || status === "SUCCEEDED") {
-          await fulfillPaymentOrder({
-            checkoutId,
-            reference: remote.reference,
-          });
-        }
-      } catch (err) {
-        console.warn("[payments.sync.remote]", err);
-      }
-    }
-
+    const result = await verifyAndFulfillOrder({ checkoutId });
     const fresh = await prisma.paymentOrder.findUnique({
       where: { checkoutId },
       select: {
@@ -458,16 +538,97 @@ paymentsRouter.get("/public/payments/sync", publicLookupLimiter, async (req, res
     });
 
     res.json({
-      ok: true,
-      status: fresh?.status ?? local.status,
-      kind: fresh?.kind ?? local.kind,
-      publicId: fresh?.publicId ?? local.publicId,
-      amountUsd: fresh?.amountUsd ?? local.amountUsd,
+      ok: result.ok,
+      reason: result.reason,
+      status: fresh?.status ?? null,
+      kind: fresh?.kind ?? null,
+      publicId: fresh?.publicId ?? null,
+      amountUsd: fresh?.amountUsd ?? null,
       paidAt: fresh?.paidAt ?? null,
     });
   } catch (err) {
     console.error("[payments.sync]", err);
     res.status(500).json({ error: "Failed to sync payment" });
+  }
+});
+
+/** Admin: force reconcile a student's registration against Bachs. */
+paymentsRouter.post(
+  "/ops/payments/reconcile",
+  authLimiter,
+  requireAdminWrite,
+  async (req: AuthedRequest, res) => {
+    try {
+      const profileId =
+        typeof req.body?.profileId === "string" ? req.body.profileId.trim() : "";
+      const checkoutId =
+        typeof req.body?.checkoutId === "string" ? req.body.checkoutId.trim() : "";
+      const reference =
+        typeof req.body?.reference === "string" ? req.body.reference.trim() : "";
+
+      if (!profileId && !checkoutId && !reference) {
+        res.status(400).json({ error: "profileId, checkoutId, or reference required" });
+        return;
+      }
+
+      let result = null;
+      if (checkoutId || reference) {
+        result = await verifyAndFulfillOrder({ checkoutId, reference });
+      }
+
+      let reconcile = null;
+      if (profileId) {
+        reconcile = await reconcileProfilePayments(profileId);
+      } else if (result?.orderId) {
+        const order = await prisma.paymentOrder.findUnique({
+          where: { id: result.orderId },
+          select: { profileId: true },
+        });
+        if (order?.profileId) {
+          reconcile = await reconcileProfilePayments(order.profileId);
+        }
+      }
+
+      await writeAudit({
+        adminEmail: req.userEmail || "admin",
+        action: "payments.reconcile",
+        targetId: result?.orderId || profileId || checkoutId || reference,
+        metadata: { result, reconcile },
+      });
+
+      res.json({ ok: true, result, reconcile });
+    } catch (err) {
+      console.error("[payments.ops.reconcile]", err);
+      res.status(500).json({ error: "Reconcile failed" });
+    }
+  },
+);
+
+paymentsRouter.get("/ops/payments/pending", requireAdmin, async (_req, res) => {
+  try {
+    const items = await prisma.paymentOrder.findMany({
+      where: {
+        kind: PaymentKind.REGISTRATION,
+        status: PaymentStatus.PENDING,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 100,
+      select: {
+        id: true,
+        status: true,
+        amountUsd: true,
+        reference: true,
+        checkoutId: true,
+        customerEmail: true,
+        profileId: true,
+        createdAt: true,
+        profile: { select: { fullName: true, status: true, registrationPaidAt: true } },
+      },
+    });
+    res.json({ items });
+  } catch (err) {
+    console.error("[payments.ops.pending]", err);
+    res.status(500).json({ error: "Failed to list pending payments" });
   }
 });
 
@@ -487,6 +648,7 @@ export async function bachsWebhookHandler(
         signatureHeader: req.header("X-Bachs-Signature") || undefined,
       });
       if (!valid) {
+        console.error("[payments.webhook] invalid signature");
         res.status(401).json({ error: "Invalid webhook signature" });
         return;
       }
@@ -504,17 +666,40 @@ export async function bachsWebhookHandler(
         reference?: string | null;
         charge_id?: string | null;
         status?: string;
+        amount?: string;
+        currency?: string;
         metadata?: Record<string, string>;
       };
     };
 
-    if (event.type === "collection.succeeded") {
-      await fulfillPaymentOrder({
+    console.log("[payments.webhook]", event.type, {
+      eventId: event.id,
+      checkoutId: event.data?.checkout_id,
+      chargeId: event.data?.charge_id,
+      reference: event.data?.reference,
+    });
+
+    if (
+      event.type === "collection.succeeded" ||
+      event.type === "checkout.completed"
+    ) {
+      // Extract IDs only — verify against Bachs API before fulfilling.
+      const result = await verifyAndFulfillOrder({
         checkoutId: event.data?.checkout_id,
         reference: event.data?.reference || event.data?.metadata?.reference,
         chargeId: event.data?.charge_id,
         eventId: event.id,
+        orderId: event.data?.metadata?.order_id,
       });
+      console.log("[payments.webhook.fulfill]", result);
+      if (!result.ok && result.reason !== "order_not_found") {
+        // 200 so Bachs does not endless-retry signature-valid but business-reject cases;
+        // still logged for ops. Retry-worthy lookup failures return 500.
+        if (result.reason.includes("lookup_failed")) {
+          res.status(500).json({ error: result.reason });
+          return;
+        }
+      }
     }
 
     res.json({ received: true });

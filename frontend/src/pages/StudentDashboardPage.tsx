@@ -180,13 +180,25 @@ export function StudentDashboardPage() {
           Complete admin approval and registration payment before class access unlocks.
         </p>
 
-        {!registrationPaid && (
+        {!registrationPaid ? (
           <Link to="/dashboard/payment" className="payment-banner">
             <div>
               <strong>Registration fee due — $3 USD</strong>
-              <p>Open the payment page to pay securely with Bachs (local currency at checkout).</p>
+              <p>Open payment to pay with Bachs. We verify the charge on our server before unlocking.</p>
             </div>
             <span className="payment-banner__cta">Pay now</span>
+          </Link>
+        ) : (
+          <Link to="/dashboard/payment" className="payment-banner payment-banner--paid">
+            <div>
+              <strong>Registration fee verified</strong>
+              <p>
+                {adminDone
+                  ? "Payment and admin approval complete."
+                  : "Payment confirmed. Waiting for admin approval to unlock class."}
+              </p>
+            </div>
+            <span className="payment-banner__cta">View</span>
           </Link>
         )}
 

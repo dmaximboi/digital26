@@ -1,13 +1,29 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { env } from "../config/env.js";
 
+export type BachsCharge = {
+  charge_id?: string;
+  status?: string;
+  amount?: string;
+  amount_paid?: string;
+  currency?: string;
+  reference?: string | null;
+  checkout_id?: string | null;
+};
+
 export type BachsCheckoutSession = {
   checkout_id: string;
   checkout_url?: string;
   status: string;
+  payment_status?: string | null;
+  amount?: string;
+  currency?: string;
   expires_at?: string;
   created_at?: string;
-  reference?: string;
+  reference?: string | null;
+  charge?: BachsCharge | null;
+  metadata?: Record<string, string> | null;
+  customer_email?: string | null;
 };
 
 export function isBachsConfigured(): boolean {
@@ -18,7 +34,6 @@ function bachsBaseUrl(): string {
   if (env.BACHS_API_BASE?.trim()) {
     return env.BACHS_API_BASE.trim().replace(/\/$/, "");
   }
-  // Live / production API only.
   return "https://api.bachs.io";
 }
 
@@ -87,10 +102,40 @@ export async function createBachsCheckout(opts: {
   });
 }
 
+/** Authoritative checkout lookup — never trust webhook body alone. */
 export async function getBachsCheckout(checkoutId: string): Promise<BachsCheckoutSession> {
   return bachsFetch<BachsCheckoutSession>(
     `/v1/checkout-sessions/${encodeURIComponent(checkoutId)}`,
   );
+}
+
+/** Authoritative charge/payin lookup. */
+export async function getBachsCharge(chargeId: string): Promise<BachsCharge> {
+  try {
+    return await bachsFetch<BachsCharge>(
+      `/v1/payments/charges/${encodeURIComponent(chargeId)}`,
+    );
+  } catch {
+    return bachsFetch<BachsCharge>(
+      `/v1/payments/payins/${encodeURIComponent(chargeId)}`,
+    );
+  }
+}
+
+export function isSuccessfulCheckout(remote: BachsCheckoutSession): boolean {
+  const status = String(remote.status || "").toUpperCase();
+  const paymentStatus = String(remote.payment_status || "").toLowerCase();
+  const chargeStatus = String(remote.charge?.status || "").toLowerCase();
+
+  if (status === "COMPLETED") return true;
+  if (["succeeded", "accepted", "overpaid", "paid"].includes(paymentStatus)) return true;
+  if (["succeeded", "accepted", "overpaid", "paid"].includes(chargeStatus)) return true;
+  return false;
+}
+
+export function isSuccessfulCharge(charge: BachsCharge): boolean {
+  const status = String(charge.status || "").toLowerCase();
+  return ["succeeded", "accepted", "overpaid", "paid"].includes(status);
 }
 
 export function verifyBachsWebhookSignature(opts: {

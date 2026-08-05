@@ -1575,6 +1575,14 @@ dd {
   padding: .55rem .9rem;
   border-radius: 999px;
 }
+.payment-banner--paid {
+  border-color: rgba(90, 180, 120, 0.45);
+  background: linear-gradient(135deg, rgba(90,180,120,.16), rgba(255,255,255,.03));
+}
+.payment-banner--paid .payment-banner__cta {
+  background: #9be0b0;
+  color: #102018;
+}
 
 .payment-page { max-width: 560px; margin: 2rem auto; }
 .payment-page__eyebrow {

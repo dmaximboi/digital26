@@ -68,6 +68,30 @@ export function AdminStudentsPage() {
     }
   }
 
+  async function verifyPayment(id: string) {
+    setBusy(id);
+    setError("");
+    try {
+      const res = await apiFetch<{
+        ok: boolean;
+        reconcile?: { fulfilled: number; checked: number };
+        result?: { ok: boolean; reason?: string };
+      }>("/api/ops/payments/reconcile", {
+        method: "POST",
+        body: JSON.stringify({ profileId: id }),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.reconcile?.fulfilled && !res.result?.ok) {
+        setError("No paid Bachs checkout found for this student yet.");
+      }
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Payment verify failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function reject(id: string) {
     const note = prompt("Rejection reason (optional):");
     setBusy(id);
@@ -168,7 +192,7 @@ export function AdminStudentsPage() {
     <div>
       <div className="ops-page-head">
         <h2 className="ops-page-title">Students</h2>
-        {!canWrite && <p className="muted">Read-only access — approve and edit actions are hidden.</p>}
+        {!canWrite && <p className="muted">Read-only access approve and edit actions are hidden.</p>}
       </div>
 
       {error && <p className="form-error">{error}</p>}
@@ -206,6 +230,11 @@ export function AdminStudentsPage() {
                       <button className="btn danger" onClick={() => reject(s.id)} disabled={busy === s.id}>
                         Reject
                       </button>
+                      {!s.registrationPaid && (
+                        <button className="btn" onClick={() => void verifyPayment(s.id)} disabled={busy === s.id}>
+                          Verify payment
+                        </button>
+                      )}
                     </>
                   )}
                   <button className="btn" onClick={() => void openChat(s.id)}>
@@ -304,6 +333,11 @@ export function AdminStudentsPage() {
                     <button className="btn" onClick={() => void openChat(s.id)}>
                       Chat ({s.messageCount})
                     </button>
+                    {canWrite && !s.registrationPaid && (
+                      <button className="btn" onClick={() => void verifyPayment(s.id)} disabled={busy === s.id}>
+                        Verify payment
+                      </button>
+                    )}
                     {canWrite && (
                       <button className="btn danger" onClick={() => revoke(s.id)} disabled={busy === s.id}>
                         Revoke
