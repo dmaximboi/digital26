@@ -34,7 +34,7 @@ type Progress = {
 };
 
 export function StudentDashboardPage() {
-  const { user, loading, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [fetching, setFetching] = useState(true);
@@ -164,7 +164,6 @@ export function StudentDashboardPage() {
         )}
         <MessagesBlock />
         <p className="muted">If you believe this is an error, please <Link to="/contact">contact us</Link>.</p>
-        <button className="btn" onClick={signOut} style={{ marginTop: "1rem" }}>Sign out</button>
       </section>
     );
   }
@@ -250,7 +249,6 @@ export function StudentDashboardPage() {
         </div>
 
         <MessagesBlock />
-        <button className="btn" onClick={signOut} style={{ marginTop: "1rem" }}>Sign out</button>
       </section>
     );
   }
@@ -302,6 +300,11 @@ export function StudentDashboardPage() {
       )}
 
       <div className="dashboard-cards">
+        <Link to="/dashboard/library" className="dashboard-card">
+          <h3>Library</h3>
+          <p>View course resources (open in viewer — not downloadable)</p>
+        </Link>
+
         <Link to="/dashboard/attendance" className="dashboard-card">
           <h3>Attendance</h3>
           <p>Sign your weekly attendance and track progress</p>
@@ -317,8 +320,6 @@ export function StudentDashboardPage() {
           <p>Registration paid — view receipt</p>
         </Link>
       </div>
-
-      <button className="btn" onClick={signOut} style={{ marginTop: "1.5rem" }}>Sign out</button>
     </section>
   );
 }

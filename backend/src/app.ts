@@ -11,6 +11,7 @@ import { filesRouter } from "./routes/files.js";
 import { contactPublicRouter, contactAdminRouter } from "./routes/contact.js";
 import { studentsRouter } from "./routes/students.js";
 import { bachsWebhookHandler, paymentsRouter } from "./routes/payments.js";
+import { libraryRouter } from "./routes/library.js";
 
 export function createApp() {
   const app = express();
@@ -47,6 +48,7 @@ export function createApp() {
   app.use("/api/public", filesRouter);
   app.use("/api/public", contactPublicRouter);
   app.use("/api", paymentsRouter);
+  app.use("/api", libraryRouter);
   app.use("/api", studentsRouter);
   app.use("/api", agreementsRouter);
   app.use("/api", certificatesRouter);

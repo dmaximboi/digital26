@@ -1663,6 +1663,93 @@ dd {
 .payment-receipt h2 { margin: 0 0 .75rem; font-size: 1.05rem; }
 .payment-receipt p { margin: .3rem 0; font-size: .92rem; }
 
+.library-page { max-width: 920px; margin: 2rem auto; }
+.library-grid {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+@media (min-width: 640px) {
+  .library-grid { grid-template-columns: 1fr 1fr; }
+}
+.library-card {
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(255,255,255,.03);
+}
+.library-card__cover {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: #111;
+  user-select: none;
+}
+.library-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+.library-card__badge {
+  position: absolute;
+  top: .65rem;
+  right: .65rem;
+  font-size: .75rem;
+  font-weight: 700;
+  padding: .3rem .55rem;
+  border-radius: 999px;
+}
+.library-card__badge.ok { background: rgba(90,180,120,.25); color: #9be0b0; }
+.library-card__badge.lock { background: rgba(255,158,0,.22); color: var(--accent); }
+.library-card__body { padding: 1rem; display: grid; gap: .65rem; }
+.library-card__body h2 { margin: 0; font-size: 1.1rem; font-family: var(--font-display); }
+
+.library-admin-form {
+  display: grid;
+  gap: .75rem;
+  margin: 1rem 0 1.5rem;
+  padding: 1rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+}
+.library-admin-form__row {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  align-items: end;
+}
+.library-check {
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+  margin-top: 1.4rem;
+}
+.library-admin-form__actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+.library-admin-grid { display: grid; gap: 1rem; }
+.library-admin-card {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: .85rem;
+  padding: .85rem;
+  border: 1px solid rgba(255,255,255,.1);
+  border-radius: 12px;
+}
+.library-admin-card img {
+  width: 120px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+  pointer-events: none;
+  user-select: none;
+}
+.library-admin-card h4 { margin: 0 0 .25rem; }
+.library-admin-card__link {
+  font-size: .78rem;
+  word-break: break-all;
+  margin: .35rem 0;
+}
+.library-admin-card__actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+
 /* Attendance */
 .attendance-page { max-width: 640px; margin: 2rem auto; }
 .back-link { color: var(--accent); text-decoration: none; font-size: .9rem; }

@@ -49,6 +49,18 @@ export async function apiPostForm<T>(path: string, form: FormData): Promise<T> {
   return data as T;
 }
 
+export async function apiPatchForm<T>(path: string, form: FormData): Promise<T> {
+  const res = await authorizedFetch(path, { method: "PATCH", body: form });
+  const data: unknown = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = typeof data === "object" && data !== null && "error" in data
+      ? (data as { error: string }).error
+      : `Request failed (${res.status})`;
+    throw new Error(msg);
+  }
+  return data as T;
+}
+
 export async function apiDownload(path: string, filename: string): Promise<void> {
   const res = await authorizedFetch(path, {
     headers: { Accept: "application/octet-stream" },

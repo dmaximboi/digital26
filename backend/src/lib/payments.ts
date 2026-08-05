@@ -14,18 +14,39 @@ export const PAYMENT_AMOUNTS_USD: Record<PaymentKind, string> = {
   REGISTRATION: "3.00",
   CERTIFICATE: "1.00",
   AGREEMENT: "1.00",
+  LIBRARY: "0.00", // actual amount stored per order from LibraryItem.priceUsd
 };
 
 export function paymentLabel(kind: PaymentKind): string {
   if (kind === "REGISTRATION") return "Student registration fee";
   if (kind === "CERTIFICATE") return "Certificate access";
+  if (kind === "LIBRARY") return "Library resource access";
   return "Agreement letter access";
 }
 
 export function newPaymentReference(kind: PaymentKind): string {
   const prefix =
-    kind === "REGISTRATION" ? "reg" : kind === "CERTIFICATE" ? "cert" : "agr";
+    kind === "REGISTRATION"
+      ? "reg"
+      : kind === "CERTIFICATE"
+        ? "cert"
+        : kind === "LIBRARY"
+          ? "lib"
+          : "agr";
   return `d26_${prefix}_${randomBytes(8).toString("hex")}`;
+}
+
+export async function hasLibraryAccess(userId: string, itemId: string): Promise<boolean> {
+  const paid = await prisma.paymentOrder.findFirst({
+    where: {
+      kind: PaymentKind.LIBRARY,
+      publicId: itemId,
+      userId,
+      status: PaymentStatus.PAID,
+    },
+    select: { id: true },
+  });
+  return Boolean(paid);
 }
 
 function moneyEqual(a: string, b: string): boolean {

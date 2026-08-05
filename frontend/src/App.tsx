@@ -16,8 +16,10 @@ import { SignInPage } from "./pages/SignInPage";
 import { ApplyPage } from "./pages/ApplyPage";
 import { StudentDashboardPage } from "./pages/StudentDashboardPage";
 import { StudentPaymentPage } from "./pages/StudentPaymentPage";
+import { StudentLibraryPage } from "./pages/StudentLibraryPage";
 import { StudentAttendancePage } from "./pages/StudentAttendancePage";
 import { StudentChatPage } from "./pages/StudentChatPage";
+import { AdminLibraryPage } from "./pages/admin/AdminLibraryPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { TermsPage } from "./pages/TermsPage";
 import { AdminLayout } from "./pages/admin/AdminLayout";
@@ -59,12 +61,14 @@ function AppRoutes() {
 
       <Route path="/dashboard" element={<StudentDashboardPage />} />
       <Route path="/dashboard/payment" element={<StudentPaymentPage />} />
+      <Route path="/dashboard/library" element={<StudentLibraryPage />} />
       <Route path="/dashboard/attendance" element={<StudentAttendancePage />} />
       <Route path="/dashboard/chat" element={<StudentChatPage />} />
 
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboardPage />} />
         <Route path="students" element={<AdminStudentsPage />} />
+        <Route path="library" element={<AdminLibraryPage />} />
         <Route path="messages" element={<AdminMessagesPage />} />
         <Route path="visits" element={<AdminVisitsPage />} />
         <Route path="agreements" element={<AdminAgreementsPage />} />

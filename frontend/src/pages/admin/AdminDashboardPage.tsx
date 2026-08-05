@@ -42,6 +42,9 @@ export function AdminDashboardPage() {
           <Link className="btn" to={`/admin/certificates/new`}>
             New cert + evidence
           </Link>
+          <Link className="btn" to={`/admin/library`}>
+            Course library
+          </Link>
         </div>
       </div>
 

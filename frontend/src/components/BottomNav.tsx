@@ -24,26 +24,26 @@ const PUBLIC_TABS: Tab[] = [
 const STUDENT_TABS: Tab[] = [
   { to: "/dashboard", label: "Home", end: true },
   {
-    to: "/dashboard/payment",
-    label: "Pay",
-    match: (p) => p.startsWith("/dashboard/payment"),
-  },
-  {
-    to: "/dashboard/attendance",
-    label: "Attend",
-    match: (p) => p.startsWith("/dashboard/attendance"),
+    to: "/dashboard/library",
+    label: "Library",
+    match: (p) => p.startsWith("/dashboard/library"),
   },
   {
     to: "/dashboard/chat",
     label: "Chat",
     match: (p) => p.startsWith("/dashboard/chat"),
   },
+  {
+    to: "/dashboard/payment",
+    label: "Pay",
+    match: (p) => p.startsWith("/dashboard/payment"),
+  },
 ];
 
 const ADMIN_TABS: Tab[] = [
   { to: "/admin", label: "Home", end: true },
   { to: "/admin/students", label: "Students" },
-  { to: "/admin/messages", label: "Inbox" },
+  { to: "/admin/library", label: "Library", match: (p) => p.startsWith("/admin/library") },
   {
     to: "/admin/certificates",
     label: "Certs",
@@ -102,12 +102,11 @@ function TabIcon({ name }: { name: string }) {
           <path d="M7 15h3" />
         </svg>
       );
-    case "Attend":
+    case "Library":
       return (
         <svg {...common}>
-          <path d="M8 7V4h8v3" />
-          <rect x="4" y="7" width="16" height="13" rx="2" />
-          <path d="m9 14 2 2 4-4" />
+          <path d="M4 4h6v16H4zM14 4h6v16h-6z" />
+          <path d="M10 8h4M10 12h4" />
         </svg>
       );
     case "Chat":
@@ -123,6 +122,15 @@ function TabIcon({ name }: { name: string }) {
           <circle cx="17" cy="9" r="2.5" />
           <path d="M3 19c1.5-3 4-4.5 6-4.5S13.5 16 15 19" />
           <path d="M14 14.5c1.2 0 3 .8 4 3.5" />
+        </svg>
+      );
+    case "Sign out":
+    case "Sign in":
+      return (
+        <svg {...common}>
+          <path d="M10 17h8V7h-8" />
+          <path d="M13 12H4" />
+          <path d="m7 9-3 3 3 3" />
         </svg>
       );
     case "More":
@@ -147,15 +155,33 @@ function isActiveTab(tab: Tab, pathname: string): boolean {
   return pathname === tab.to || pathname.startsWith(`${tab.to}/`);
 }
 
+function SignOutTab() {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+  return (
+    <button
+      type="button"
+      className="bottom-nav__item"
+      onClick={() => {
+        signOut();
+        navigate("/signin");
+      }}
+    >
+      <TabIcon name="Sign out" />
+      <span>Sign out</span>
+    </button>
+  );
+}
+
 function PublicBottomNav() {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const isAdmin = user?.role === "ADMIN" || user?.role === "READONLY";
   const isStudent = user?.role === "STUDENT" && user.hasProfile;
   const onStudentArea =
     location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/apply");
 
-  // Signed-in students get a dedicated dashboard nav that always includes Payment.
   if (!loading && isStudent && onStudentArea) {
     return (
       <nav className="bottom-nav" aria-label="Student">
@@ -174,13 +200,10 @@ function PublicBottomNav() {
             <span>{tab.label}</span>
           </NavLink>
         ))}
+        <SignOutTab />
       </nav>
     );
   }
-
-  const accountTo =
-    !loading && isAdmin ? "/admin" : !loading && (isStudent || user) ? "/dashboard" : "/signin";
-  const accountLabel = !loading && isAdmin ? "Admin" : !loading && user ? "You" : "Sign in";
 
   return (
     <nav className="bottom-nav" aria-label="Primary">
@@ -197,20 +220,43 @@ function PublicBottomNav() {
           <span>{tab.label}</span>
         </NavLink>
       ))}
-      <NavLink
-        to={accountTo}
-        className={({ isActive }) =>
-          isActive ||
-          location.pathname.startsWith("/dashboard") ||
-          location.pathname.startsWith("/apply") ||
-          location.pathname.startsWith("/signin")
-            ? "bottom-nav__item is-active"
-            : "bottom-nav__item"
-        }
-      >
-        <TabIcon name="Account" />
-        <span>{accountLabel}</span>
-      </NavLink>
+      {!loading && isAdmin ? (
+        <NavLink
+          to="/admin"
+          className={({ isActive }) =>
+            isActive || location.pathname.startsWith("/admin")
+              ? "bottom-nav__item is-active"
+              : "bottom-nav__item"
+          }
+        >
+          <TabIcon name="Account" />
+          <span>Admin</span>
+        </NavLink>
+      ) : !loading && user ? (
+        <button
+          type="button"
+          className="bottom-nav__item"
+          onClick={() => {
+            signOut();
+            navigate("/signin");
+          }}
+        >
+          <TabIcon name="Sign out" />
+          <span>Sign out</span>
+        </button>
+      ) : (
+        <NavLink
+          to="/signin"
+          className={({ isActive }) =>
+            isActive || location.pathname.startsWith("/signin")
+              ? "bottom-nav__item is-active"
+              : "bottom-nav__item"
+          }
+        >
+          <TabIcon name="Sign in" />
+          <span>Sign in</span>
+        </NavLink>
+      )}
     </nav>
   );
 }
@@ -261,11 +307,17 @@ function AdminBottomNav() {
             onClick={() => setMoreOpen(false)}
           />
           <div className="bottom-nav__sheet" role="menu">
+            <NavLink to="/admin/messages" onClick={() => setMoreOpen(false)}>
+              Inbox
+            </NavLink>
             <NavLink to="/admin/agreements" onClick={() => setMoreOpen(false)}>
               Agreements
             </NavLink>
             <NavLink to="/admin/chat" onClick={() => setMoreOpen(false)}>
               Class Chat
+            </NavLink>
+            <NavLink to="/admin/library" onClick={() => setMoreOpen(false)}>
+              Library
             </NavLink>
             <NavLink to="/admin/storage" onClick={() => setMoreOpen(false)}>
               Storage
@@ -294,7 +346,7 @@ function AdminBottomNav() {
               onClick={() => {
                 setMoreOpen(false);
                 signOut();
-                navigate("/");
+                navigate("/signin");
               }}
             >
               Sign out

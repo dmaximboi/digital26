@@ -21,7 +21,8 @@ filesRouter.get("/files/:kind/:filename", (req, res) => {
   const kind = String(req.params.kind ?? "");
   const filename = String(req.params.filename ?? "");
 
-  if (kind !== "students") {
+  // Public image serving only — never expose agreement/certificate PDFs here.
+  if (kind !== "students" && kind !== "library") {
     res.status(403).json({
       error: "Agreement and certificate PDFs require an authenticated console session.",
     });
@@ -41,9 +42,15 @@ filesRouter.get("/files/:kind/:filename", (req, res) => {
   }
 
   const ext = path.extname(filename).toLowerCase();
+  if (![".jpg", ".jpeg", ".png", ".webp"].includes(ext)) {
+    res.status(403).json({ error: "Only images can be served publicly" });
+    return;
+  }
   const type =
     ext === ".png" ? "image/png" : ext === ".webp" ? "image/webp" : "image/jpeg";
   res.setHeader("Content-Type", type);
+  res.setHeader("Content-Disposition", "inline");
   res.setHeader("Cache-Control", "public, max-age=86400");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   createReadStream(filePath).pipe(res);
 });

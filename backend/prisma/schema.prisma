@@ -29,6 +29,7 @@ enum PaymentKind {
   REGISTRATION
   CERTIFICATE
   AGREEMENT
+  LIBRARY
 }
 
 enum PaymentStatus {
@@ -316,7 +317,27 @@ model PaymentOrder {
   @@index([publicId, kind])
   @@index([profileId])
   @@index([status])
+  @@index([userId, kind])
   @@map("payment_orders")
+}
+
+/// Course library cards: cover image + external view link (Drive etc). Never hosted for download.
+model LibraryItem {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  coverUrl    String   @map("cover_url")
+  externalUrl String   @map("external_url")
+  isFree      Boolean  @default(true) @map("is_free")
+  priceUsd    String?  @map("price_usd")
+  published   Boolean  @default(true)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdBy   String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([published, sortOrder])
+  @@map("library_items")
 }
 
 model StudentMessage {
