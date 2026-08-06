@@ -44,6 +44,7 @@ export function AdminIssueCertificatePage() {
   const [together, setTogether] = useState<File | null>(null);
   const [portrait, setPortrait] = useState<File | null>(null);
   const [portraitPreview, setPortraitPreview] = useState<string | null>(null);
+  const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [result, setResult] = useState<IssueResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -111,6 +112,7 @@ export function AdminIssueCertificatePage() {
       form.append("type", type);
       form.append("programme", programme);
       if (programme === "CUSTOM") form.append("customMonths", customMonths);
+      form.append("issueDate", issueDate);
       form.append("together", together);
       if (portrait) form.append("portrait", portrait);
       const data = await apiPostForm<IssueResult>("/api/ops/certificates", form);
@@ -206,6 +208,17 @@ export function AdminIssueCertificatePage() {
             <option value="COMPLETION">Completion</option>
             <option value="PARTICIPATION">Participation</option>
           </select>
+        </label>
+
+        <label>
+          Issue date
+          <input
+            type="date"
+            value={issueDate}
+            onChange={(e) => setIssueDate(e.target.value)}
+            required
+            disabled={loading}
+          />
         </label>
 
         <fieldset className="evidence-block" disabled={loading}>

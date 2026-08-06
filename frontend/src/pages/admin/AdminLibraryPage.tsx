@@ -34,12 +34,27 @@ export function AdminLibraryPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [cover, setCover] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [showForm, setShowForm] = useState(false);
 
   const load = useCallback(() => {
     setLoading(true);
+    setError("");
     apiFetch<{ items: LibraryItem[] }>("/api/ops/library")
-      .then((d) => setItems(d.items))
-      .catch((e) => setError(e instanceof Error ? e.message : "Failed to load"))
+      .then((d) => {
+        setItems(d.items || []);
+        setError("");
+      })
+      .catch((e) => {
+        const msg = e instanceof Error ? e.message : "Failed to load";
+        // Empty catalog is fine — only surface real failures.
+        if (/not found/i.test(msg)) {
+          setItems([]);
+          setError("Library is still setting up. Refresh in a moment.");
+        } else {
+          setError(msg);
+        }
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -57,6 +72,8 @@ export function AdminLibraryPage() {
       sortOrder: String(item.sortOrder),
     });
     setCover(null);
+    setCoverPreview(item.coverUrl);
+    setShowForm(true);
     setError("");
   }
 
@@ -64,6 +81,19 @@ export function AdminLibraryPage() {
     setEditingId(null);
     setForm(emptyForm);
     setCover(null);
+    setCoverPreview(null);
+    setShowForm(false);
+  }
+
+  function pickCover(file: File | null) {
+    setCover(file);
+    if (!file) {
+      setCoverPreview(editingId ? coverPreview : null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setCoverPreview(reader.result as string);
+    reader.readAsDataURL(file);
   }
 
   async function onSubmit(e: FormEvent) {
@@ -85,7 +115,7 @@ export function AdminLibraryPage() {
       if (editingId) {
         await apiPatchForm(`/api/ops/library/${editingId}`, body);
       } else {
-        if (!cover) throw new Error("Cover image is required for new items");
+        if (!cover) throw new Error("Add a cover image");
         await apiPostForm("/api/ops/library", body);
       }
       resetForm();
@@ -98,10 +128,12 @@ export function AdminLibraryPage() {
   }
 
   async function remove(id: string) {
-    if (!canWrite || !confirm("Delete this library item?")) return;
+    if (!canWrite || !confirm("Remove this item from the library?")) return;
     setBusy(true);
+    setError("");
     try {
-      await apiFetch(`/api/ops/library/${id}`, { method: "DELETE", body: "{}" });
+      await apiFetch(`/api/ops/library/${id}`, { method: "DELETE" });
+      if (editingId === id) resetForm();
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Delete failed");
@@ -111,143 +143,208 @@ export function AdminLibraryPage() {
   }
 
   return (
-    <div>
-      <div className="ops-page-head">
-        <h2 className="ops-page-title">Course library</h2>
-        <p className="muted">
-          Share Drive/folder links with a cover image. Resources open in-browser only — nothing is
-          downloadable from this site.
-        </p>
-        {!canWrite && <p className="muted">Read-only access.</p>}
-      </div>
-
-      {error && <p className="form-error">{error}</p>}
-
-      {canWrite && (
-        <form className="library-admin-form" onSubmit={(e) => void onSubmit(e)}>
-          <h3>{editingId ? "Edit item" : "Add item"}</h3>
-          <label>
-            Title
-            <input
-              className="form-input"
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-              required
-              maxLength={160}
-            />
-          </label>
-          <label>
-            Description
-            <textarea
-              className="form-input form-textarea"
-              value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              rows={3}
-            />
-          </label>
-          <label>
-            Resource link (https Google Drive / Docs)
-            <input
-              className="form-input"
-              type="url"
-              value={form.externalUrl}
-              onChange={(e) => setForm((f) => ({ ...f, externalUrl: e.target.value }))}
-              required
-              placeholder="https://drive.google.com/..."
-            />
-          </label>
-          <label>
-            Cover image {editingId ? "(optional to replace)" : "*"}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => setCover(e.target.files?.[0] ?? null)}
-              required={!editingId}
-            />
-          </label>
-          <div className="library-admin-form__row">
-            <label className="library-check">
-              <input
-                type="checkbox"
-                checked={form.isFree}
-                onChange={(e) => setForm((f) => ({ ...f, isFree: e.target.checked }))}
-              />
-              Free
-            </label>
-            {!form.isFree && (
-              <label>
-                Price (USD)
-                <input
-                  className="form-input"
-                  value={form.priceUsd}
-                  onChange={(e) => setForm((f) => ({ ...f, priceUsd: e.target.value }))}
-                  required
-                />
-              </label>
-            )}
-            <label className="library-check">
-              <input
-                type="checkbox"
-                checked={form.published}
-                onChange={(e) => setForm((f) => ({ ...f, published: e.target.checked }))}
-              />
-              Published
-            </label>
-            <label>
-              Sort
-              <input
-                className="form-input"
-                type="number"
-                value={form.sortOrder}
-                onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value }))}
-              />
-            </label>
-          </div>
-          <div className="library-admin-form__actions">
-            <button className="btn primary" type="submit" disabled={busy}>
-              {busy ? "Saving…" : editingId ? "Update" : "Add to library"}
-            </button>
-            {editingId && (
-              <button className="btn" type="button" onClick={resetForm}>
-                Cancel edit
+    <div className="ops-page library-ops">
+      <div className="ops-page__head">
+        <div>
+          <h2>Library</h2>
+          <p className="muted">Course materials for students</p>
+        </div>
+        {canWrite && (
+          <div className="ops-page__actions">
+            {!showForm ? (
+              <button
+                type="button"
+                className="btn primary"
+                onClick={() => {
+                  setEditingId(null);
+                  setForm(emptyForm);
+                  setCover(null);
+                  setCoverPreview(null);
+                  setShowForm(true);
+                }}
+              >
+                Add material
+              </button>
+            ) : (
+              <button type="button" className="btn" onClick={resetForm}>
+                Close form
               </button>
             )}
+          </div>
+        )}
+      </div>
+
+      {error && (
+        <p className="status error" role="alert">
+          {error}
+        </p>
+      )}
+
+      {canWrite && showForm && (
+        <form className="library-ops__form sign-form" onSubmit={(e) => void onSubmit(e)}>
+          <h3>{editingId ? "Edit material" : "New material"}</h3>
+
+          <div className="library-ops__form-grid">
+            <div className="library-ops__fields">
+              <label>
+                Title
+                <input
+                  value={form.title}
+                  onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                  required
+                  maxLength={160}
+                  placeholder="e.g. Week 1 — Intro to Digital Marketing"
+                />
+              </label>
+
+              <label>
+                Short description
+                <textarea
+                  value={form.description}
+                  onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+                  rows={3}
+                  placeholder="What students will find inside"
+                />
+              </label>
+
+              <label>
+                Material link
+                <input
+                  type="url"
+                  value={form.externalUrl}
+                  onChange={(e) => setForm((f) => ({ ...f, externalUrl: e.target.value }))}
+                  required
+                  placeholder="https://…"
+                />
+              </label>
+
+              <div className="library-ops__meta">
+                <label className="library-ops__check">
+                  <input
+                    type="checkbox"
+                    checked={form.isFree}
+                    onChange={(e) => setForm((f) => ({ ...f, isFree: e.target.checked }))}
+                  />
+                  Free access
+                </label>
+
+                {!form.isFree && (
+                  <label>
+                    Price (USD)
+                    <input
+                      value={form.priceUsd}
+                      onChange={(e) => setForm((f) => ({ ...f, priceUsd: e.target.value }))}
+                      required
+                      inputMode="decimal"
+                    />
+                  </label>
+                )}
+
+                <label className="library-ops__check">
+                  <input
+                    type="checkbox"
+                    checked={form.published}
+                    onChange={(e) => setForm((f) => ({ ...f, published: e.target.checked }))}
+                  />
+                  Visible to students
+                </label>
+
+                <label>
+                  Order
+                  <input
+                    type="number"
+                    value={form.sortOrder}
+                    onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value }))}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="library-ops__cover">
+              <label>
+                Cover image
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => pickCover(e.target.files?.[0] ?? null)}
+                  required={!editingId}
+                />
+              </label>
+              <div className="library-ops__cover-preview">
+                {coverPreview ? (
+                  <img src={coverPreview} alt="" />
+                ) : (
+                  <span className="muted">Preview appears here</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="library-ops__form-actions">
+            <button className="btn primary" type="submit" disabled={busy}>
+              {busy ? "Saving…" : editingId ? "Save changes" : "Publish"}
+            </button>
+            <button className="btn" type="button" onClick={resetForm} disabled={busy}>
+              Cancel
+            </button>
           </div>
         </form>
       )}
 
-      {loading && <p className="muted">Loading…</p>}
-
-      <div className="library-admin-grid">
-        {items.map((item) => (
-          <article key={item.id} className="library-admin-card">
-            <img
-              src={item.coverUrl}
-              alt=""
-              draggable={false}
-              onContextMenu={(e) => e.preventDefault()}
-            />
-            <div>
-              <h4>{item.title}</h4>
-              <p className="muted">
-                {item.isFree ? "Free" : `$${item.priceUsd}`} ·{" "}
-                {item.published ? "Published" : "Hidden"}
-              </p>
-              <p className="library-admin-card__link muted">{item.externalUrl}</p>
-              {canWrite && (
-                <div className="library-admin-card__actions">
-                  <button className="btn" type="button" onClick={() => startEdit(item)}>
-                    Edit
-                  </button>
-                  <button className="btn danger" type="button" onClick={() => void remove(item.id)}>
-                    Delete
-                  </button>
+      {loading ? (
+        <p className="muted">Loading…</p>
+      ) : items.length === 0 ? (
+        <div className="library-ops__empty">
+          <p>No materials yet.</p>
+          {canWrite && (
+            <button
+              type="button"
+              className="btn primary"
+              onClick={() => setShowForm(true)}
+            >
+              Add the first one
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="library-ops__list">
+          {items.map((item) => (
+            <article key={item.id} className="library-ops__row">
+              <img src={item.coverUrl} alt="" className="library-ops__thumb" />
+              <div className="library-ops__row-body">
+                <div className="library-ops__row-top">
+                  <h3>{item.title}</h3>
+                  <span className={`library-ops__pill ${item.published ? "on" : "off"}`}>
+                    {item.published ? "Live" : "Hidden"}
+                  </span>
+                  <span className="library-ops__pill price">
+                    {item.isFree ? "Free" : `$${item.priceUsd}`}
+                  </span>
                 </div>
-              )}
-            </div>
-          </article>
-        ))}
-      </div>
+                {item.description && <p className="muted">{item.description}</p>}
+                <p className="library-ops__url muted">{item.externalUrl}</p>
+                {canWrite && (
+                  <div className="library-ops__row-actions">
+                    <button type="button" className="btn" onClick={() => startEdit(item)}>
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="btn danger"
+                      disabled={busy}
+                      onClick={() => void remove(item.id)}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+
+      {!canWrite && <p className="muted">Read-only access.</p>}
     </div>
   );
 }

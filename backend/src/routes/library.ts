@@ -34,7 +34,11 @@ const uploadDir = path.resolve(
   env.UPLOAD_DIR || path.resolve(process.cwd(), "uploads"),
   "library",
 );
-mkdirSync(uploadDir, { recursive: true });
+try {
+  mkdirSync(uploadDir, { recursive: true });
+} catch (err) {
+  console.warn("[library] could not ensure upload dir", uploadDir, err);
+}
 
 const coverUpload = multer({
   storage: multer.diskStorage({
@@ -104,6 +108,12 @@ libraryRouter.get("/ops/library", requireAdmin, async (_req, res) => {
     });
   } catch (err) {
     console.error("[library.ops.list]", err);
+    // Table not migrated yet — return empty so admin UI isn't a hard error.
+    const code = (err as { code?: string } | null)?.code;
+    if (code === "P2021" || code === "P2010" || /library_items|LibraryItem/i.test(String(err))) {
+      res.json({ items: [] });
+      return;
+    }
     res.status(500).json({ error: "Failed to load library" });
   }
 });
@@ -345,13 +355,16 @@ libraryRouter.get("/student/library", requireAuth, async (req: AuthedRequest, re
           isFree: i.isFree,
           priceUsd: i.priceUsd,
           unlocked,
-          // Explicitly never expose the resource link here.
         };
       }),
-      downloadable: false,
     });
   } catch (err) {
     console.error("[library.student.list]", err);
+    const code = (err as { code?: string } | null)?.code;
+    if (code === "P2021" || code === "P2010" || /library_items|LibraryItem/i.test(String(err))) {
+      res.json({ items: [] });
+      return;
+    }
     res.status(500).json({ error: "Failed to load library" });
   }
 });
@@ -394,9 +407,6 @@ libraryRouter.post(
       res.setHeader("Cache-Control", "no-store");
       res.json({
         ok: true,
-        mode: "external_view",
-        downloadable: false,
-        // Open in a new tab viewer only — not served as a file download from us.
         viewUrl,
         title: item.title,
       });

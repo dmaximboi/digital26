@@ -302,7 +302,7 @@ export function StudentDashboardPage() {
       <div className="dashboard-cards">
         <Link to="/dashboard/library" className="dashboard-card">
           <h3>Library</h3>
-          <p>View course resources (open in viewer — not downloadable)</p>
+          <p>Browse course materials for your programme</p>
         </Link>
 
         <Link to="/dashboard/attendance" className="dashboard-card">

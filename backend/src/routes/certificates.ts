@@ -30,7 +30,21 @@ const issueSchema = z.object({
   course: z.string().min(2).max(200).optional(),
   programme: z.enum(["THREE_MONTH", "FOUR_MONTH", "FIVE_MONTH", "SIX_MONTH", "CUSTOM"]).optional(),
   customMonths: z.coerce.number().int().min(1).max(24).optional(),
+  /** YYYY-MM-DD from admin date input; defaults to today when omitted. */
+  issueDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 });
+
+function parseIssueDate(raw?: string): Date {
+  if (!raw) return new Date();
+  const [y, m, d] = raw.split("-").map((n) => Number(n));
+  if (!y || !m || !d) return new Date();
+  const dt = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  if (Number.isNaN(dt.getTime())) return new Date();
+  return dt;
+}
 
 certificatesRouter.post(
   "/ops/certificates",
@@ -130,11 +144,13 @@ certificatesRouter.post(
       const result = await prisma.$transaction(async (tx) => {
         const publicId = await nextPublicId(tx);
 
+        const issueDate = parseIssueDate(data.issueDate);
+
         const cert = await tx.certificate.create({
           data: {
             type: data.type,
             course: courseName,
-            issueDate: new Date(),
+            issueDate,
             status: CertificateStatus.VALID,
             publicId,
             photoUrl,

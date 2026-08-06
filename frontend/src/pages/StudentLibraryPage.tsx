@@ -24,8 +24,8 @@ export function StudentLibraryPage() {
 
   useEffect(() => {
     setPageMeta({
-      title: "Course library The Digital 26",
-      description: "View course resources shared by Digital 26.",
+      title: "Library · The Digital 26",
+      description: "Course materials for Digital 26 students.",
     });
   }, []);
 
@@ -92,15 +92,14 @@ export function StudentLibraryPage() {
         await load();
       }
 
-      const opened = await apiFetch<{ viewUrl: string; downloadable: boolean }>(
-        `/api/student/library/${item.id}/open`,
-        { method: "POST", body: "{}" },
-      );
-      if (!opened.viewUrl) throw new Error("No view link returned");
-      // External viewer only — never force a download from our app.
+      const opened = await apiFetch<{ viewUrl: string }>(`/api/student/library/${item.id}/open`, {
+        method: "POST",
+        body: "{}",
+      });
+      if (!opened.viewUrl) throw new Error("Could not open this material");
       window.open(opened.viewUrl, "_blank", "noopener,noreferrer");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not open resource");
+      setError(err instanceof Error ? err.message : "Could not open material");
     } finally {
       setBusyId(null);
     }
@@ -119,10 +118,8 @@ export function StudentLibraryPage() {
       <Link to="/dashboard" className="back-link">
         &larr; Dashboard
       </Link>
-      <h1>Course library</h1>
-      <p className="lede">
-        Resources open in a secure viewer tab. Files are never downloadable from Digital 26.
-      </p>
+      <h1>Library</h1>
+      <p className="lede">Course materials for your programme.</p>
 
       {error && (
         <p className="status error" role="alert">
@@ -130,20 +127,15 @@ export function StudentLibraryPage() {
         </p>
       )}
 
-      {items.length === 0 && <p className="muted">No library items yet. Check back soon.</p>}
+      {items.length === 0 && <p className="muted">Nothing here yet — check back soon.</p>}
 
       <div className="library-grid">
         {items.map((item) => (
           <article key={item.id} className="library-card">
             <div className="library-card__cover">
-              <img
-                src={item.coverUrl}
-                alt=""
-                draggable={false}
-                onContextMenu={(e) => e.preventDefault()}
-              />
+              <img src={item.coverUrl} alt="" />
               <span className={`library-card__badge ${item.unlocked ? "ok" : "lock"}`}>
-                {item.isFree ? "Free" : item.unlocked ? "Unlocked" : `$${item.priceUsd}`}
+                {item.isFree ? "Free" : item.unlocked ? "Included" : `$${item.priceUsd}`}
               </span>
             </div>
             <div className="library-card__body">
@@ -156,10 +148,10 @@ export function StudentLibraryPage() {
                 onClick={() => void openItem(item)}
               >
                 {busyId === item.id
-                  ? "Working…"
+                  ? "Opening…"
                   : item.unlocked
-                    ? "Open (view only)"
-                    : `Unlock $${item.priceUsd}`}
+                    ? "Open"
+                    : `Get access · $${item.priceUsd}`}
               </button>
             </div>
           </article>
