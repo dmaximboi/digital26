@@ -75,18 +75,26 @@ function parsePrice(isFree: boolean, priceRaw: unknown): { isFree: boolean; pric
   return { isFree: false, priceUsd: Number(price).toFixed(2) };
 }
 
-async function requireActiveStudent(req: AuthedRequest) {
+type ActiveStudentGate =
+  | { ok: true; profile: { id: string; fullName: string | null } }
+  | { ok: false; error: string; status: 403 | 404 };
+
+async function requireActiveStudent(req: AuthedRequest): Promise<ActiveStudentGate> {
   const profile = await prisma.studentProfile.findUnique({
     where: { userId: req.userId! },
+    select: { id: true, fullName: true, status: true, registrationPaidAt: true },
   });
-  if (!profile) return { error: "Submit your application first", status: 404 as const };
+  if (!profile) {
+    return { ok: false, error: "Submit your application first", status: 404 };
+  }
   if (profile.status !== StudentStatus.APPROVED || !profile.registrationPaidAt) {
     return {
+      ok: false,
       error: "Library unlocks after admin approval and registration payment",
-      status: 403 as const,
+      status: 403,
     };
   }
-  return { profile };
+  return { ok: true, profile: { id: profile.id, fullName: profile.fullName } };
 }
 
 function publicCoverUrl(coverUrl: string): string {
@@ -318,7 +326,7 @@ libraryRouter.delete(
 libraryRouter.get("/student/library", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const gate = await requireActiveStudent(req);
-    if ("error" in gate) {
+    if (!gate.ok) {
       res.status(gate.status).json({ error: gate.error });
       return;
     }
@@ -380,7 +388,7 @@ libraryRouter.post(
   async (req: AuthedRequest, res) => {
     try {
       const gate = await requireActiveStudent(req);
-      if ("error" in gate) {
+      if (!gate.ok) {
         res.status(gate.status).json({ error: gate.error });
         return;
       }
@@ -429,7 +437,7 @@ libraryRouter.post(
       }
 
       const gate = await requireActiveStudent(req);
-      if ("error" in gate) {
+      if (!gate.ok) {
         res.status(gate.status).json({ error: gate.error });
         return;
       }
