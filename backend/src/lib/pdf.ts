@@ -629,16 +629,16 @@ export async function buildCertificatePdf(opts: {
   });
 
   if (logo) {
-    const lx = 72;
-    const ly = height - 96;
-    const ls = 56;
+    const lx = 48;
+    const ly = height - 128;
+    const ls = 88;
     page.drawImage(logo, { x: lx, y: ly, width: ls, height: ls });
     page.drawCircle({
       x: lx + ls / 2,
       y: ly + ls / 2,
-      size: ls / 2 + 2,
+      size: ls / 2 + 3,
       borderColor: GOLD,
-      borderWidth: 2,
+      borderWidth: 2.5,
     });
   }
 
@@ -649,18 +649,18 @@ export async function buildCertificatePdf(opts: {
         photoUrl: opts.photoUrl,
       });
       if (loaded) {
-        const roundBytes = await roundPhotoPng(loaded.bytes, 88);
+        const roundBytes = await roundPhotoPng(loaded.bytes, 160);
         const photo = await pdf.embedPng(roundBytes);
-        const ps = 52;
-        const px = width - 124;
-        const py = height - 94;
+        const ps = 88;
+        const px = width - 136;
+        const py = height - 128;
         page.drawImage(photo, { x: px, y: py, width: ps, height: ps });
         page.drawCircle({
           x: px + ps / 2,
           y: py + ps / 2,
-          size: ps / 2 + 2,
+          size: ps / 2 + 3,
           borderColor: GOLD,
-          borderWidth: 1.5,
+          borderWidth: 2,
         });
       }
     } catch {
@@ -673,16 +673,16 @@ export async function buildCertificatePdf(opts: {
 
   drawCentered(page, "THE DIGITAL 26", {
     x: width / 2,
-    y: height - 78,
-    size: 9,
+    y: height - 108,
+    size: 12,
     font: bold,
     color: GOLD,
   });
 
   drawCentered(page, "hereby proudly presents this", {
     x: width / 2,
-    y: height - 118,
-    size: 11,
+    y: height - 150,
+    size: 13,
     font: italic,
     color: MUTED,
   });
@@ -692,28 +692,29 @@ export async function buildCertificatePdf(opts: {
       ? "Certificate of Completion"
       : "Certificate of Participation";
 
-  const titleW = bold.widthOfTextAtSize(title, 24);
+  const titleSize = 30;
+  const titleW = bold.widthOfTextAtSize(title, titleSize);
   page.drawText(title, {
     x: width / 2 - titleW / 2,
-    y: height - 158,
-    size: 24,
+    y: height - 195,
+    size: titleSize,
     font: bold,
     color: GOLD,
   });
 
   drawCentered(page, "awarded to", {
     x: width / 2,
-    y: height - 190,
-    size: 11,
+    y: height - 230,
+    size: 13,
     font: italic,
     color: MUTED,
   });
 
-  const nameSize = opts.displayName.length > 28 ? 26 : 34;
+  const nameSize = opts.displayName.length > 28 ? 30 : 40;
   const nameW = serif.widthOfTextAtSize(asciiPdf(opts.displayName), nameSize);
   page.drawText(asciiPdf(opts.displayName), {
-    x: Math.max(80, width / 2 - nameW / 2),
-    y: height - 240,
+    x: Math.max(60, width / 2 - nameW / 2),
+    y: height - 285,
     size: nameSize,
     font: serif,
     color: CREAM,
@@ -724,70 +725,70 @@ export async function buildCertificatePdf(opts: {
       ? `Congratulations on successfully finishing the ${opts.course} with The Digital 26. We celebrate your dedication, your wins, and the bright craft ahead. Keep building with heart.`
       : `with a warm welcome into the ${opts.course}. You are part of The Digital 26, arriving with curiosity, good energy, and an open mind to learn, vibe, and grow. We're glad you're here.`;
   drawWrapped(page, asciiPdf(bodyText), {
-    x: 120,
-    y: height - 285,
-    maxWidth: width - 240,
-    size: 11,
+    x: 90,
+    y: height - 330,
+    maxWidth: width - 180,
+    size: 13,
     font: serifReg,
     color: MUTED,
-    lineHeight: 16,
+    lineHeight: 18,
   });
 
   const skills = ["Vibe Coding", "Prompt Engineering", "Web Development", "Deployment"];
-  let sx = 200;
+  let sx = 150;
   for (const skill of skills) {
-    const chipW = skill.length * 6 + 16;
+    const chipW = skill.length * 7.2 + 20;
     page.drawRectangle({
       x: sx,
-      y: height - 360,
+      y: height - 420,
       width: chipW,
-      height: 16,
+      height: 20,
       borderColor: GOLD,
       borderWidth: 1,
       borderOpacity: 0.4,
     });
     page.drawText(skill.toUpperCase(), {
-      x: sx + 8,
-      y: height - 355,
-      size: 7,
+      x: sx + 10,
+      y: height - 414,
+      size: 8,
       font,
       color: GOLD,
     });
-    sx += chipW + 12;
+    sx += chipW + 14;
   }
 
   page.drawText("Adewuyi Ayuba", {
-    x: 110,
-    y: 150,
-    size: 15,
+    x: 95,
+    y: 145,
+    size: 18,
     font: italic,
     color: CREAM,
   });
   page.drawLine({
-    start: { x: 90, y: 140 },
-    end: { x: 250, y: 140 },
-    thickness: 1,
+    start: { x: 80, y: 132 },
+    end: { x: 260, y: 132 },
+    thickness: 1.2,
     color: GOLD,
     opacity: 0.4,
   });
   page.drawText("Instructor & Founder", {
-    x: 110,
-    y: 122,
-    size: 8,
+    x: 95,
+    y: 112,
+    size: 9,
     font,
     color: MUTED,
   });
   page.drawText("The Digital 26 by Maxim", {
-    x: 110,
-    y: 108,
-    size: 8,
+    x: 95,
+    y: 98,
+    size: 9,
     font,
     color: MUTED,
   });
   page.drawText("RC - 9710046", {
-    x: 110,
-    y: 92,
-    size: 7,
+    x: 95,
+    y: 82,
+    size: 8,
     font,
     color: MUTED,
   });
@@ -797,27 +798,27 @@ export async function buildCertificatePdf(opts: {
     month: "long",
     year: "numeric",
   });
-  const dateW = bold.widthOfTextAtSize(dateStr, 12);
+  const dateW = bold.widthOfTextAtSize(dateStr, 14);
   page.drawText(dateStr, {
-    x: width - 110 - dateW,
-    y: 150,
-    size: 12,
+    x: width - 100 - dateW,
+    y: 145,
+    size: 14,
     font: bold,
     color: CREAM,
   });
   page.drawLine({
-    start: { x: width - 260, y: 140 },
-    end: { x: width - 110, y: 140 },
-    thickness: 1,
+    start: { x: width - 270, y: 132 },
+    end: { x: width - 100, y: 132 },
+    thickness: 1.2,
     color: GOLD,
     opacity: 0.4,
   });
   page.drawText(
     opts.type === "COMPLETION" ? "Date of Completion" : "Date of Participation",
     {
-      x: width - 250,
-      y: 122,
-      size: 8,
+      x: width - 265,
+      y: 112,
+      size: 9,
       font,
       color: MUTED,
     },
@@ -825,37 +826,37 @@ export async function buildCertificatePdf(opts: {
 
   const qr = await qrPng(verifyUrl);
   const qrImage = await pdf.embedPng(qr);
-  const qrSize = 72;
+  const qrSize = 86;
   page.drawRectangle({
-    x: width / 2 - qrSize / 2 - 4,
-    y: 88,
-    width: qrSize + 8,
-    height: qrSize + 8,
+    x: width / 2 - qrSize / 2 - 5,
+    y: 78,
+    width: qrSize + 10,
+    height: qrSize + 10,
     color: rgb(1, 1, 1),
   });
   page.drawImage(qrImage, {
     x: width / 2 - qrSize / 2,
-    y: 92,
+    y: 83,
     width: qrSize,
     height: qrSize,
   });
 
   const idText = opts.publicId;
-  const idWidth = bold.widthOfTextAtSize(idText, 9);
+  const idWidth = bold.widthOfTextAtSize(idText, 11);
   page.drawText(idText, {
     x: width / 2 - idWidth / 2,
-    y: 72,
-    size: 9,
+    y: 62,
+    size: 11,
     font: bold,
     color: GOLD,
   });
 
   const verifyLabel = `Verify: ${verifyUrl.replace(/^https?:\/\//, "")}`;
-  const verifyW = font.widthOfTextAtSize(verifyLabel, 8);
+  const verifyW = font.widthOfTextAtSize(verifyLabel, 9);
   page.drawText(verifyLabel, {
     x: width / 2 - verifyW / 2,
-    y: 52,
-    size: 8,
+    y: 42,
+    size: 9,
     font,
     color: GOLD,
   });

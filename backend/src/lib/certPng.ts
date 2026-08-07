@@ -20,7 +20,7 @@ async function loadLogoDataUri(): Promise<string> {
   try {
     const bytes = await readFile(path.resolve(__dirname, "../../assets/logo.png"));
     const round = await sharp(bytes)
-      .resize(220, 220, { fit: "cover" })
+      .resize(360, 360, { fit: "cover" })
       .png()
       .toBuffer();
     return `data:image/png;base64,${round.toString("base64")}`;
@@ -32,7 +32,7 @@ async function loadLogoDataUri(): Promise<string> {
 async function loadRoundPhotoDataUri(photoUrl?: string | null): Promise<string> {
   const photo = await loadPhotoBytes({ photoUrl: photoUrl ?? undefined });
   if (!photo) return "";
-  const size = 200;
+  const size = 340;
   const circleSvg = Buffer.from(
     `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}"><circle cx="${size / 2}" cy="${size / 2}" r="${size / 2}" fill="#fff"/></svg>`,
   );
@@ -72,7 +72,7 @@ export async function buildCertificateTemplatePng(opts: {
     QRCode.toBuffer(verifyUrl, {
       type: "png",
       margin: 1,
-      width: 220,
+      width: 260,
       errorCorrectionLevel: "M",
       color: { dark: "#06060a", light: "#ffffff" },
     }),
@@ -82,22 +82,29 @@ export async function buildCertificateTemplatePng(opts: {
   const qrB64 = `data:image/png;base64,${Buffer.from(qr).toString("base64")}`;
   const verifyDisplay = verifyUrl.replace(/^https?:\/\//, "");
 
-  const bodyLines = wrapText(bodyText, 78);
+  const bodyLines = wrapText(bodyText, 68);
   const bodySvg = bodyLines
     .map(
       (line, i) =>
-        `<text x="50%" y="${520 + i * 28}" text-anchor="middle" fill="#a09888" font-family="Georgia, serif" font-size="20">${escapeXml(line)}</text>`,
+        `<text x="50%" y="${545 + i * 34}" text-anchor="middle" fill="#a09888" font-family="Georgia, serif" font-size="26">${escapeXml(line)}</text>`,
     )
     .join("\n");
 
   const skills = ["Vibe Coding", "Prompt Engineering", "Web Development", "Deployment"];
   const skillChips = skills
     .map((s, i) => {
-      const x = 520 + i * 200;
-      return `<rect x="${x}" y="820" width="180" height="34" fill="none" stroke="#f0a500" stroke-opacity="0.35" rx="2"/>
-        <text x="${x + 90}" y="842" text-anchor="middle" fill="#f0a500" font-family="Arial, sans-serif" font-size="14" letter-spacing="2">${escapeXml(s.toUpperCase())}</text>`;
+      const x = 430 + i * 240;
+      return `<rect x="${x}" y="800" width="220" height="42" fill="none" stroke="#f0a500" stroke-opacity="0.35" rx="2"/>
+        <text x="${x + 110}" y="828" text-anchor="middle" fill="#f0a500" font-family="Arial, sans-serif" font-size="17" letter-spacing="2">${escapeXml(s.toUpperCase())}</text>`;
     })
     .join("\n");
+
+  const logoSize = 168;
+  const photoSize = 168;
+  const logoX = 90;
+  const logoY = 48;
+  const photoX = width - 90 - photoSize;
+  const photoY = 48;
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -112,41 +119,41 @@ export async function buildCertificateTemplatePng(opts: {
   <rect x="20" y="20" width="${width - 40}" height="${height - 40}" fill="none" stroke="#f0a500" stroke-opacity="0.35" stroke-width="2"/>
   <rect x="32" y="32" width="${width - 64}" height="${height - 64}" fill="none" stroke="#f0a500" stroke-opacity="0.12" stroke-width="1"/>
 
-  <text x="50%" y="54%" text-anchor="middle" fill="#f0a500" fill-opacity="0.05" font-family="Arial Black, Arial, sans-serif" font-size="220" letter-spacing="8">D26</text>
+  <text x="50%" y="54%" text-anchor="middle" fill="#f0a500" fill-opacity="0.05" font-family="Arial Black, Arial, sans-serif" font-size="240" letter-spacing="8">D26</text>
 
-  ${logoUri ? `<image x="120" y="70" width="100" height="100" href="${logoUri}" />` : ""}
+  ${logoUri ? `<image x="${logoX}" y="${logoY}" width="${logoSize}" height="${logoSize}" href="${logoUri}" />` : ""}
   ${photoUri
-    ? `<circle cx="${width - 170}" cy="120" r="54" fill="none" stroke="#f0a500" stroke-opacity="0.45" stroke-width="3"/>
-       <image x="${width - 220}" y="70" width="100" height="100" href="${photoUri}" />`
-    : `<circle cx="${width - 170}" cy="120" r="50" fill="#111" stroke="#f0a500" stroke-opacity="0.35" stroke-width="2"/>`}
+    ? `<circle cx="${photoX + photoSize / 2}" cy="${photoY + photoSize / 2}" r="${photoSize / 2 + 4}" fill="none" stroke="#f0a500" stroke-opacity="0.5" stroke-width="4"/>
+       <image x="${photoX}" y="${photoY}" width="${photoSize}" height="${photoSize}" href="${photoUri}" />`
+    : `<circle cx="${photoX + photoSize / 2}" cy="${photoY + photoSize / 2}" r="${photoSize / 2}" fill="#111" stroke="#f0a500" stroke-opacity="0.35" stroke-width="3"/>`}
 
-  <line x1="280" y1="200" x2="760" y2="200" stroke="#a07000" stroke-width="1"/>
-  <text x="50%" y="206" text-anchor="middle" fill="#f0a500" font-family="Arial, sans-serif" font-size="16" font-weight="700" letter-spacing="6">THE DIGITAL 26</text>
-  <line x1="1040" y1="200" x2="1520" y2="200" stroke="#a07000" stroke-width="1"/>
+  <line x1="300" y1="250" x2="720" y2="250" stroke="#a07000" stroke-width="1.5"/>
+  <text x="50%" y="258" text-anchor="middle" fill="#f0a500" font-family="Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="7">THE DIGITAL 26</text>
+  <line x1="1080" y1="250" x2="1500" y2="250" stroke="#a07000" stroke-width="1.5"/>
 
-  <text x="50%" y="250" text-anchor="middle" fill="#6a6055" font-family="Georgia, serif" font-style="italic" font-size="18" letter-spacing="4">hereby proudly presents this</text>
-  <text x="50%" y="320" text-anchor="middle" fill="#f0a500" font-family="Arial Black, Arial, sans-serif" font-size="52" letter-spacing="3">${escapeXml(typeLabel)}</text>
-  <text x="50%" y="370" text-anchor="middle" fill="#6a6055" font-family="Georgia, serif" font-style="italic" font-size="18" letter-spacing="4">awarded to</text>
-  <text x="50%" y="450" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-size="64" font-weight="700">${escapeXml(opts.displayName)}</text>
+  <text x="50%" y="310" text-anchor="middle" fill="#6a6055" font-family="Georgia, serif" font-style="italic" font-size="24" letter-spacing="4">hereby proudly presents this</text>
+  <text x="50%" y="390" text-anchor="middle" fill="#f0a500" font-family="Arial Black, Arial, sans-serif" font-size="64" letter-spacing="3">${escapeXml(typeLabel)}</text>
+  <text x="50%" y="445" text-anchor="middle" fill="#6a6055" font-family="Georgia, serif" font-style="italic" font-size="24" letter-spacing="4">awarded to</text>
+  <text x="50%" y="525" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-size="76" font-weight="700">${escapeXml(opts.displayName)}</text>
 
   ${bodySvg}
 
   ${skillChips}
 
-  <text x="280" y="980" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-style="italic" font-size="28">Adewuyi Ayuba</text>
-  <line x1="180" y1="1000" x2="380" y2="1000" stroke="#f0a500" stroke-opacity="0.4"/>
-  <text x="280" y="1028" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="12" letter-spacing="2">INSTRUCTOR &amp; FOUNDER</text>
-  <text x="280" y="1048" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="12">THE DIGITAL 26 BY MAXIM</text>
-  <text x="280" y="1070" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="11">RC - 9710046</text>
+  <text x="280" y="970" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-style="italic" font-size="34">Adewuyi Ayuba</text>
+  <line x1="160" y1="992" x2="400" y2="992" stroke="#f0a500" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text x="280" y="1024" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="15" letter-spacing="2">INSTRUCTOR &amp; FOUNDER</text>
+  <text x="280" y="1048" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="15">THE DIGITAL 26 BY MAXIM</text>
+  <text x="280" y="1072" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="13">RC - 9710046</text>
 
-  <rect x="${width / 2 - 70}" y="930" width="140" height="140" fill="#fff" rx="8"/>
-  <image x="${width / 2 - 60}" y="940" width="120" height="120" href="${qrB64}"/>
-  <text x="50%" y="1100" text-anchor="middle" fill="#f0a500" font-family="Arial, sans-serif" font-size="14" font-weight="700">${escapeXml(opts.publicId)}</text>
+  <rect x="${width / 2 - 82}" y="900" width="164" height="164" fill="#fff" rx="10"/>
+  <image x="${width / 2 - 70}" y="912" width="140" height="140" href="${qrB64}"/>
+  <text x="50%" y="1095" text-anchor="middle" fill="#f0a500" font-family="Arial, sans-serif" font-size="18" font-weight="700">${escapeXml(opts.publicId)}</text>
 
-  <text x="${width - 280}" y="980" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-size="24" font-weight="600">${escapeXml(dateLabel)}</text>
-  <line x1="${width - 380}" y1="1000" x2="${width - 180}" y2="1000" stroke="#f0a500" stroke-opacity="0.4"/>
-  <text x="${width - 280}" y="1028" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="12" letter-spacing="2">${isCompletion ? "DATE OF COMPLETION" : "DATE OF PARTICIPATION"}</text>
-  <text x="${width - 280}" y="1060" text-anchor="middle" fill="#a07000" font-family="Arial, sans-serif" font-size="11">Verify: ${escapeXml(verifyDisplay)}</text>
+  <text x="${width - 280}" y="970" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-size="30" font-weight="600">${escapeXml(dateLabel)}</text>
+  <line x1="${width - 400}" y1="992" x2="${width - 160}" y2="992" stroke="#f0a500" stroke-opacity="0.4" stroke-width="1.5"/>
+  <text x="${width - 280}" y="1024" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="15" letter-spacing="2">${isCompletion ? "DATE OF COMPLETION" : "DATE OF PARTICIPATION"}</text>
+  <text x="${width - 280}" y="1056" text-anchor="middle" fill="#a07000" font-family="Arial, sans-serif" font-size="14">Verify: ${escapeXml(verifyDisplay)}</text>
 </svg>`;
 
   return sharp(Buffer.from(svg)).png({ compressionLevel: 6 }).toBuffer();
