@@ -127,12 +127,21 @@ export function VerifyPage() {
           <p className="muted">ID: {result.publicId} · {result.type}</p>
 
           {!result.accessPaid ? (
-            <DocumentPaywall
-              kind="CERTIFICATE"
-              publicId={result.publicId}
-              amountUsd={result.amountUsd || "1.00"}
-              onUnlocked={() => void load(result.publicId)}
-            />
+            <>
+              <div className="verify-locked">
+                <p className="badge due">Locked</p>
+                <p>
+                  This certificate is valid, but the full art and download unlock after a one-time
+                  payment.
+                </p>
+              </div>
+              <DocumentPaywall
+                kind="CERTIFICATE"
+                publicId={result.publicId}
+                amountUsd={result.amountUsd || "1.00"}
+                onUnlocked={() => void load(result.publicId)}
+              />
+            </>
           ) : (
             <>
               <div className="verify-cert-wrap">

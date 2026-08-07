@@ -76,6 +76,19 @@ export function applySecurity(app: Express): void {
           callback(null, origin);
           return;
         }
+        // Vercel preview / production aliases for this project while custom domain DNS is settling.
+        try {
+          const host = new URL(origin).hostname;
+          if (
+            host.endsWith(".vercel.app") &&
+            (host.startsWith("digital26") || host.includes("dmaximboi"))
+          ) {
+            callback(null, origin);
+            return;
+          }
+        } catch {
+          /* fall through */
+        }
         callback(new Error("CORS blocked"));
       },
       credentials: true,

@@ -93,13 +93,53 @@ paymentsRouter.post(
       }
 
       const amountUsd = PAYMENT_AMOUNTS_USD[kind];
-      const reference = newPaymentReference(kind as PaymentKind);
       // No query string — Bachs appends ?checkout_id= itself.
       const successPath =
         kind === "CERTIFICATE"
           ? `/verify/${encodeURIComponent(publicId)}`
           : `/check-agreement/${encodeURIComponent(publicId)}`;
 
+      // Reuse a recent open checkout for the same document (avoids double-charge UX).
+      const recentOpen = await prisma.paymentOrder.findFirst({
+        where: {
+          kind: kind as PaymentKind,
+          publicId,
+          status: PaymentStatus.PENDING,
+          checkoutId: { not: null },
+          createdAt: { gte: new Date(Date.now() - 45 * 60 * 1000) },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (recentOpen?.checkoutId) {
+        try {
+          const remote = await getBachsCheckout(recentOpen.checkoutId);
+          if (isSuccessfulCheckout(remote)) {
+            await verifyAndFulfillOrder({
+              orderId: recentOpen.id,
+              checkoutId: recentOpen.checkoutId,
+              reference: recentOpen.reference,
+              chargeId: remote.charge?.charge_id,
+            });
+            res.json({ ok: true, alreadyPaid: true });
+            return;
+          }
+          if (String(remote.status).toUpperCase() === "OPEN" && remote.checkout_url) {
+            res.json({
+              ok: true,
+              reused: true,
+              checkoutId: recentOpen.checkoutId,
+              checkoutUrl: remote.checkout_url,
+              amountUsd: recentOpen.amountUsd,
+              label: paymentLabel(kind as PaymentKind),
+            });
+            return;
+          }
+        } catch {
+          /* create fresh */
+        }
+      }
+
+      const reference = newPaymentReference(kind as PaymentKind);
       const order = await prisma.paymentOrder.create({
         data: {
           kind: kind as PaymentKind,

@@ -1469,18 +1469,66 @@ dd {
 }
 .pending-checklist p { margin: .25rem 0 0; }
 
+.verify-locked {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px dashed rgba(255,158,0,.35);
+  border-radius: 12px;
+  background: rgba(255,158,0,.06);
+}
+.verify-locked p { margin: .4rem 0 0; }
 .doc-paywall {
   margin-top: 1.25rem;
   padding: 1.25rem;
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 14px;
-  background: linear-gradient(160deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px;
+  background: linear-gradient(160deg, rgba(255,158,0,.08), rgba(255,255,255,.02));
   text-align: left;
-  max-width: 420px;
+  max-width: 520px;
+}
+.doc-paywall__hero {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+.doc-paywall__eyebrow {
+  margin: 0 0 .25rem;
+  font-size: .78rem;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--accent);
 }
 .doc-paywall h2 {
   margin: 0 0 .35rem;
   font-size: 1.35rem;
+}
+.doc-paywall__price {
+  min-width: 96px;
+  padding: .7rem .85rem;
+  border-radius: 12px;
+  background: rgba(0,0,0,.28);
+  border: 1px solid rgba(255,158,0,.35);
+  display: grid;
+  justify-items: center;
+  gap: .1rem;
+}
+.doc-paywall__price span {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  opacity: .8;
+}
+.doc-paywall__price strong {
+  font-size: 1.6rem;
+  line-height: 1;
+  color: var(--accent);
+}
+.doc-paywall__price em {
+  font-style: normal;
+  font-size: .75rem;
+  opacity: .75;
 }
 .doc-paywall__form {
   display: grid;
@@ -1492,6 +1540,18 @@ dd {
   gap: .35rem;
   font-size: .9rem;
 }
+.doc-paywall__cta {
+  width: 100%;
+  min-height: 3rem;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+.doc-paywall__actions {
+  margin-top: .85rem;
+  display: grid;
+  gap: .65rem;
+}
+.doc-paywall__note { margin: 0; font-size: .85rem; }
 
 .status-icon { font-size: 3rem; margin-bottom: 1rem; }
 .status-details { margin-top: 1.5rem; text-align: left; background: rgba(255,255,255,.03); border-radius: 10px; padding: 1rem; }

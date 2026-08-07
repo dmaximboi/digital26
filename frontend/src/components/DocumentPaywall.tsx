@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiPost } from "../lib/api";
 
 type Props = {
@@ -8,63 +8,154 @@ type Props = {
   onUnlocked?: () => void;
 };
 
+const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
+
+function storageKey(kind: string, publicId: string) {
+  return `d26_checkout_${kind}_${publicId}`;
+}
+
 export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props) {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [verifyBusy, setVerifyBusy] = useState(false);
   const [error, setError] = useState("");
-  const [syncing, setSyncing] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [checkoutId, setCheckoutId] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem(storageKey(kind, publicId));
+    } catch {
+      return null;
+    }
+  });
+
+  const label = kind === "CERTIFICATE" ? "certificate" : "agreement letter";
+  const cta =
+    kind === "CERTIFICATE"
+      ? `Pay $${amountUsd} to unlock & download`
+      : `Pay $${amountUsd} to unlock`;
+
+  const syncCheckout = useCallback(
+    async (id?: string | null) => {
+      const cid = (id || checkoutId || "").trim();
+      if (!cid) return { status: null as string | null };
+
+      const res = await fetch(
+        `${API_BASE}/api/public/payments/sync?checkout_id=${encodeURIComponent(cid)}`,
+      );
+      const data = (await res.json().catch(() => ({}))) as {
+        status?: string | null;
+        error?: string;
+        ok?: boolean;
+      };
+      if (!res.ok) throw new Error(data.error || "Could not verify payment");
+      if (data.status === "PAID") {
+        try {
+          sessionStorage.removeItem(storageKey(kind, publicId));
+        } catch {
+          /* ignore */
+        }
+        onUnlocked?.();
+      }
+      return { status: data.status ?? null };
+    },
+    [checkoutId, kind, onUnlocked, publicId],
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const checkoutId = params.get("checkout_id");
+    const returnedId = params.get("checkout_id");
     const paid = params.get("paid");
-    if (!checkoutId && !paid) return;
+    const cancelled = params.get("cancelled");
+    if (!returnedId && !paid && cancelled !== "1") return;
 
-    let cancelled = false;
-    setSyncing(true);
+    let stopped = false;
+    let timer: number | undefined;
 
-    const sync = async () => {
-      try {
-        if (checkoutId) {
-          const res = await fetch(
-            `${(import.meta.env.VITE_API_URL || "").replace(/\/$/, "")}/api/public/payments/sync?checkout_id=${encodeURIComponent(checkoutId)}`,
-          );
-          const data = (await res.json().catch(() => ({}))) as { status?: string };
-          if (!cancelled && data.status === "PAID") {
-            onUnlocked?.();
+    (async () => {
+      if (cancelled === "1") {
+        setNotice("Checkout cancelled. You can try again.");
+      } else {
+        setNotice("Confirming payment with Bachs…");
+        if (returnedId) {
+          try {
+            sessionStorage.setItem(storageKey(kind, publicId), returnedId);
+          } catch {
+            /* ignore */
           }
-        } else if (paid === "1") {
-          // Webhook may still be in flight — brief retry then reload.
-          await new Promise((r) => setTimeout(r, 1200));
-          if (!cancelled) onUnlocked?.();
+          setCheckoutId(returnedId);
         }
-      } catch {
-        /* ignore */
-      } finally {
-        if (!cancelled) setSyncing(false);
-        const url = new URL(window.location.href);
-        url.searchParams.delete("checkout_id");
-        url.searchParams.delete("paid");
-        url.searchParams.delete("cancelled");
-        window.history.replaceState({}, "", url.pathname + url.search);
+        try {
+          const result = await syncCheckout(returnedId);
+          if (stopped) return;
+          if (result.status === "PAID") {
+            setNotice("Payment verified. Unlocking…");
+            return;
+          }
+          setNotice("Returned from checkout — still confirming with Bachs…");
+        } catch (err) {
+          if (!stopped) {
+            setError(err instanceof Error ? err.message : "Payment verify failed");
+            setNotice("");
+          }
+        }
       }
-    };
 
-    void sync();
+      const url = new URL(window.location.href);
+      url.searchParams.delete("checkout_id");
+      url.searchParams.delete("paid");
+      url.searchParams.delete("cancelled");
+      window.history.replaceState({}, "", url.pathname + url.search);
+
+      if (cancelled === "1" || stopped) return;
+
+      let polls = 0;
+      timer = window.setInterval(() => {
+        polls += 1;
+        void (async () => {
+          try {
+            const result = await syncCheckout(returnedId);
+            if (stopped) return;
+            if (result.status === "PAID" || polls >= 10) {
+              if (timer) window.clearInterval(timer);
+              if (result.status === "PAID") {
+                setNotice("Payment verified. Unlocking…");
+              } else if (polls >= 10) {
+                setNotice("Still unpaid on our side. Tap “I already paid” if Bachs succeeded.");
+              }
+            }
+          } catch {
+            if (polls >= 10 && timer) window.clearInterval(timer);
+          }
+        })();
+      }, 2500);
+    })();
+
     return () => {
-      cancelled = true;
+      stopped = true;
+      if (timer) window.clearInterval(timer);
     };
-  }, [onUnlocked]);
+  }, [kind, publicId, syncCheckout]);
 
   async function startCheckout(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
     setError("");
+    setNotice("");
     setBusy(true);
     try {
+      // If we have a prior checkout, verify it before creating another.
+      if (checkoutId) {
+        const prior = await syncCheckout(checkoutId);
+        if (prior.status === "PAID") {
+          setBusy(false);
+          return;
+        }
+      }
+
       const data = await apiPost<{
         checkoutUrl?: string;
+        checkoutId?: string;
         alreadyPaid?: boolean;
       }>("/api/public/payments/checkout", {
         kind,
@@ -72,11 +163,22 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
         email: email.trim(),
         name: name.trim() || undefined,
       });
+
       if (data.alreadyPaid) {
+        setNotice("Already paid — unlocking…");
         onUnlocked?.();
+        setBusy(false);
         return;
       }
       if (!data.checkoutUrl) throw new Error("No checkout URL returned");
+      if (data.checkoutId) {
+        try {
+          sessionStorage.setItem(storageKey(kind, publicId), data.checkoutId);
+        } catch {
+          /* ignore */
+        }
+        setCheckoutId(data.checkoutId);
+      }
       window.location.href = data.checkoutUrl;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Payment failed to start");
@@ -84,17 +186,52 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
     }
   }
 
-  const label =
-    kind === "CERTIFICATE" ? "certificate" : "agreement letter";
+  async function verifyAgain() {
+    if (verifyBusy) return;
+    setVerifyBusy(true);
+    setError("");
+    setNotice("Re-checking Bachs…");
+    try {
+      const result = await syncCheckout(checkoutId);
+      if (result.status === "PAID") {
+        setNotice("Payment verified. Unlocking…");
+      } else {
+        setNotice(
+          "Still unpaid on our side. If Bachs shows success, wait a minute and tap again.",
+        );
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Verify failed");
+      setNotice("");
+    } finally {
+      setVerifyBusy(false);
+    }
+  }
 
   return (
     <div className="doc-paywall">
-      <h2>Unlock this {label}</h2>
-      <p className="lede">
-        One-time fee of <strong>${amountUsd} USD</strong>. Bachs converts to your local currency
-        at checkout.
-      </p>
-      {syncing && <p className="muted">Confirming payment…</p>}
+      <div className="doc-paywall__hero">
+        <div>
+          <p className="doc-paywall__eyebrow">One-time unlock</p>
+          <h2>Download this {label}</h2>
+          <p className="lede">
+            Pay once to unlock the full {label} and download.
+          </p>
+        </div>
+        <div className="doc-paywall__price">
+          <span>Amount</span>
+          <strong>${amountUsd}</strong>
+          <em>USD</em>
+        </div>
+      </div>
+
+      {notice && <p className="payment-notice">{notice}</p>}
+      {error && (
+        <p className="status error" role="alert">
+          {error}
+        </p>
+      )}
+
       <form className="doc-paywall__form" onSubmit={(e) => void startCheckout(e)}>
         <label>
           Email for receipt
@@ -105,28 +242,43 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
             onChange={(e) => setEmail(e.target.value)}
             className="form-input"
             autoComplete="email"
+            placeholder="you@email.com"
           />
         </label>
         <label>
-          Full name
+          Full name <span className="muted">(optional)</span>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="form-input"
             autoComplete="name"
-            placeholder="Optional"
           />
         </label>
-        {error && (
-          <p className="status error" role="alert">
-            {error}
-          </p>
-        )}
-        <button className="btn primary" type="submit" disabled={busy || syncing}>
-          {busy ? "Redirecting…" : `Pay $${amountUsd}`}
+
+        <button
+          className="btn primary payment-cta doc-paywall__cta"
+          type="submit"
+          disabled={busy || verifyBusy}
+        >
+          {busy ? "Opening secure checkout…" : cta}
         </button>
       </form>
+
+      <div className="doc-paywall__actions">
+        <button
+          type="button"
+          className="btn"
+          disabled={busy || verifyBusy}
+          onClick={() => void verifyAgain()}
+        >
+          {verifyBusy ? "Checking…" : "I already paid — verify again"}
+        </button>
+        <p className="muted doc-paywall__note">
+          Checkout is hosted by Bachs. After you pay, we confirm the charge with Bachs before
+          unlocking — not from the redirect alone.
+        </p>
+      </div>
     </div>
   );
 }
