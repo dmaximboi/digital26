@@ -82,29 +82,46 @@ export async function buildCertificateTemplatePng(opts: {
   const qrB64 = `data:image/png;base64,${Buffer.from(qr).toString("base64")}`;
   const verifyDisplay = verifyUrl.replace(/^https?:\/\//, "");
 
-  const bodyLines = wrapText(bodyText, 68);
+  // Fixed vertical rhythm so name never covers body text.
+  const logoSize = 140;
+  const photoSize = 140;
+  const logoX = 80;
+  const logoY = 44;
+  const photoX = width - 80 - photoSize;
+  const photoY = 44;
+
+  const brandY = 230; // clear below corner images
+  const presentsY = 280;
+  const typeY = 350;
+  const awardedY = 400;
+  const nameStartY = 470;
+  const nameLines = wrapText(opts.displayName, opts.displayName.length > 28 ? 22 : 30).slice(0, 2);
+  const nameSize = nameLines.length > 1 || opts.displayName.length > 26 ? 54 : 68;
+  const nameLineGap = nameSize + 8;
+  const bodyStartY = nameStartY + nameLines.length * nameLineGap + 28;
+  const bodyLines = wrapText(bodyText, 62).slice(0, 4);
   const bodySvg = bodyLines
     .map(
       (line, i) =>
-        `<text x="50%" y="${545 + i * 34}" text-anchor="middle" fill="#a09888" font-family="Georgia, serif" font-size="26">${escapeXml(line)}</text>`,
+        `<text x="50%" y="${bodyStartY + i * 36}" text-anchor="middle" fill="#a09888" font-family="Georgia, serif" font-size="28">${escapeXml(line)}</text>`,
+    )
+    .join("\n");
+  const nameSvg = nameLines
+    .map(
+      (line, i) =>
+        `<text x="50%" y="${nameStartY + i * nameLineGap}" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-size="${nameSize}" font-weight="700">${escapeXml(line)}</text>`,
     )
     .join("\n");
 
+  const skillsY = Math.min(800, bodyStartY + bodyLines.length * 36 + 40);
   const skills = ["Vibe Coding", "Prompt Engineering", "Web Development", "Deployment"];
   const skillChips = skills
     .map((s, i) => {
       const x = 430 + i * 240;
-      return `<rect x="${x}" y="800" width="220" height="42" fill="none" stroke="#f0a500" stroke-opacity="0.35" rx="2"/>
-        <text x="${x + 110}" y="828" text-anchor="middle" fill="#f0a500" font-family="Arial, sans-serif" font-size="17" letter-spacing="2">${escapeXml(s.toUpperCase())}</text>`;
+      return `<rect x="${x}" y="${skillsY}" width="220" height="40" fill="none" stroke="#f0a500" stroke-opacity="0.35" rx="2"/>
+        <text x="${x + 110}" y="${skillsY + 27}" text-anchor="middle" fill="#f0a500" font-family="Arial, sans-serif" font-size="16" letter-spacing="2">${escapeXml(s.toUpperCase())}</text>`;
     })
     .join("\n");
-
-  const logoSize = 168;
-  const photoSize = 168;
-  const logoX = 90;
-  const logoY = 48;
-  const photoX = width - 90 - photoSize;
-  const photoY = 48;
 
   const svg = `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -119,7 +136,7 @@ export async function buildCertificateTemplatePng(opts: {
   <rect x="20" y="20" width="${width - 40}" height="${height - 40}" fill="none" stroke="#f0a500" stroke-opacity="0.35" stroke-width="2"/>
   <rect x="32" y="32" width="${width - 64}" height="${height - 64}" fill="none" stroke="#f0a500" stroke-opacity="0.12" stroke-width="1"/>
 
-  <text x="50%" y="54%" text-anchor="middle" fill="#f0a500" fill-opacity="0.05" font-family="Arial Black, Arial, sans-serif" font-size="240" letter-spacing="8">D26</text>
+  <text x="50%" y="54%" text-anchor="middle" fill="#f0a500" fill-opacity="0.05" font-family="Arial Black, Arial, sans-serif" font-size="220" letter-spacing="8">D26</text>
 
   ${logoUri ? `<image x="${logoX}" y="${logoY}" width="${logoSize}" height="${logoSize}" href="${logoUri}" />` : ""}
   ${photoUri
@@ -127,33 +144,33 @@ export async function buildCertificateTemplatePng(opts: {
        <image x="${photoX}" y="${photoY}" width="${photoSize}" height="${photoSize}" href="${photoUri}" />`
     : `<circle cx="${photoX + photoSize / 2}" cy="${photoY + photoSize / 2}" r="${photoSize / 2}" fill="#111" stroke="#f0a500" stroke-opacity="0.35" stroke-width="3"/>`}
 
-  <line x1="300" y1="250" x2="720" y2="250" stroke="#a07000" stroke-width="1.5"/>
-  <text x="50%" y="258" text-anchor="middle" fill="#f0a500" font-family="Arial, sans-serif" font-size="22" font-weight="700" letter-spacing="7">THE DIGITAL 26</text>
-  <line x1="1080" y1="250" x2="1500" y2="250" stroke="#a07000" stroke-width="1.5"/>
+  <!-- Brand sits fully below corner images -->
+  <line x1="420" y1="${brandY - 8}" x2="700" y2="${brandY - 8}" stroke="#f0a500" stroke-width="2"/>
+  <text x="50%" y="${brandY}" text-anchor="middle" fill="#f0a500" font-family="Arial Black, Arial, sans-serif" font-size="30" font-weight="900" letter-spacing="8">THE DIGITAL 26</text>
+  <line x1="1100" y1="${brandY - 8}" x2="1380" y2="${brandY - 8}" stroke="#f0a500" stroke-width="2"/>
 
-  <text x="50%" y="310" text-anchor="middle" fill="#6a6055" font-family="Georgia, serif" font-style="italic" font-size="24" letter-spacing="4">hereby proudly presents this</text>
-  <text x="50%" y="390" text-anchor="middle" fill="#f0a500" font-family="Arial Black, Arial, sans-serif" font-size="64" letter-spacing="3">${escapeXml(typeLabel)}</text>
-  <text x="50%" y="445" text-anchor="middle" fill="#6a6055" font-family="Georgia, serif" font-style="italic" font-size="24" letter-spacing="4">awarded to</text>
-  <text x="50%" y="525" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-size="76" font-weight="700">${escapeXml(opts.displayName)}</text>
+  <text x="50%" y="${presentsY}" text-anchor="middle" fill="#6a6055" font-family="Georgia, serif" font-style="italic" font-size="22" letter-spacing="4">hereby proudly presents this</text>
+  <text x="50%" y="${typeY}" text-anchor="middle" fill="#f0a500" font-family="Arial Black, Arial, sans-serif" font-size="56" letter-spacing="3">${escapeXml(typeLabel)}</text>
+  <text x="50%" y="${awardedY}" text-anchor="middle" fill="#6a6055" font-family="Georgia, serif" font-style="italic" font-size="22" letter-spacing="4">awarded to</text>
 
+  ${nameSvg}
   ${bodySvg}
-
   ${skillChips}
 
-  <text x="280" y="970" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-style="italic" font-size="34">Adewuyi Ayuba</text>
+  <text x="280" y="970" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-style="italic" font-size="32">Adewuyi Ayuba</text>
   <line x1="160" y1="992" x2="400" y2="992" stroke="#f0a500" stroke-opacity="0.4" stroke-width="1.5"/>
-  <text x="280" y="1024" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="15" letter-spacing="2">INSTRUCTOR &amp; FOUNDER</text>
-  <text x="280" y="1048" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="15">THE DIGITAL 26 BY MAXIM</text>
+  <text x="280" y="1024" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="14" letter-spacing="2">INSTRUCTOR &amp; FOUNDER</text>
+  <text x="280" y="1048" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="14">THE DIGITAL 26 BY MAXIM</text>
   <text x="280" y="1072" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="13">RC - 9710046</text>
 
-  <rect x="${width / 2 - 82}" y="900" width="164" height="164" fill="#fff" rx="10"/>
-  <image x="${width / 2 - 70}" y="912" width="140" height="140" href="${qrB64}"/>
-  <text x="50%" y="1095" text-anchor="middle" fill="#f0a500" font-family="Arial, sans-serif" font-size="18" font-weight="700">${escapeXml(opts.publicId)}</text>
+  <rect x="${width / 2 - 78}" y="905" width="156" height="156" fill="#fff" rx="10"/>
+  <image x="${width / 2 - 66}" y="917" width="132" height="132" href="${qrB64}"/>
+  <text x="50%" y="1095" text-anchor="middle" fill="#f0a500" font-family="Arial, sans-serif" font-size="17" font-weight="700">${escapeXml(opts.publicId)}</text>
 
-  <text x="${width - 280}" y="970" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-size="30" font-weight="600">${escapeXml(dateLabel)}</text>
+  <text x="${width - 280}" y="970" text-anchor="middle" fill="#f0ebe0" font-family="Georgia, serif" font-size="28" font-weight="600">${escapeXml(dateLabel)}</text>
   <line x1="${width - 400}" y1="992" x2="${width - 160}" y2="992" stroke="#f0a500" stroke-opacity="0.4" stroke-width="1.5"/>
-  <text x="${width - 280}" y="1024" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="15" letter-spacing="2">${isCompletion ? "DATE OF COMPLETION" : "DATE OF PARTICIPATION"}</text>
-  <text x="${width - 280}" y="1056" text-anchor="middle" fill="#a07000" font-family="Arial, sans-serif" font-size="14">Verify: ${escapeXml(verifyDisplay)}</text>
+  <text x="${width - 280}" y="1024" text-anchor="middle" fill="#6a6055" font-family="Arial, sans-serif" font-size="14" letter-spacing="2">${isCompletion ? "DATE OF COMPLETION" : "DATE OF PARTICIPATION"}</text>
+  <text x="${width - 280}" y="1056" text-anchor="middle" fill="#a07000" font-family="Arial, sans-serif" font-size="13">Verify: ${escapeXml(verifyDisplay)}</text>
 </svg>`;
 
   return sharp(Buffer.from(svg)).png({ compressionLevel: 6 }).toBuffer();

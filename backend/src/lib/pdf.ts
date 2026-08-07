@@ -628,17 +628,18 @@ export async function buildCertificatePdf(opts: {
     borderOpacity: 0.15,
   });
 
+  // Corner media — brand text is placed below this band.
   if (logo) {
-    const lx = 48;
-    const ly = height - 128;
-    const ls = 88;
+    const lx = 52;
+    const ly = height - 118;
+    const ls = 78;
     page.drawImage(logo, { x: lx, y: ly, width: ls, height: ls });
     page.drawCircle({
       x: lx + ls / 2,
       y: ly + ls / 2,
-      size: ls / 2 + 3,
+      size: ls / 2 + 2.5,
       borderColor: GOLD,
-      borderWidth: 2.5,
+      borderWidth: 2,
     });
   }
 
@@ -649,16 +650,16 @@ export async function buildCertificatePdf(opts: {
         photoUrl: opts.photoUrl,
       });
       if (loaded) {
-        const roundBytes = await roundPhotoPng(loaded.bytes, 160);
+        const roundBytes = await roundPhotoPng(loaded.bytes, 140);
         const photo = await pdf.embedPng(roundBytes);
-        const ps = 88;
-        const px = width - 136;
-        const py = height - 128;
+        const ps = 78;
+        const px = width - 130;
+        const py = height - 118;
         page.drawImage(photo, { x: px, y: py, width: ps, height: ps });
         page.drawCircle({
           x: px + ps / 2,
           y: py + ps / 2,
-          size: ps / 2 + 3,
+          size: ps / 2 + 2.5,
           borderColor: GOLD,
           borderWidth: 2,
         });
@@ -671,18 +672,19 @@ export async function buildCertificatePdf(opts: {
   const italic = await pdf.embedFont(StandardFonts.TimesRomanItalic);
   const serifReg = await pdf.embedFont(StandardFonts.TimesRoman);
 
+  // Brand clear of corner images
   drawCentered(page, "THE DIGITAL 26", {
     x: width / 2,
-    y: height - 108,
-    size: 12,
+    y: height - 140,
+    size: 16,
     font: bold,
     color: GOLD,
   });
 
   drawCentered(page, "hereby proudly presents this", {
     x: width / 2,
-    y: height - 150,
-    size: 13,
+    y: height - 175,
+    size: 12,
     font: italic,
     color: MUTED,
   });
@@ -692,11 +694,11 @@ export async function buildCertificatePdf(opts: {
       ? "Certificate of Completion"
       : "Certificate of Participation";
 
-  const titleSize = 30;
+  const titleSize = 26;
   const titleW = bold.widthOfTextAtSize(title, titleSize);
   page.drawText(title, {
     x: width / 2 - titleW / 2,
-    y: height - 195,
+    y: height - 215,
     size: titleSize,
     font: bold,
     color: GOLD,
@@ -704,17 +706,23 @@ export async function buildCertificatePdf(opts: {
 
   drawCentered(page, "awarded to", {
     x: width / 2,
-    y: height - 230,
-    size: 13,
+    y: height - 245,
+    size: 12,
     font: italic,
     color: MUTED,
   });
 
-  const nameSize = opts.displayName.length > 28 ? 30 : 40;
-  const nameW = serif.widthOfTextAtSize(asciiPdf(opts.displayName), nameSize);
-  page.drawText(asciiPdf(opts.displayName), {
-    x: Math.max(60, width / 2 - nameW / 2),
-    y: height - 285,
+  const nameRaw = asciiPdf(opts.displayName);
+  const nameSize = nameRaw.length > 28 ? 24 : nameRaw.length > 20 ? 28 : 34;
+  const nameMaxW = width - 140;
+  let nameDraw = nameRaw;
+  while (serif.widthOfTextAtSize(nameDraw, nameSize) > nameMaxW && nameDraw.length > 8) {
+    nameDraw = `${nameDraw.slice(0, -2)}…`;
+  }
+  const nameW = serif.widthOfTextAtSize(nameDraw, nameSize);
+  page.drawText(nameDraw, {
+    x: width / 2 - nameW / 2,
+    y: height - 290,
     size: nameSize,
     font: serif,
     color: CREAM,
@@ -724,14 +732,15 @@ export async function buildCertificatePdf(opts: {
     opts.type === "COMPLETION"
       ? `Congratulations on successfully finishing the ${opts.course} with The Digital 26. We celebrate your dedication, your wins, and the bright craft ahead. Keep building with heart.`
       : `with a warm welcome into the ${opts.course}. You are part of The Digital 26, arriving with curiosity, good energy, and an open mind to learn, vibe, and grow. We're glad you're here.`;
+  // Start body well below name so nothing overlaps.
   drawWrapped(page, asciiPdf(bodyText), {
-    x: 90,
-    y: height - 330,
-    maxWidth: width - 180,
-    size: 13,
+    x: 100,
+    y: height - 340,
+    maxWidth: width - 200,
+    size: 14,
     font: serifReg,
     color: MUTED,
-    lineHeight: 18,
+    lineHeight: 20,
   });
 
   const skills = ["Vibe Coding", "Prompt Engineering", "Web Development", "Deployment"];
@@ -740,7 +749,7 @@ export async function buildCertificatePdf(opts: {
     const chipW = skill.length * 7.2 + 20;
     page.drawRectangle({
       x: sx,
-      y: height - 420,
+      y: height - 445,
       width: chipW,
       height: 20,
       borderColor: GOLD,
@@ -749,7 +758,7 @@ export async function buildCertificatePdf(opts: {
     });
     page.drawText(skill.toUpperCase(), {
       x: sx + 10,
-      y: height - 414,
+      y: height - 439,
       size: 8,
       font,
       color: GOLD,
