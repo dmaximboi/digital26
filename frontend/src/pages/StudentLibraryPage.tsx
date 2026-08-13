@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useT } from "../i18n/LocaleContext";
 import { apiFetch } from "../lib/authApi";
 import { setPageMeta } from "../lib/seo";
 
@@ -15,6 +16,7 @@ type LibItem = {
 };
 
 export function StudentLibraryPage() {
+  const t = useT();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [items, setItems] = useState<LibItem[]>([]);
@@ -24,10 +26,10 @@ export function StudentLibraryPage() {
 
   useEffect(() => {
     setPageMeta({
-      title: "Library · The Digital 26",
-      description: "Course materials for Digital 26 students.",
+      title: t("library.title"),
+      description: t("library.metaDesc"),
     });
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!loading && !user) navigate("/signin", { replace: true });
@@ -64,12 +66,12 @@ export function StudentLibraryPage() {
         }
         await load();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Could not load library");
+        setError(err instanceof Error ? err.message : t("common.error"));
       } finally {
         setFetching(false);
       }
     })();
-  }, [user, navigate, load]);
+  }, [user, navigate, load, t]);
 
   async function openItem(item: LibItem) {
     if (busyId) return;
@@ -96,10 +98,10 @@ export function StudentLibraryPage() {
         method: "POST",
         body: "{}",
       });
-      if (!opened.viewUrl) throw new Error("Could not open this material");
+      if (!opened.viewUrl) throw new Error(t("common.error"));
       window.open(opened.viewUrl, "_blank", "noopener,noreferrer");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not open material");
+      setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setBusyId(null);
     }
@@ -108,7 +110,7 @@ export function StudentLibraryPage() {
   if (loading || fetching) {
     return (
       <section className="panel library-page" aria-busy="true">
-        <p className="muted">Loading library…</p>
+        <p className="muted">{t("library.loading")}</p>
       </section>
     );
   }
@@ -116,10 +118,10 @@ export function StudentLibraryPage() {
   return (
     <section className="panel library-page">
       <Link to="/dashboard" className="back-link">
-        &larr; Dashboard
+        &larr; {t("library.back")}
       </Link>
-      <h1>Library</h1>
-      <p className="lede">Course materials for your programme.</p>
+      <h1>{t("library.title")}</h1>
+      <p className="lede">{t("library.lede")}</p>
 
       {error && (
         <p className="status error" role="alert">
@@ -127,7 +129,7 @@ export function StudentLibraryPage() {
         </p>
       )}
 
-      {items.length === 0 && <p className="muted">Nothing here yet — check back soon.</p>}
+      {items.length === 0 && <p className="muted">{t("library.empty")}</p>}
 
       <div className="library-grid">
         {items.map((item) => (
@@ -135,7 +137,11 @@ export function StudentLibraryPage() {
             <div className="library-card__cover">
               <img src={item.coverUrl} alt="" />
               <span className={`library-card__badge ${item.unlocked ? "ok" : "lock"}`}>
-                {item.isFree ? "Free" : item.unlocked ? "Included" : `$${item.priceUsd}`}
+                {item.isFree
+                  ? t("library.free")
+                  : item.unlocked
+                    ? t("library.included")
+                    : `$${item.priceUsd}`}
               </span>
             </div>
             <div className="library-card__body">
@@ -148,10 +154,10 @@ export function StudentLibraryPage() {
                 onClick={() => void openItem(item)}
               >
                 {busyId === item.id
-                  ? "Opening…"
+                  ? t("library.opening")
                   : item.unlocked
-                    ? "Open"
-                    : `Get access · $${item.priceUsd}`}
+                    ? t("common.open")
+                    : t("library.getAccess", { amount: item.priceUsd ?? "" })}
               </button>
             </div>
           </article>

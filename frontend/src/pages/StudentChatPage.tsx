@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useT } from "../i18n/LocaleContext";
 import { apiFetch } from "../lib/authApi";
 import { setPageMeta } from "../lib/seo";
 
@@ -12,6 +13,7 @@ type ChatMsg = {
 };
 
 export function StudentChatPage() {
+  const t = useT();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [messages, setMessages] = useState<ChatMsg[]>([]);
@@ -22,8 +24,8 @@ export function StudentChatPage() {
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setPageMeta({ title: "Class Chat The Digital 26", description: "Chat with fellow students." });
-  }, []);
+    setPageMeta({ title: t("chat.title"), description: "Chat with fellow students." });
+  }, [t]);
 
   useEffect(() => {
     if (!loading && !user) navigate("/signin", { replace: true });
@@ -73,7 +75,7 @@ export function StudentChatPage() {
       setBody("");
       loadMessages();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to send");
+      setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setBusy(false);
     }
@@ -84,22 +86,22 @@ export function StudentChatPage() {
   const isUnlimited = user?.role === "ADMIN" || user?.role === "READONLY";
 
   if (loading) {
-    return <section className="panel" aria-busy="true"><p className="muted">Loading...</p></section>;
+    return <section className="panel" aria-busy="true"><p className="muted">{t("common.loading")}</p></section>;
   }
 
   return (
     <section className="panel chat-page">
-      <Link to={isAdmin ? "/admin" : "/dashboard"} className="back-link">&larr; {isAdmin ? "Admin" : "Dashboard"}</Link>
-      <h1>Class Chat</h1>
+      <Link to={isAdmin ? "/admin" : "/dashboard"} className="back-link">&larr; {isAdmin ? t("admin.eyebrow") : t("dash.title")}</Link>
+      <h1>{t("chat.title")}</h1>
       {user?.role !== "ADMIN" && user?.role !== "READONLY" && (
-        <p className="muted">Messages remaining today: <strong>{remaining}</strong> / 10</p>
+        <p className="muted">{t("chat.remaining", { n: remaining })}</p>
       )}
       {isAdmin && !canPost && (
-        <p className="muted">Read-only access — you can view chat but not post.</p>
+        <p className="muted">{t("chat.readonly")}</p>
       )}
 
       <div className="chat-messages">
-        {messages.length === 0 && <p className="muted chat-empty">No messages yet. Be the first!</p>}
+        {messages.length === 0 && <p className="muted chat-empty">{t("chat.empty")}</p>}
         {messages.map((m) => {
           const isMe = m.user.id === user?.id;
           return (
@@ -107,8 +109,8 @@ export function StudentChatPage() {
               <div className="chat-bubble__header">
                 {m.user.avatarUrl && <img src={m.user.avatarUrl} alt="" className="chat-avatar" />}
                 <span className="chat-name">
-                  {isMe ? "You" : m.user.name}
-                  {m.user.role === "ADMIN" && !isMe && <span className="chat-admin-tag"> (Admin)</span>}
+                  {isMe ? t("dash.you") : m.user.name}
+                  {m.user.role === "ADMIN" && !isMe && <span className="chat-admin-tag"> ({t("dash.admin")})</span>}
                 </span>
                 <time className="chat-time">{new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
               </div>
@@ -127,13 +129,13 @@ export function StudentChatPage() {
             type="text"
             value={body}
             onChange={(e) => setBody(e.target.value)}
-            placeholder={isUnlimited || remaining > 0 ? "Type a message..." : "Daily limit reached"}
+            placeholder={isUnlimited || remaining > 0 ? t("chat.placeholder") : t("chat.limit")}
             maxLength={500}
             disabled={(!isUnlimited && remaining <= 0) || busy}
             className="form-input"
           />
           <button type="submit" className="btn primary" disabled={!body.trim() || busy || (!isUnlimited && remaining <= 0)}>
-            Send
+            {t("chat.send")}
           </button>
         </form>
       ) : null}

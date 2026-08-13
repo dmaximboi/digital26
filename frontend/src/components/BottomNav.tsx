@@ -2,51 +2,65 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useT } from "../i18n/LocaleContext";
+import type { MessageKey } from "../i18n/locales/en";
+import { LanguageToggle } from "./LanguageToggle";
 
 type Tab = {
   to: string;
-  label: string;
+  icon: string;
+  labelKey: MessageKey;
   end?: boolean;
   match?: (path: string) => boolean;
 };
 
 const PUBLIC_TABS: Tab[] = [
-  { to: "/", label: "Home", end: true },
-  { to: "/verify", label: "Verify", match: (p) => p.startsWith("/verify") },
+  { to: "/", icon: "Home", labelKey: "nav.home", end: true },
+  { to: "/verify", icon: "Verify", labelKey: "nav.verify", match: (p) => p.startsWith("/verify") },
   {
     to: "/check-agreement",
-    label: "Deals",
+    icon: "Deals",
+    labelKey: "nav.deals",
     match: (p) => p.startsWith("/check-agreement") || p.startsWith("/a/"),
   },
-  { to: "/contact", label: "Contact" },
+  { to: "/contact", icon: "Contact", labelKey: "nav.contact" },
 ];
 
 const STUDENT_TABS: Tab[] = [
-  { to: "/dashboard", label: "Home", end: true },
+  { to: "/dashboard", icon: "Home", labelKey: "nav.home", end: true },
   {
     to: "/dashboard/library",
-    label: "Library",
+    icon: "Library",
+    labelKey: "nav.library",
     match: (p) => p.startsWith("/dashboard/library"),
   },
   {
     to: "/dashboard/chat",
-    label: "Chat",
+    icon: "Chat",
+    labelKey: "nav.chat",
     match: (p) => p.startsWith("/dashboard/chat"),
   },
   {
     to: "/dashboard/payment",
-    label: "Pay",
+    icon: "Pay",
+    labelKey: "nav.pay",
     match: (p) => p.startsWith("/dashboard/payment"),
   },
 ];
 
 const ADMIN_TABS: Tab[] = [
-  { to: "/admin", label: "Home", end: true },
-  { to: "/admin/students", label: "Students" },
-  { to: "/admin/library", label: "Library", match: (p) => p.startsWith("/admin/library") },
+  { to: "/admin", icon: "Home", labelKey: "nav.home", end: true },
+  { to: "/admin/students", icon: "Students", labelKey: "nav.students" },
+  {
+    to: "/admin/library",
+    icon: "Library",
+    labelKey: "nav.library",
+    match: (p) => p.startsWith("/admin/library"),
+  },
   {
     to: "/admin/certificates",
-    label: "Certs",
+    icon: "Certs",
+    labelKey: "nav.certs",
     match: (p) => p.startsWith("/admin/certificates"),
   },
 ];
@@ -158,6 +172,7 @@ function isActiveTab(tab: Tab, pathname: string): boolean {
 function SignOutTab() {
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const t = useT();
   return (
     <button
       type="button"
@@ -168,7 +183,7 @@ function SignOutTab() {
       }}
     >
       <TabIcon name="Sign out" />
-      <span>Sign out</span>
+      <span>{t("nav.signOut")}</span>
     </button>
   );
 }
@@ -177,6 +192,7 @@ function PublicBottomNav() {
   const { user, loading, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const t = useT();
   const isAdmin = user?.role === "ADMIN" || user?.role === "READONLY";
   const isStudent = user?.role === "STUDENT" && user.hasProfile;
   const onStudentArea =
@@ -196,8 +212,8 @@ function PublicBottomNav() {
                 : "bottom-nav__item"
             }
           >
-            <TabIcon name={tab.label} />
-            <span>{tab.label}</span>
+            <TabIcon name={tab.icon} />
+            <span>{t(tab.labelKey)}</span>
           </NavLink>
         ))}
         <SignOutTab />
@@ -216,8 +232,8 @@ function PublicBottomNav() {
             isActiveTab(tab, location.pathname) ? "bottom-nav__item is-active" : "bottom-nav__item"
           }
         >
-          <TabIcon name={tab.label} />
-          <span>{tab.label}</span>
+          <TabIcon name={tab.icon} />
+          <span>{t(tab.labelKey)}</span>
         </NavLink>
       ))}
       {!loading && isAdmin ? (
@@ -230,7 +246,7 @@ function PublicBottomNav() {
           }
         >
           <TabIcon name="Account" />
-          <span>Admin</span>
+          <span>{t("nav.admin")}</span>
         </NavLink>
       ) : !loading && user ? (
         <button
@@ -242,7 +258,7 @@ function PublicBottomNav() {
           }}
         >
           <TabIcon name="Sign out" />
-          <span>Sign out</span>
+          <span>{t("nav.signOut")}</span>
         </button>
       ) : (
         <NavLink
@@ -254,7 +270,7 @@ function PublicBottomNav() {
           }
         >
           <TabIcon name="Sign in" />
-          <span>Sign in</span>
+          <span>{t("nav.signIn")}</span>
         </NavLink>
       )}
     </nav>
@@ -265,6 +281,7 @@ function AdminBottomNav() {
   const { user, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const t = useT();
   const [moreOpen, setMoreOpen] = useState(false);
   const canWrite = Boolean(user?.canWrite);
 
@@ -284,8 +301,8 @@ function AdminBottomNav() {
               isActiveTab(tab, location.pathname) ? "bottom-nav__item is-active" : "bottom-nav__item"
             }
           >
-            <TabIcon name={tab.label} />
-            <span>{tab.label}</span>
+            <TabIcon name={tab.icon} />
+            <span>{t(tab.labelKey)}</span>
           </NavLink>
         ))}
         <button
@@ -294,7 +311,7 @@ function AdminBottomNav() {
           onClick={() => setMoreOpen((v) => !v)}
         >
           <TabIcon name="More" />
-          <span>More</span>
+          <span>{t("nav.more")}</span>
         </button>
       </nav>
 
@@ -303,41 +320,44 @@ function AdminBottomNav() {
           <button
             type="button"
             className="bottom-nav__backdrop"
-            aria-label="Close menu"
+            aria-label={t("common.closeMenu")}
             onClick={() => setMoreOpen(false)}
           />
           <div className="bottom-nav__sheet" role="menu">
+            <div className="bottom-nav__sheet-lang">
+              <LanguageToggle variant="inline" />
+            </div>
             <NavLink to="/admin/messages" onClick={() => setMoreOpen(false)}>
-              Inbox
+              {t("nav.inbox")}
             </NavLink>
             <NavLink to="/admin/agreements" onClick={() => setMoreOpen(false)}>
-              Agreements
+              {t("nav.agreements")}
             </NavLink>
             <NavLink to="/admin/chat" onClick={() => setMoreOpen(false)}>
-              Class Chat
+              {t("nav.classChat")}
             </NavLink>
             <NavLink to="/admin/library" onClick={() => setMoreOpen(false)}>
-              Library
+              {t("nav.library")}
             </NavLink>
             <NavLink to="/admin/storage" onClick={() => setMoreOpen(false)}>
-              Storage
+              {t("nav.storage")}
             </NavLink>
             <NavLink to="/admin/clients" onClick={() => setMoreOpen(false)}>
-              Clients
+              {t("nav.clients")}
             </NavLink>
             <NavLink to="/admin/visits" onClick={() => setMoreOpen(false)}>
-              Visitors
+              {t("nav.visitors")}
             </NavLink>
             <NavLink to="/admin/audit" onClick={() => setMoreOpen(false)}>
-              Audit
+              {t("nav.audit")}
             </NavLink>
             {canWrite && (
               <>
                 <NavLink to="/admin/agreements/new" onClick={() => setMoreOpen(false)}>
-                  New agreement
+                  {t("nav.newAgreement")}
                 </NavLink>
                 <NavLink to="/admin/certificates/new" onClick={() => setMoreOpen(false)}>
-                  Issue cert
+                  {t("nav.issueCert")}
                 </NavLink>
               </>
             )}
@@ -349,7 +369,7 @@ function AdminBottomNav() {
                 navigate("/signin");
               }}
             >
-              Sign out
+              {t("nav.signOut")}
             </button>
           </div>
         </>

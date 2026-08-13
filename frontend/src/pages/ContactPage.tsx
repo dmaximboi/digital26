@@ -1,9 +1,11 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { DocBrandHeader } from "../components/BrandMark";
+import { useT } from "../i18n/LocaleContext";
 import { apiPost } from "../lib/api";
 import { setPageMeta } from "../lib/seo";
 
 export function ContactPage() {
+  const t = useT();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -15,12 +17,11 @@ export function ContactPage() {
 
   useEffect(() => {
     setPageMeta({
-      title: "Contact",
-      description:
-        "Contact The Digital 26 about the Vibe Coding studio and classroom, websites, apps, or agreements.",
+      title: t("contact.metaTitle"),
+      description: t("contact.lede"),
       path: "/contact",
     });
-  }, []);
+  }, [t]);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -41,7 +42,7 @@ export function ContactPage() {
       setSubject("");
       setMessage("");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not send message");
+      setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setLoading(false);
     }
@@ -49,11 +50,8 @@ export function ContactPage() {
 
   return (
     <section className="panel">
-      <DocBrandHeader title="Contact" />
-      <p className="lede">
-        Websites, collaboration, studio questions send a message. It goes straight to The
-        Digital 26 inbox.
-      </p>
+      <DocBrandHeader title={t("contact.title")} />
+      <p className="lede">{t("contact.lede")}</p>
 
       <div className="contact-whatsapp">
         <a
@@ -62,7 +60,7 @@ export function ContactPage() {
           rel="noreferrer"
           className="btn primary whatsapp-btn"
         >
-          Chat on WhatsApp
+          {t("contact.whatsapp")}
         </a>
         <span className="muted">+234 91 23 16 5792</span>
       </div>
@@ -70,20 +68,20 @@ export function ContactPage() {
       {done ? (
         <article className="result-card">
           <p className="badge ok">Sent</p>
-          <h2>Thank you</h2>
-          <p className="muted">We’ve received your message and will reply soon.</p>
+          <h2>{t("contact.thanks")}</h2>
+          <p className="muted">{t("contact.thanksBody")}</p>
           <button type="button" className="btn" onClick={() => setDone(false)}>
-            Send another
+            {t("contact.another")}
           </button>
         </article>
       ) : (
         <form className="sign-form contact-form" onSubmit={onSubmit}>
           <label>
-            Name
+            {t("contact.name")}
             <input value={name} onChange={(e) => setName(e.target.value)} required />
           </label>
           <label>
-            Email
+            {t("contact.email")}
             <input
               type="email"
               value={email}
@@ -92,7 +90,7 @@ export function ContactPage() {
             />
           </label>
           <label>
-            Phone (optional)
+            {t("contact.phone")}
             <input value={phone} onChange={(e) => setPhone(e.target.value)} />
           </label>
           <label>
@@ -105,7 +103,7 @@ export function ContactPage() {
             />
           </label>
           <label>
-            Message
+            {t("contact.message")}
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
@@ -116,7 +114,7 @@ export function ContactPage() {
             />
           </label>
           <button className="btn primary" type="submit" disabled={loading}>
-            {loading ? "Sending…" : "Send message"}
+            {loading ? t("contact.sending") : t("contact.send")}
           </button>
         </form>
       )}

@@ -6,6 +6,7 @@ import { CertificateArt } from "../components/CertificateArt";
 import { PublicRecordQr } from "../components/PublicRecordQr";
 import { OneTimeTemplateDownload } from "../components/OneTimeTemplateDownload";
 import { DocumentPaywall } from "../components/DocumentPaywall";
+import { useT } from "../i18n/LocaleContext";
 import {
   certificateJsonLd,
   removeJsonLd,
@@ -29,6 +30,7 @@ type CertPublic = {
 };
 
 export function VerifyPage() {
+  const t = useT();
   const { publicId: routeId } = useParams();
   const navigate = useNavigate();
   const [input, setInput] = useState(routeId ?? "");
@@ -38,12 +40,11 @@ export function VerifyPage() {
 
   useEffect(() => {
     setPageMeta({
-      title: routeId ? `Verify ${routeId}` : "Verify certificate",
-      description:
-        "Publicly verify Digital 26 Vibe Coding certificates. Open to search engines and AI systems. Phone and email stay private.",
+      title: routeId ? `${t("verify.btn")} ${routeId}` : t("verify.title"),
+      description: t("verify.metaDesc"),
       path: routeId ? `/verify/${routeId}` : "/verify",
     });
-  }, [routeId]);
+  }, [routeId, t]);
 
   const load = useCallback(async (id: string) => {
     setLoading(true);
@@ -64,11 +65,11 @@ export function VerifyPage() {
     } catch (err: unknown) {
       setResult(null);
       removeJsonLd("d26-jsonld-cert");
-      setError(err instanceof Error ? err.message : "Lookup failed");
+      setError(err instanceof Error ? err.message : t("verify.failed"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!routeId) {
@@ -89,14 +90,11 @@ export function VerifyPage() {
 
   return (
     <section className="panel verify-page">
-      <DocBrandHeader title="Verify certificate" />
-      <p className="lede">
-        Enter a certificate ID (e.g. D26aB3xY9k). Records are public for people and AI to verify;
-        contact details stay private.
-      </p>
+      <DocBrandHeader title={t("verify.title")} />
+      <p className="lede">{t("verify.lede")}</p>
 
       <form className="lookup-form verify-lookup" onSubmit={onSubmit}>
-        <label htmlFor="certId">Certificate ID</label>
+        <label htmlFor="certId">{t("verify.id")}</label>
         <div className="lookup-row verify-lookup__row">
           <input
             id="certId"
@@ -108,7 +106,7 @@ export function VerifyPage() {
             spellCheck={false}
           />
           <button className="btn primary" type="submit" disabled={loading}>
-            {loading ? "Checking…" : "Verify"}
+            {loading ? t("verify.checking") : t("verify.btn")}
           </button>
         </div>
       </form>
@@ -129,11 +127,8 @@ export function VerifyPage() {
           {!result.accessPaid ? (
             <>
               <div className="verify-locked">
-                <p className="badge due">Locked</p>
-                <p>
-                  This certificate is valid, but the full art and download unlock after a one-time
-                  payment.
-                </p>
+                <p className="badge due">{t("verify.locked")}</p>
+                <p>{t("verify.lockedBody")}</p>
               </div>
               <DocumentPaywall
                 kind="CERTIFICATE"

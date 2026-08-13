@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useT } from "../i18n/LocaleContext";
 import { apiPostForm } from "../lib/authApi";
 import { compressImage } from "../lib/compressImage";
 import { setPageMeta } from "../lib/seo";
@@ -8,6 +9,7 @@ import { setPageMeta } from "../lib/seo";
 type Programme = "THREE_MONTH" | "FOUR_MONTH" | "FIVE_MONTH" | "SIX_MONTH";
 
 export function ApplyPage() {
+  const t = useT();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -23,8 +25,8 @@ export function ApplyPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    setPageMeta({ title: "Apply The Digital 26", description: "Apply to join The Digital 26 Vibe Coding programme." });
-  }, []);
+    setPageMeta({ title: t("apply.metaTitle"), description: t("apply.title") });
+  }, [t]);
 
   useEffect(() => {
     if (!loading && !user) navigate("/signin", { replace: true });
@@ -55,14 +57,14 @@ export function ApplyPage() {
     } catch (err) {
       setPhoto(null);
       setPhotoPreview(null);
-      setError(err instanceof Error ? err.message : "Could not process photo");
+      setError(err instanceof Error ? err.message : t("common.error"));
     }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!photo) { setError("Please upload your passport photo"); return; }
+    if (!photo) { setError(t("apply.needPhoto")); return; }
     if (!fullName.trim()) { setError("Full name is required"); return; }
     if (!phone.trim()) { setError("Phone number is required"); return; }
 
@@ -80,18 +82,24 @@ export function ApplyPage() {
       await apiPostForm("/api/student/apply", form);
       navigate("/dashboard", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Application failed");
+      setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setBusy(false);
     }
   }
 
-  if (loading) return <section className="panel" aria-busy="true"><p className="muted">Loading...</p></section>;
+  if (loading) {
+    return (
+      <section className="panel" aria-busy="true">
+        <p className="muted">{t("common.loading")}</p>
+      </section>
+    );
+  }
   if (!user) return null;
 
   return (
     <section className="panel apply-page">
-      <h1 className="apply-title">Apply to The Digital 26</h1>
+      <h1 className="apply-title">{t("apply.title")}</h1>
       <p className="lede">
         Fill in your details to join our Vibe Coding programme. After you apply, your account stays
         pending until an admin approves you and you pay the $3 registration fee.
@@ -112,7 +120,7 @@ export function ApplyPage() {
 
         <div className="form-row">
           <label className="form-label">
-            Full Name *
+            {t("apply.fullName")} *
             <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)}
               required minLength={2} maxLength={120} className="form-input" placeholder="Your full legal name" />
           </label>
@@ -120,7 +128,7 @@ export function ApplyPage() {
 
         <div className="form-row">
           <label className="form-label">
-            Phone Number *
+            {t("apply.phone")} *
             <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
               required minLength={5} maxLength={32} className="form-input" placeholder="+234..." />
           </label>
@@ -128,7 +136,7 @@ export function ApplyPage() {
 
         <div className="form-row">
           <label className="form-label">
-            Parent/Guardian Phone
+            {t("apply.parentPhone")}
             <input type="tel" value={parentPhone} onChange={(e) => setParentPhone(e.target.value)}
               maxLength={32} className="form-input" placeholder="+234..." />
           </label>
@@ -136,20 +144,20 @@ export function ApplyPage() {
 
         <div className="form-row">
           <label className="form-label">
-            Address
+            {t("apply.address")}
             <textarea value={address} onChange={(e) => setAddress(e.target.value)}
               maxLength={500} className="form-input form-textarea" placeholder="Your home or office address" rows={3} />
           </label>
         </div>
 
         <fieldset className="programme-choice">
-          <legend>Choose Your Programme *</legend>
+          <legend>{t("apply.programme")} *</legend>
 
           <label className={`programme-card ${programme === "THREE_MONTH" ? "selected" : ""}`}>
             <input type="radio" name="programme" value="THREE_MONTH" checked={programme === "THREE_MONTH"}
               onChange={() => setProgramme("THREE_MONTH")} />
             <div className="programme-card__content">
-              <h3>3-Month Intensive</h3>
+              <h3>{t("apply.prog.3")}</h3>
               <p className="programme-card__price">Constant &amp; very much class</p>
               <ul className="programme-card__features">
                 <li>3-year mentorship support</li>
@@ -165,7 +173,7 @@ export function ApplyPage() {
             <input type="radio" name="programme" value="FOUR_MONTH" checked={programme === "FOUR_MONTH"}
               onChange={() => setProgramme("FOUR_MONTH")} />
             <div className="programme-card__content">
-              <h3>4-Month Advanced</h3>
+              <h3>{t("apply.prog.4")}</h3>
               <p className="programme-card__price">Impressive learning &amp; vast schedule</p>
               <ul className="programme-card__features">
                 <li>2-year mentorship support</li>
@@ -181,7 +189,7 @@ export function ApplyPage() {
             <input type="radio" name="programme" value="FIVE_MONTH" checked={programme === "FIVE_MONTH"}
               onChange={() => setProgramme("FIVE_MONTH")} />
             <div className="programme-card__content">
-              <h3>5-Month Accelerated</h3>
+              <h3>{t("apply.prog.5")}</h3>
               <p className="programme-card__price">Intensive Vibe Coding</p>
               <ul className="programme-card__features">
                 <li>1-year mentorship support</li>
@@ -197,7 +205,7 @@ export function ApplyPage() {
             <input type="radio" name="programme" value="SIX_MONTH" checked={programme === "SIX_MONTH"}
               onChange={() => setProgramme("SIX_MONTH")} />
             <div className="programme-card__content">
-              <h3>6-Month Standard</h3>
+              <h3>{t("apply.prog.6")}</h3>
               <p className="programme-card__price">Complete Vibe Coding</p>
               <ul className="programme-card__features">
                 <li>6-month mentorship support</li>
@@ -211,12 +219,12 @@ export function ApplyPage() {
         </fieldset>
 
         <fieldset className="programme-choice class-mode-choice">
-          <legend>Class Mode *</legend>
+          <legend>{t("apply.classMode")} *</legend>
           <label className={`programme-card ${classMode === "PHYSICAL" ? "selected" : ""}`}>
             <input type="radio" name="classMode" value="PHYSICAL" checked={classMode === "PHYSICAL"}
               onChange={() => setClassMode("PHYSICAL")} />
             <div className="programme-card__content">
-              <h3>Physical Class</h3>
+              <h3>{t("apply.physical")}</h3>
               <p className="programme-card__price">In-person sessions</p>
             </div>
           </label>
@@ -224,7 +232,7 @@ export function ApplyPage() {
             <input type="radio" name="classMode" value="ONLINE" checked={classMode === "ONLINE"}
               onChange={() => setClassMode("ONLINE")} />
             <div className="programme-card__content">
-              <h3>Online Class</h3>
+              <h3>{t("apply.online")}</h3>
               <p className="programme-card__price">Remote sessions</p>
             </div>
           </label>
@@ -232,8 +240,8 @@ export function ApplyPage() {
 
         <div className="form-row">
           <label className="form-label">
-            Passport/Portrait Photo *
-            <p className="form-hint">This image will be used on your certificate</p>
+            {t("apply.photo")} *
+            <p className="form-hint">{t("apply.photoHint")}</p>
             <input type="file" accept="image/*" onChange={handlePhoto} className="form-input" required />
           </label>
           {photoPreview && (
@@ -244,7 +252,7 @@ export function ApplyPage() {
         </div>
 
         <button type="submit" className="btn primary" disabled={busy}>
-          {busy ? "Submitting..." : "Submit Application"}
+          {busy ? t("apply.submitting") : t("apply.submit")}
         </button>
       </form>
     </section>

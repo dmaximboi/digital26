@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useT } from "../i18n/LocaleContext";
 import { apiFetch } from "../lib/authApi";
 import { setPageMeta } from "../lib/seo";
 
@@ -12,6 +13,7 @@ type AttendanceData = {
 };
 
 export function StudentAttendancePage() {
+  const t = useT();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [data, setData] = useState<AttendanceData | null>(null);
@@ -19,8 +21,8 @@ export function StudentAttendancePage() {
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
-    setPageMeta({ title: "Attendance The Digital 26", description: "Weekly attendance tracker." });
-  }, []);
+    setPageMeta({ title: t("attendance.title"), description: t("attendance.lede") });
+  }, [t]);
 
   useEffect(() => {
     if (!loading && !user) navigate("/signin", { replace: true });
@@ -61,22 +63,22 @@ export function StudentAttendancePage() {
       const updated = await apiFetch<AttendanceData>("/api/student/attendance");
       setData(updated);
     } catch (err) {
-      setMsg(err instanceof Error ? err.message : "Failed to sign attendance");
+      setMsg(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setBusy(false);
     }
   }
 
   if (loading || !data) {
-    return <section className="panel" aria-busy="true"><p className="muted">Loading...</p></section>;
+    return <section className="panel" aria-busy="true"><p className="muted">{t("common.loading")}</p></section>;
   }
 
   const signedWeeks = new Set(data.records.map((r) => r.weekNumber));
 
   return (
     <section className="panel attendance-page">
-      <Link to="/dashboard" className="back-link">&larr; Dashboard</Link>
-      <h1>Weekly Attendance</h1>
+      <Link to="/dashboard" className="back-link">&larr; {t("dash.title")}</Link>
+      <h1>{t("attendance.title")}</h1>
 
       {data.startDate && (
         <p className="muted">Programme started: {new Date(data.startDate).toLocaleDateString()}</p>
@@ -91,7 +93,7 @@ export function StudentAttendancePage() {
       {msg && <p className={msg.includes("!") ? "form-success" : "form-error"} role="alert">{msg}</p>}
 
       <button type="button" className="btn primary" onClick={signAttendance} disabled={busy}>
-        {busy ? "Signing..." : "Sign This Week's Attendance"}
+        {busy ? "Signing..." : t("attendance.sign")}
       </button>
 
       <div className="attendance-grid">
@@ -101,8 +103,13 @@ export function StudentAttendancePage() {
           const isCurrent = week === data.currentWeek;
           const isPast = week < data.currentWeek;
           const cls = signed ? "signed" : isPast ? "missed" : isCurrent ? "current" : "future";
+          const statusLabel = signed
+            ? t("attendance.signed")
+            : isPast
+              ? t("attendance.missed")
+              : t("attendance.future");
           return (
-            <div key={week} className={`attendance-cell ${cls}`} title={`Week ${week}`}>
+            <div key={week} className={`attendance-cell ${cls}`} title={`${t("dash.week")} ${week} — ${statusLabel}`}>
               <span className="attendance-cell__num">{week}</span>
               {signed && <span className="attendance-cell__check">&#10003;</span>}
             </div>

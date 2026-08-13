@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useT } from "../i18n/LocaleContext";
 import { apiFetch } from "../lib/authApi";
 import { setPageMeta } from "../lib/seo";
 
@@ -34,6 +35,7 @@ type Progress = {
 };
 
 export function StudentDashboardPage() {
+  const t = useT();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -44,8 +46,8 @@ export function StudentDashboardPage() {
   const [progress, setProgress] = useState<Progress | null>(null);
 
   useEffect(() => {
-    setPageMeta({ title: "Dashboard The Digital 26", description: "Your student dashboard." });
-  }, []);
+    setPageMeta({ title: t("dash.title"), description: t("dash.title") });
+  }, [t]);
 
   useEffect(() => {
     if (!loading && !user) navigate("/signin", { replace: true });
@@ -103,21 +105,23 @@ export function StudentDashboardPage() {
   }
 
   function programmeName(p: Profile) {
-    if (p.programme === "THREE_MONTH") return "3-Month Intensive";
-    if (p.programme === "FOUR_MONTH") return "4-Month Advanced";
-    if (p.programme === "CUSTOM" && p.customMonths) return `${p.customMonths}-Month Custom`;
-    return p.programme === "FIVE_MONTH" ? "5-Month Accelerated" : "6-Month Standard";
+    if (p.programme === "THREE_MONTH") return t("apply.prog.3");
+    if (p.programme === "FOUR_MONTH") return t("apply.prog.4");
+    if (p.programme === "CUSTOM" && p.customMonths) {
+      return `${p.customMonths}-Month ${t("apply.prog.custom")}`;
+    }
+    return p.programme === "FIVE_MONTH" ? t("apply.prog.5") : t("apply.prog.6");
   }
 
   function MessagesBlock() {
     return (
       <div className="student-msg-box">
-        <h3>Messages</h3>
+        <h3>{t("dash.messages")}</h3>
         <div className="student-msg-list">
-          {messages.length === 0 && <p className="muted">No messages yet.</p>}
+          {messages.length === 0 && <p className="muted">{t("dash.noMessages")}</p>}
           {messages.map((m) => (
             <div key={m.id} className={`student-msg ${m.fromAdmin ? "from-admin" : "from-student"}`}>
-              <span className="student-msg__label">{m.fromAdmin ? "Admin" : "You"}</span>
+              <span className="student-msg__label">{m.fromAdmin ? t("dash.admin") : t("dash.you")}</span>
               <p className="student-msg__body">{m.body}</p>
               <time className="student-msg__time">{new Date(m.createdAt).toLocaleString()}</time>
             </div>
@@ -135,7 +139,7 @@ export function StudentDashboardPage() {
             onKeyDown={(e) => { if (e.key === "Enter") void sendMessage(); }}
           />
           <button className="btn primary" onClick={() => void sendMessage()} disabled={!msgBody.trim() || msgBusy}>
-            Send
+            {t("common.send")}
           </button>
         </div>
       </div>
@@ -143,17 +147,21 @@ export function StudentDashboardPage() {
   }
 
   if (loading || fetching) {
-    return <section className="panel" aria-busy="true"><p className="muted">Loading...</p></section>;
+    return (
+      <section className="panel" aria-busy="true">
+        <p className="muted">{t("common.loading")}</p>
+      </section>
+    );
   }
   if (!profile) {
-    return <section className="panel"><p>No profile found.</p></section>;
+    return <section className="panel"><p>{t("common.error")}</p></section>;
   }
 
   if (profile.status === "REJECTED") {
     return (
       <section className="panel dashboard-status rejected">
         <div className="status-icon">&#128546;</div>
-        <h1>Application Not Approved</h1>
+        <h1>{t("dash.rejected")}</h1>
         <p className="lede">
           Unfortunately, your application was not approved at this time.
         </p>
@@ -163,18 +171,19 @@ export function StudentDashboardPage() {
           </div>
         )}
         <MessagesBlock />
-        <p className="muted">If you believe this is an error, please <Link to="/contact">contact us</Link>.</p>
+        <p className="muted">If you believe this is an error, please <Link to="/contact">{t("home.contactUs")}</Link>.</p>
       </section>
     );
   }
 
   const adminDone = profile.status === "APPROVED";
+  const classLabel = profile.classMode === "ONLINE" ? t("apply.online") : t("apply.physical");
 
   if (!fullyActive) {
     return (
       <section className="panel dashboard-status pending">
         <div className="status-icon">&#9203;</div>
-        <h1>Account Pending</h1>
+        <h1>{t("dash.pending")}</h1>
         <p className="lede">
           Complete admin approval and registration payment before class access unlocks.
         </p>
@@ -182,22 +191,22 @@ export function StudentDashboardPage() {
         {!registrationPaid ? (
           <Link to="/dashboard/payment" className="payment-banner">
             <div>
-              <strong>Registration fee due — $3 USD</strong>
-              <p>Open payment to pay with Bachs. We verify the charge on our server before unlocking.</p>
+              <strong>{t("dash.regDue", { amount: 3 })}</strong>
+              <p>{t("dash.payHint")}</p>
             </div>
-            <span className="payment-banner__cta">Pay now</span>
+            <span className="payment-banner__cta">{t("nav.pay")}</span>
           </Link>
         ) : (
           <Link to="/dashboard/payment" className="payment-banner payment-banner--paid">
             <div>
-              <strong>Registration fee verified</strong>
+              <strong>{t("dash.regPaid")}</strong>
               <p>
                 {adminDone
                   ? "Payment and admin approval complete."
-                  : "Payment confirmed. Waiting for admin approval to unlock class."}
+                  : t("pay.waitingAdmin")}
               </p>
             </div>
-            <span className="payment-banner__cta">View</span>
+            <span className="payment-banner__cta">{t("common.open")}</span>
           </Link>
         )}
 
@@ -207,10 +216,10 @@ export function StudentDashboardPage() {
               {adminDone ? "✓" : "1"}
             </span>
             <div>
-              <strong>Admin review</strong>
+              <strong>{t("dash.adminReview")}</strong>
               <p className="muted">
                 {adminDone
-                  ? "Approved — you are cleared by an admin."
+                  ? t("pay.step.approved")
                   : "Your application is waiting for admin approval."}
               </p>
             </div>
@@ -220,15 +229,15 @@ export function StudentDashboardPage() {
               {registrationPaid ? "✓" : "2"}
             </span>
             <div>
-              <strong>Registration payment ($3 USD)</strong>
+              <strong>{t("dash.regDue", { amount: 3 })}</strong>
               <p className="muted">
                 {registrationPaid
-                  ? "Paid — thank you."
+                  ? t("dash.regPaid")
                   : "Required for attendance and class chat."}
               </p>
               {!registrationPaid && (
                 <Link className="btn primary" to="/dashboard/payment" style={{ marginTop: "0.75rem", display: "inline-block" }}>
-                  Go to payment
+                  {t("dash.payment")}
                 </Link>
               )}
             </div>
@@ -237,15 +246,19 @@ export function StudentDashboardPage() {
 
         <div className="dashboard-cards" style={{ marginTop: "1.25rem" }}>
           <Link to="/dashboard/payment" className="dashboard-card dashboard-card--pay">
-            <h3>Payment</h3>
-            <p>{registrationPaid ? "View payment status & receipt" : "Pay $3 registration fee"}</p>
+            <h3>{t("dash.payment")}</h3>
+            <p>
+              {registrationPaid
+                ? t("dash.paymentDescPaid")
+                : t("dash.paymentDescDue", { amount: 3 })}
+            </p>
           </Link>
         </div>
 
         <div className="status-details">
-          <p><strong>Name:</strong> {profile.fullName}</p>
-          <p><strong>Programme:</strong> {programmeName(profile)}</p>
-          <p><strong>Class:</strong> {profile.classMode === "ONLINE" ? "Online" : "Physical"}</p>
+          <p><strong>{t("contact.name")}:</strong> {profile.fullName}</p>
+          <p><strong>{t("apply.programme")}:</strong> {programmeName(profile)}</p>
+          <p><strong>{t("apply.classMode")}:</strong> {classLabel}</p>
         </div>
 
         <MessagesBlock />
@@ -264,10 +277,10 @@ export function StudentDashboardPage() {
 
   return (
     <section className="panel dashboard-approved">
-      <h1>Welcome, {profile.fullName}!</h1>
+      <h1>{t("dash.welcome", { name: profile.fullName })}</h1>
       <p className="lede">
         Your account is active. You are enrolled in the{" "}
-        <strong>{programmeName(profile)}</strong> programme ({profile.classMode === "ONLINE" ? "Online" : "Physical"}).
+        <strong>{programmeName(profile)}</strong> programme ({classLabel}).
       </p>
 
       {profile.startDate && (
@@ -278,15 +291,15 @@ export function StudentDashboardPage() {
         <div className="progress-hub" aria-label="Programme progress">
           <div className="progress-hub__stats">
             <div>
-              <span className="progress-hub__label">Week</span>
+              <span className="progress-hub__label">{t("dash.week")}</span>
               <strong className="progress-hub__value">
                 {Math.min(Math.max(currentWeek, 1), totalWeeks)} / {totalWeeks}
               </strong>
             </div>
             <div>
-              <span className="progress-hub__label">Attendance</span>
+              <span className="progress-hub__label">{t("dash.attendanceLabel")}</span>
               <strong className="progress-hub__value">
-                {signed} signed · {attendancePct}%
+                {t("dash.signed", { signed, pct: attendancePct })}
               </strong>
             </div>
           </div>
@@ -294,30 +307,30 @@ export function StudentDashboardPage() {
             <span style={{ width: `${programmePct}%` }} />
           </div>
           <p className="muted progress-hub__hint">
-            Programme {programmePct}% through · attendance rate based on weeks so far
+            {t("dash.programmeProgress", { pct: programmePct })}
           </p>
         </div>
       )}
 
       <div className="dashboard-cards">
         <Link to="/dashboard/library" className="dashboard-card">
-          <h3>Library</h3>
-          <p>Browse course materials for your programme</p>
+          <h3>{t("dash.library")}</h3>
+          <p>{t("dash.libraryDesc")}</p>
         </Link>
 
         <Link to="/dashboard/attendance" className="dashboard-card">
-          <h3>Attendance</h3>
-          <p>Sign your weekly attendance and track progress</p>
+          <h3>{t("dash.attendance")}</h3>
+          <p>{t("dash.attendanceDesc")}</p>
         </Link>
 
         <Link to="/dashboard/chat" className="dashboard-card">
-          <h3>Class Chat</h3>
-          <p>Chat with fellow students and admin</p>
+          <h3>{t("dash.chat")}</h3>
+          <p>{t("dash.chatDesc")}</p>
         </Link>
 
         <Link to="/dashboard/payment" className="dashboard-card">
-          <h3>Payment</h3>
-          <p>Registration paid — view receipt</p>
+          <h3>{t("dash.payment")}</h3>
+          <p>{t("dash.paymentDescPaid")}</p>
         </Link>
       </div>
     </section>

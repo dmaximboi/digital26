@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useT } from "../i18n/LocaleContext";
 import { apiPost } from "../lib/api";
 
 type Props = {
@@ -15,6 +16,7 @@ function storageKey(kind: string, publicId: string) {
 }
 
 export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props) {
+  const t = useT();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
@@ -29,11 +31,14 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
     }
   });
 
-  const label = kind === "CERTIFICATE" ? "certificate" : "agreement letter";
+  const unlockTitle =
+    kind === "CERTIFICATE" ? t("paywall.unlockCert") : t("paywall.unlockAgreement");
+  const lede =
+    kind === "CERTIFICATE" ? t("paywall.ledeCert") : t("paywall.ledeAgreement");
   const cta =
     kind === "CERTIFICATE"
-      ? `Pay $${amountUsd} to unlock & download`
-      : `Pay $${amountUsd} to unlock`;
+      ? t("paywall.ctaCert", { amount: amountUsd })
+      : t("paywall.ctaAgreement", { amount: amountUsd });
 
   const syncCheckout = useCallback(
     async (id?: string | null) => {
@@ -48,7 +53,7 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
         error?: string;
         ok?: boolean;
       };
-      if (!res.ok) throw new Error(data.error || "Could not verify payment");
+      if (!res.ok) throw new Error(data.error || t("common.error"));
       if (data.status === "PAID") {
         try {
           sessionStorage.removeItem(storageKey(kind, publicId));
@@ -59,7 +64,7 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
       }
       return { status: data.status ?? null };
     },
-    [checkoutId, kind, onUnlocked, publicId],
+    [checkoutId, kind, onUnlocked, publicId, t],
   );
 
   useEffect(() => {
@@ -74,9 +79,9 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
 
     (async () => {
       if (cancelled === "1") {
-        setNotice("Checkout cancelled. You can try again.");
+        setNotice(t("paywall.cancelled"));
       } else {
-        setNotice("Confirming payment with Bachs…");
+        setNotice(t("paywall.confirming"));
         if (returnedId) {
           try {
             sessionStorage.setItem(storageKey(kind, publicId), returnedId);
@@ -89,13 +94,13 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
           const result = await syncCheckout(returnedId);
           if (stopped) return;
           if (result.status === "PAID") {
-            setNotice("Payment verified. Unlocking…");
+            setNotice(t("paywall.unlocked"));
             return;
           }
-          setNotice("Returned from checkout — still confirming with Bachs…");
+          setNotice(t("pay.notice.confirming"));
         } catch (err) {
           if (!stopped) {
-            setError(err instanceof Error ? err.message : "Payment verify failed");
+            setError(err instanceof Error ? err.message : t("common.error"));
             setNotice("");
           }
         }
@@ -119,9 +124,9 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
             if (result.status === "PAID" || polls >= 10) {
               if (timer) window.clearInterval(timer);
               if (result.status === "PAID") {
-                setNotice("Payment verified. Unlocking…");
+                setNotice(t("paywall.unlocked"));
               } else if (polls >= 10) {
-                setNotice("Still unpaid on our side. Tap “I already paid” if Bachs succeeded.");
+                setNotice(t("pay.notice.stillUnpaid"));
               }
             }
           } catch {
@@ -135,7 +140,7 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
       stopped = true;
       if (timer) window.clearInterval(timer);
     };
-  }, [kind, publicId, syncCheckout]);
+  }, [kind, publicId, syncCheckout, t]);
 
   async function startCheckout(e: React.FormEvent) {
     e.preventDefault();
@@ -165,12 +170,12 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
       });
 
       if (data.alreadyPaid) {
-        setNotice("Already paid — unlocking…");
+        setNotice(t("pay.notice.already"));
         onUnlocked?.();
         setBusy(false);
         return;
       }
-      if (!data.checkoutUrl) throw new Error("No checkout URL returned");
+      if (!data.checkoutUrl) throw new Error(t("common.error"));
       if (data.checkoutId) {
         try {
           sessionStorage.setItem(storageKey(kind, publicId), data.checkoutId);
@@ -181,7 +186,7 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
       }
       window.location.href = data.checkoutUrl;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Payment failed to start");
+      setError(err instanceof Error ? err.message : t("common.error"));
       setBusy(false);
     }
   }
@@ -190,18 +195,16 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
     if (verifyBusy) return;
     setVerifyBusy(true);
     setError("");
-    setNotice("Re-checking Bachs…");
+    setNotice(t("paywall.checking"));
     try {
       const result = await syncCheckout(checkoutId);
       if (result.status === "PAID") {
-        setNotice("Payment verified. Unlocking…");
+        setNotice(t("paywall.unlocked"));
       } else {
-        setNotice(
-          "Still unpaid on our side. If Bachs shows success, wait a minute and tap again.",
-        );
+        setNotice(t("pay.notice.stillUnpaid"));
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Verify failed");
+      setError(err instanceof Error ? err.message : t("common.error"));
       setNotice("");
     } finally {
       setVerifyBusy(false);
@@ -212,14 +215,12 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
     <div className="doc-paywall">
       <div className="doc-paywall__hero">
         <div>
-          <p className="doc-paywall__eyebrow">One-time unlock</p>
-          <h2>Download this {label}</h2>
-          <p className="lede">
-            Pay once to unlock the full {label} and download.
-          </p>
+          <p className="doc-paywall__eyebrow">{t("paywall.eyebrow")}</p>
+          <h2>{unlockTitle}</h2>
+          <p className="lede">{lede}</p>
         </div>
         <div className="doc-paywall__price">
-          <span>Amount</span>
+          <span>{t("paywall.amount")}</span>
           <strong>${amountUsd}</strong>
           <em>USD</em>
         </div>
@@ -234,7 +235,7 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
 
       <form className="doc-paywall__form" onSubmit={(e) => void startCheckout(e)}>
         <label>
-          Email for receipt
+          {t("paywall.email")}
           <input
             type="email"
             required
@@ -246,7 +247,7 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
           />
         </label>
         <label>
-          Full name <span className="muted">(optional)</span>
+          {t("paywall.name")} <span className="muted">{t("paywall.optional")}</span>
           <input
             type="text"
             value={name}
@@ -261,7 +262,7 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
           type="submit"
           disabled={busy || verifyBusy}
         >
-          {busy ? "Opening secure checkout…" : cta}
+          {busy ? t("paywall.opening") : cta}
         </button>
       </form>
 
@@ -272,12 +273,9 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
           disabled={busy || verifyBusy}
           onClick={() => void verifyAgain()}
         >
-          {verifyBusy ? "Checking…" : "I already paid — verify again"}
+          {verifyBusy ? t("paywall.checking") : t("paywall.verifyAgain")}
         </button>
-        <p className="muted doc-paywall__note">
-          Checkout is hosted by Bachs. After you pay, we confirm the charge with Bachs before
-          unlocking — not from the redirect alone.
-        </p>
+        <p className="muted doc-paywall__note">{t("paywall.note")}</p>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthContext";
+import { LocaleProvider } from "./i18n/LocaleContext";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
 import { BottomNav } from "./components/BottomNav";
@@ -107,8 +108,10 @@ function Shell() {
 
 export function App() {
   return (
-    <AuthProvider>
-      <Shell />
-    </AuthProvider>
+    <LocaleProvider>
+      <AuthProvider>
+        <Shell />
+      </AuthProvider>
+    </LocaleProvider>
   );
 }

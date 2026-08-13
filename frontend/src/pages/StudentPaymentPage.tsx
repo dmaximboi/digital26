@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useT } from "../i18n/LocaleContext";
 import { apiFetch } from "../lib/authApi";
 import { setPageMeta } from "../lib/seo";
 
@@ -34,6 +35,7 @@ type PaymentStatus = {
 };
 
 export function StudentPaymentPage() {
+  const t = useT();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [status, setStatus] = useState<PaymentStatus | null>(null);
@@ -44,10 +46,10 @@ export function StudentPaymentPage() {
 
   useEffect(() => {
     setPageMeta({
-      title: "Registration payment The Digital 26",
-      description: "Pay the one-time student registration fee.",
+      title: t("pay.title"),
+      description: t("pay.metaDesc"),
     });
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!loading && !user) navigate("/signin", { replace: true });
@@ -94,15 +96,15 @@ export function StudentPaymentPage() {
       setError("");
       try {
         if (cancelled === "1") {
-          setNotice("Checkout cancelled. You can try again whenever you’re ready.");
+          setNotice(t("pay.notice.cancelled"));
         } else {
           setNotice("Verifying payment with Bachs…");
           const result = await reconcile(checkoutId);
           if (stopped) return;
           if (result.registrationPaid) {
-            setNotice("Payment verified. Registration fee is paid.");
+            setNotice(t("pay.notice.verified"));
           } else if (fromCheckout) {
-            setNotice("Returned from checkout — confirming with Bachs…");
+            setNotice(t("pay.notice.confirming"));
           } else {
             setNotice("");
           }
@@ -110,7 +112,7 @@ export function StudentPaymentPage() {
         await load();
       } catch (err) {
         if (!stopped) {
-          setError(err instanceof Error ? err.message : "Could not load payment status");
+          setError(err instanceof Error ? err.message : t("common.error"));
         }
       } finally {
         if (!stopped) setFetching(false);
@@ -136,7 +138,7 @@ export function StudentPaymentPage() {
             if (result.registrationPaid || data.registrationPaid || polls >= 8) {
               if (timer) window.clearInterval(timer);
               if (data.registrationPaid) {
-                setNotice("Payment verified. Registration fee is paid.");
+                setNotice(t("pay.notice.verified"));
               }
             }
           } catch {
@@ -150,7 +152,7 @@ export function StudentPaymentPage() {
       stopped = true;
       if (timer) window.clearInterval(timer);
     };
-  }, [user, navigate, load, reconcile]);
+  }, [user, navigate, load, reconcile, t]);
 
   async function startPayment() {
     if (payBusy) return;
@@ -162,7 +164,7 @@ export function StudentPaymentPage() {
       const prior = await reconcile();
       if (prior.registrationPaid) {
         await load();
-        setNotice("Payment already verified.");
+        setNotice(t("pay.notice.already"));
         setPayBusy(false);
         return;
       }
@@ -183,7 +185,7 @@ export function StudentPaymentPage() {
       if (!data.checkoutUrl) throw new Error("No checkout URL returned");
       window.location.href = data.checkoutUrl;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not start payment");
+      setError(err instanceof Error ? err.message : t("common.error"));
       setPayBusy(false);
     }
   }
@@ -196,11 +198,11 @@ export function StudentPaymentPage() {
       await load();
       setNotice(
         result.registrationPaid
-          ? "Payment verified. Registration fee is paid."
-          : "Still unpaid on our side. If Bachs shows success, tap again in a minute or contact admin.",
+          ? t("pay.notice.verified")
+          : t("pay.notice.stillUnpaid"),
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Verify failed");
+      setError(err instanceof Error ? err.message : t("common.error"));
       setNotice("");
     }
   }
@@ -208,7 +210,7 @@ export function StudentPaymentPage() {
   if (loading || fetching) {
     return (
       <section className="panel payment-page" aria-busy="true">
-        <p className="muted">Verifying payment status…</p>
+        <p className="muted">{t("pay.verifying")}</p>
       </section>
     );
   }
@@ -216,63 +218,61 @@ export function StudentPaymentPage() {
   if (!status) {
     return (
       <section className="panel payment-page">
-        <h1>Registration payment</h1>
-        <p className="status error">{error || "Could not load payment status."}</p>
-        <Link className="btn" to="/dashboard">Back to dashboard</Link>
+        <h1>{t("pay.title")}</h1>
+        <p className="status error">{error || t("common.error")}</p>
+        <Link className="btn" to="/dashboard">{t("pay.backDash")}</Link>
       </section>
     );
   }
 
   return (
     <section className="panel payment-page">
-      <p className="payment-page__eyebrow">Student billing</p>
-      <h1>Registration payment</h1>
-      <p className="lede">
-        One-time fee for {status.profile.fullName}. Amount is fixed server-side in USD; Bachs
-        converts to local currency. Access unlocks only after our server verifies the charge with
-        Bachs (not from the redirect alone).
-      </p>
+      <p className="payment-page__eyebrow">{t("pay.eyebrow")}</p>
+      <h1>{t("pay.title")}</h1>
+      <p className="lede">{t("pay.lede", { name: status.profile.fullName })}</p>
 
       <div className="payment-hero">
         <div>
-          <span className="payment-hero__label">Amount due</span>
+          <span className="payment-hero__label">{t("pay.amountDue")}</span>
           <strong className="payment-hero__amount">
-            {status.registrationPaid ? "Paid" : `$${status.amountUsd}`}
+            {status.registrationPaid ? t("pay.paid") : `$${status.amountUsd}`}
           </strong>
           <span className="payment-hero__sub">
             {status.registrationPaid
               ? status.registrationPaidAt
                 ? `Paid ${new Date(status.registrationPaidAt).toLocaleString()}`
                 : "Registration fee settled"
-              : "USD · charged in local currency"}
+              : t("pay.usdLocal")}
           </span>
         </div>
         <span className={`payment-badge ${status.registrationPaid ? "ok" : "due"}`}>
-          {status.registrationPaid ? "Paid" : "Unpaid"}
+          {status.registrationPaid ? t("pay.paid") : t("pay.unpaid")}
         </span>
       </div>
 
       <ul className="payment-steps">
         <li className={status.registrationPaid ? "done" : ""}>
-          <strong>Registration fee</strong>
-          <span>{status.registrationPaid ? "Verified paid" : `Pay $${status.amountUsd}`}</span>
+          <strong>{t("pay.step.fee")}</strong>
+          <span>
+            {status.registrationPaid
+              ? t("pay.step.feePaid")
+              : t("pay.step.feePay", { amount: status.amountUsd })}
+          </span>
         </li>
         <li className={status.adminApproved ? "done" : status.rejected ? "bad" : ""}>
-          <strong>Admin review</strong>
+          <strong>{t("pay.step.review")}</strong>
           <span>
             {status.rejected
-              ? "Application not approved"
+              ? t("pay.step.rejected")
               : status.adminApproved
-                ? "Approved"
-                : "Waiting for admin"}
+                ? t("pay.step.approved")
+                : t("pay.step.waiting")}
           </span>
         </li>
         <li className={status.fullyActive ? "done" : ""}>
-          <strong>Class access</strong>
+          <strong>{t("pay.step.access")}</strong>
           <span>
-            {status.fullyActive
-              ? "Attendance & chat unlocked"
-              : "Needs payment + admin approval"}
+            {status.fullyActive ? t("pay.step.unlocked") : t("pay.step.needsBoth")}
           </span>
         </li>
       </ul>
@@ -286,27 +286,25 @@ export function StudentPaymentPage() {
 
       {!status.paymentsEnabled && !status.registrationPaid && (
         <p className="status error" role="alert">
-          Online payments are not configured on the server yet. Contact admin.
+          {t("pay.notConfigured")}
         </p>
       )}
 
       {status.rejected ? (
         <p className="muted">
-          Rejected applications cannot pay. <Link to="/contact">Contact us</Link> if this is a mistake.
+          {t("pay.rejectedNote")} <Link to="/contact">{t("pay.contactUs")}</Link>
         </p>
       ) : status.registrationPaid ? (
         <div className="payment-actions">
           {status.fullyActive ? (
             <Link className="btn primary" to="/dashboard">
-              Go to class dashboard
+              {t("pay.goDash")}
             </Link>
           ) : (
-            <p className="muted">
-              Payment is verified. Your account stays pending until an admin approves your application.
-            </p>
+            <p className="muted">{t("pay.waitingAdmin")}</p>
           )}
           <Link className="btn" to="/dashboard">
-            Back to dashboard
+            {t("pay.backDash")}
           </Link>
         </div>
       ) : (
@@ -317,35 +315,45 @@ export function StudentPaymentPage() {
             disabled={!status.canPay || payBusy}
             onClick={() => void startPayment()}
           >
-            {payBusy ? "Opening secure checkout…" : `Pay $${status.amountUsd} registration`}
+            {payBusy ? t("pay.opening") : t("pay.cta", { amount: status.amountUsd })}
           </button>
           <button type="button" className="btn" onClick={() => void refreshVerify()}>
-            I already paid — verify again
+            {t("pay.verifyAgain")}
           </button>
-          <p className="muted payment-secure-note">
-            Checkout is hosted by Bachs. We never see your card details. After paying, this page asks
-            Bachs’ API to confirm the charge before unlocking registration.
-          </p>
+          <p className="muted payment-secure-note">{t("pay.secureNote")}</p>
           <Link className="btn" to="/dashboard">
-            Back to dashboard
+            {t("pay.backDash")}
           </Link>
         </div>
       )}
 
       {status.latestOrder && (
         <div className="payment-receipt">
-          <h2>Latest order</h2>
-          <p><strong>Reference:</strong> {status.latestOrder.reference}</p>
-          <p><strong>Status:</strong> {status.latestOrder.status}</p>
-          <p><strong>Amount:</strong> ${status.latestOrder.amountUsd} USD</p>
+          <h2>{t("pay.latestOrder")}</h2>
+          <p>
+            <strong>{t("pay.reference")}:</strong> {status.latestOrder.reference}
+          </p>
+          <p>
+            <strong>{t("pay.status")}:</strong> {status.latestOrder.status}
+          </p>
+          <p>
+            <strong>{t("pay.amount")}:</strong> ${status.latestOrder.amountUsd} USD
+          </p>
           {status.latestOrder.checkoutId && (
-            <p><strong>Checkout:</strong> {status.latestOrder.checkoutId}</p>
+            <p>
+              <strong>{t("pay.checkout")}:</strong> {status.latestOrder.checkoutId}
+            </p>
           )}
           {status.latestOrder.chargeId && (
-            <p><strong>Charge:</strong> {status.latestOrder.chargeId}</p>
+            <p>
+              <strong>{t("pay.charge")}:</strong> {status.latestOrder.chargeId}
+            </p>
           )}
           {status.latestOrder.paidAt && (
-            <p><strong>Paid at:</strong> {new Date(status.latestOrder.paidAt).toLocaleString()}</p>
+            <p>
+              <strong>{t("pay.paidAt")}:</strong>{" "}
+              {new Date(status.latestOrder.paidAt).toLocaleString()}
+            </p>
           )}
         </div>
       )}

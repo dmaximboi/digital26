@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { useT } from "../i18n/LocaleContext";
 import { setPageMeta } from "../lib/seo";
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
 
 export function SignInPage() {
+  const t = useT();
   const { user, loading, signIn } = useAuth();
   const navigate = useNavigate();
   const btnRef = useRef<HTMLDivElement>(null);
@@ -14,8 +16,8 @@ export function SignInPage() {
   const initedRef = useRef(false);
 
   useEffect(() => {
-    setPageMeta({ title: "Sign In", description: "Sign in with Google to access The Digital 26." });
-  }, []);
+    setPageMeta({ title: t("signin.title"), description: t("signin.lede") });
+  }, [t]);
 
   useEffect(() => {
     if (loading || !user) return;
@@ -32,8 +34,8 @@ export function SignInPage() {
     fetch(`${API_BASE}/api/auth/google-client-id`)
       .then((r) => r.json())
       .then((d: { clientId: string | null }) => setClientId(d.clientId))
-      .catch(() => setError("Could not load sign-in configuration"));
-  }, []);
+      .catch(() => setError(t("signin.configError")));
+  }, [t]);
 
   useEffect(() => {
     if (!clientId || !btnRef.current || initedRef.current) return;
@@ -63,7 +65,7 @@ export function SignInPage() {
           try {
             await signIn(response.credential);
           } catch (err) {
-            setError(err instanceof Error ? err.message : "Sign-in failed");
+            setError(err instanceof Error ? err.message : t("signin.failed"));
           }
         },
         ux_mode: "popup",
@@ -81,24 +83,24 @@ export function SignInPage() {
     document.head.appendChild(script);
 
     return () => { script.remove(); };
-  }, [clientId, signIn]);
+  }, [clientId, signIn, t]);
 
   if (loading) {
     return (
       <section className="panel" aria-busy="true">
-        <p className="muted">Loading...</p>
+        <p className="muted">{t("common.loading")}</p>
       </section>
     );
   }
 
   return (
     <section className="panel signin-page">
-      <h1 className="signin-title">Sign In</h1>
-      <p className="lede">Sign in with your Google account to access The Digital 26.</p>
+      <h1 className="signin-title">{t("signin.title")}</h1>
+      <p className="lede">{t("signin.lede")}</p>
 
       {error && <p className="form-error" role="alert">{error}</p>}
 
-      {!clientId && !error && <p className="muted">Loading Google Sign-In...</p>}
+      {!clientId && !error && <p className="muted">{t("signin.loadingConfig")}</p>}
 
       <div className="google-btn-wrap" ref={btnRef} />
     </section>
