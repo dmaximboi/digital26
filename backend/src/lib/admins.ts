@@ -13,20 +13,30 @@ function inEnvReadonly(email: string): boolean {
   return env.readonlyEmails.includes(email);
 }
 
-export async function isAuthorizedStaff(email: string): Promise<boolean> {
+export async function currentStaffRole(
+  email: string,
+): Promise<"ADMIN" | "READONLY" | null> {
   const normalized = normalizeEmail(email);
-  if (!normalized.includes("@")) return false;
-  if (inEnvStaff(normalized) || inEnvReadonly(normalized)) return true;
+  if (!normalized.includes("@")) return null;
+  if (inEnvStaff(normalized)) return "ADMIN";
+  if (inEnvReadonly(normalized)) return "READONLY";
 
   try {
     const row = await prisma.adminAllowlist.findUnique({
       where: { email: normalized },
-      select: { active: true },
+      select: { active: true, role: true },
     });
-    return Boolean(row?.active);
+    if (!row?.active) return null;
+    return (row.role || "FULL").toUpperCase() === "READONLY"
+      ? "READONLY"
+      : "ADMIN";
   } catch {
-    return false;
+    return null;
   }
+}
+
+export async function isAuthorizedStaff(email: string): Promise<boolean> {
+  return (await currentStaffRole(email)) !== null;
 }
 
 export async function canWriteOps(email: string): Promise<boolean> {

@@ -5,6 +5,7 @@ import { env } from "../config/env.js";
 import { signSessionJwt, verifySessionJwt } from "../lib/jwt.js";
 import { authLimiter } from "../middleware/security.js";
 import { writeAudit } from "../lib/audit.js";
+import { currentStaffRole } from "../lib/admins.js";
 
 export const authRouter = Router();
 
@@ -54,21 +55,7 @@ authRouter.post("/auth/google", authLimiter, async (req, res) => {
     const googleId = payload.sub;
     const ip = extractIp(req);
 
-    const isEnvAdmin = env.adminEmails.includes(email);
-    const isEnvReadonly = env.readonlyEmails.includes(email);
-
-    let isDbAdmin = false;
-    try {
-      const row = await prisma.adminAllowlist.findUnique({
-        where: { email },
-        select: { active: true, role: true },
-      });
-      if (row?.active && (row.role || "FULL").toUpperCase() !== "READONLY") {
-        isDbAdmin = true;
-      }
-    } catch {}
-
-    const role = (isEnvAdmin || isDbAdmin) ? "ADMIN" : isEnvReadonly ? "READONLY" : "STUDENT";
+    const role = (await currentStaffRole(email)) ?? "STUDENT";
 
     let user: { id: string; email: string; role: string; student: { status: string } | null };
 
@@ -112,7 +99,7 @@ authRouter.post("/auth/google", authLimiter, async (req, res) => {
         role: user.role,
         studentStatus: user.student?.status ?? null,
         hasProfile: Boolean(user.student),
-        canWrite: isEnvAdmin || isDbAdmin,
+        canWrite: role === "ADMIN",
       },
     });
   } catch (err) {
@@ -163,19 +150,7 @@ authRouter.get("/auth/me", async (req, res) => {
       return;
     }
 
-    const isEnvAdmin = env.adminEmails.includes(user.email.toLowerCase());
-    let isDbAdmin = false;
-    try {
-      const row = await prisma.adminAllowlist.findUnique({
-        where: { email: user.email.toLowerCase() },
-        select: { active: true, role: true },
-      });
-      if (row?.active && (row.role || "FULL").toUpperCase() !== "READONLY") {
-        isDbAdmin = true;
-      }
-    } catch {}
-
-    const effectiveRole = (isEnvAdmin || isDbAdmin) ? "ADMIN" : user.role;
+    const effectiveRole = (await currentStaffRole(user.email)) ?? "STUDENT";
 
     res.json({
       id: user.id,
@@ -185,7 +160,7 @@ authRouter.get("/auth/me", async (req, res) => {
       role: effectiveRole,
       studentStatus: user.student?.status ?? null,
       hasProfile: Boolean(user.student),
-      canWrite: isEnvAdmin || isDbAdmin,
+      canWrite: effectiveRole === "ADMIN",
     });
   } catch {
     res.status(401).json({ error: "Invalid or expired token" });

@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { verifySessionJwt } from "../lib/jwt.js";
-import { env } from "../config/env.js";
 import { prisma } from "../db/prisma.js";
+import { currentStaffRole } from "../lib/admins.js";
 
 export interface AuthedRequest extends Request {
   userId?: string;
@@ -9,33 +9,18 @@ export interface AuthedRequest extends Request {
   userRole?: string;
 }
 
-async function resolveRole(email: string): Promise<"ADMIN" | "READONLY" | null> {
-  if (env.adminEmails.includes(email)) return "ADMIN";
-  if (env.readonlyEmails.includes(email)) return "READONLY";
-
-  try {
-    const row = await prisma.adminAllowlist.findUnique({
-      where: { email },
-      select: { active: true, role: true },
-    });
-    if (!row?.active) return null;
-    return (row.role || "FULL").toUpperCase() === "READONLY" ? "READONLY" : "ADMIN";
-  } catch {
-    return null;
-  }
-}
-
 async function extractUser(req: AuthedRequest): Promise<boolean> {
   const header = req.headers.authorization;
   if (!header?.startsWith("Bearer ")) return false;
 
   try {
-    const { userId, email, role } = await verifySessionJwt(header.slice(7));
+    const { userId, email } = await verifySessionJwt(header.slice(7));
     req.userId = userId;
     req.userEmail = email;
 
-    const adminRole = await resolveRole(email.toLowerCase());
-    req.userRole = adminRole ?? role;
+    // Never trust an admin role embedded in an older token. Re-check the
+    // current allowlist so revocation and read-only changes apply immediately.
+    req.userRole = (await currentStaffRole(email)) ?? "STUDENT";
 
     return true;
   } catch {
