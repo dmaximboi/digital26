@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiGet, apiPost, apiPostForm } from "../lib/api";
+import { publicLookupPath } from "../lib/checkoutProof";
 import { DocBrandHeader } from "../components/BrandMark";
 import { AgreementArt } from "../components/AgreementArt";
 import { PublicRecordQr } from "../components/PublicRecordQr";
@@ -398,12 +399,13 @@ function SignedAgreementResult({ publicId }: { publicId: string }) {
     accessPaid?: boolean;
     amountUsd?: string;
     canDownloadTemplatePng?: boolean;
+    downloadConsumed?: boolean;
     downloadToken?: string | null;
   } | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    apiGet<NonNullable<typeof data>>(`/api/public/a/${encodeURIComponent(publicId)}`)
+    apiGet<NonNullable<typeof data>>(publicLookupPath("AGREEMENT", publicId))
       .then(setData)
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Failed to load"));
   }, [publicId]);
@@ -428,18 +430,25 @@ function SignedAgreementResult({ publicId }: { publicId: string }) {
           <LockedDownload
             kind="AGREEMENT"
             publicId={data.publicId}
-            accessPaid={Boolean(data.accessPaid)}
             amountUsd={data.amountUsd || "1.00"}
             canDownload={Boolean(data.canDownloadTemplatePng)}
+            downloadConsumed={Boolean(data.downloadConsumed)}
             downloadToken={data.downloadToken}
             onUnlocked={() => {
-              apiGet<NonNullable<typeof data>>(`/api/public/a/${encodeURIComponent(publicId)}`)
+              apiGet<NonNullable<typeof data>>(publicLookupPath("AGREEMENT", publicId))
                 .then(setData)
                 .catch(() => {});
             }}
             onConsumed={() =>
               setData((prev) =>
-                prev ? { ...prev, canDownloadTemplatePng: false, downloadToken: null } : prev,
+                prev
+                  ? {
+                      ...prev,
+                      canDownloadTemplatePng: false,
+                      downloadToken: null,
+                      downloadConsumed: true,
+                    }
+                  : prev,
               )
             }
           />

@@ -9,6 +9,7 @@ import { authLimiter, otpLimiter } from "../middleware/security.js";
 import { sendStudentDecisionEmail } from "../lib/mail.js";
 import { writeAudit } from "../lib/audit.js";
 import { cacheDelPattern } from "../lib/cache.js";
+import { isSafeHttpUrl } from "../lib/safeUrl.js";
 import { publicPhotoUrl } from "../lib/studentRecord.js";
 import { programmeLabel, programmeWeeks, PROGRAMME_CODES } from "../lib/programme.js";
 import multer from "multer";
@@ -704,7 +705,7 @@ const httpUrl = z
   .string()
   .trim()
   .max(500)
-  .refine((u) => /^https?:\/\/[^\s]+$/i.test(u), "URL must start with http:// or https://");
+  .refine(isSafeHttpUrl, "Use a normal https:// link (no login URLs or local addresses)");
 
 const optionalDate = z
   .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal("")])

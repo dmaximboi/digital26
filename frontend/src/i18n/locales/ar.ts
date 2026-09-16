@@ -283,6 +283,8 @@ export const ar: Record<MessageKey, string> = {
   "paywall.confirming": "جارٍ تأكيد الدفع مع Bachs…",
   "paywall.cancelled": "أُلغي الدفع. يمكنك المحاولة مجدداً.",
   "paywall.unlocked": "تم التحقق. تم فتح التنزيل…",
+  "paywall.notPayer":
+    "هذا البريد لم يدفع لهذا التنزيل. استخدم بريد الدفع نفسه.",
 
   "privacy.title": "سياسة الخصوصية",
   "terms.title": "شروط الخدمة",

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { apiGet } from "../lib/api";
+import { publicLookupPath } from "../lib/checkoutProof";
 import { DocBrandHeader } from "../components/BrandMark";
 import { AgreementArt } from "../components/AgreementArt";
 import { PublicRecordQr } from "../components/PublicRecordQr";
@@ -15,6 +16,7 @@ type AgreementPublic = {
   accessPaid?: boolean;
   amountUsd?: string;
   canDownloadTemplatePng?: boolean;
+  downloadConsumed?: boolean;
   downloadToken?: string | null;
 };
 
@@ -31,7 +33,7 @@ export function AgreementPublicPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiGet<AgreementPublic>(`/api/public/a/${encodeURIComponent(id)}`);
+      const data = await apiGet<AgreementPublic>(publicLookupPath("AGREEMENT", id));
       setResult(data);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Lookup failed");
@@ -65,14 +67,21 @@ export function AgreementPublicPage() {
           <LockedDownload
             kind="AGREEMENT"
             publicId={result.publicId}
-            accessPaid={Boolean(result.accessPaid)}
             amountUsd={result.amountUsd || "1.00"}
             canDownload={Boolean(result.canDownloadTemplatePng)}
+            downloadConsumed={Boolean(result.downloadConsumed)}
             downloadToken={result.downloadToken}
             onUnlocked={() => void load(result.publicId)}
             onConsumed={() =>
               setResult((prev) =>
-                prev ? { ...prev, canDownloadTemplatePng: false, downloadToken: null } : prev,
+                prev
+                  ? {
+                      ...prev,
+                      canDownloadTemplatePng: false,
+                      downloadToken: null,
+                      downloadConsumed: true,
+                    }
+                  : prev,
               )
             }
           />

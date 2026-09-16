@@ -1,6 +1,7 @@
 import { AssessmentKind } from "@prisma/client";
 import { prisma } from "../db/prisma.js";
 import { programmeLabel } from "./programme.js";
+import { isSafeHttpUrl } from "./safeUrl.js";
 import { optimizedPhotoUrl } from "./studentPhoto.js";
 
 export function publicPhotoUrl(
@@ -9,10 +10,13 @@ export function publicPhotoUrl(
 ): string | null {
   if (!photoUrl) return null;
   if (!opts?.allowInvalid && opts?.status && opts.status !== "VALID") return null;
-  let url = photoUrl;
+  let url = photoUrl.trim();
+  if (!url || url.startsWith("//") || /^(javascript|data|vbscript):/i.test(url)) return null;
   if (!url.startsWith("http") && !url.startsWith("/")) {
+    if (!/^[A-Za-z0-9._-]+$/.test(url)) return null;
     url = `/api/public/files/students/${url}`;
   }
+  if (url.startsWith("/") && url.startsWith("//")) return null;
   return optimizedPhotoUrl(url, opts?.width ?? 400, 70);
 }
 
@@ -87,13 +91,6 @@ export async function publicStudentBundle(opts: {
         issuer: string | null;
         earnedAt: Date | null;
       }>,
-      certificates: [] as Array<{
-        publicId: string;
-        type: string;
-        course: string;
-        issueDate: Date;
-        status: string;
-      }>,
       assessments: {
         performance: [] as ReturnType<typeof mapAssessment>[],
         tests: [] as ReturnType<typeof mapAssessment>[],
@@ -101,26 +98,6 @@ export async function publicStudentBundle(opts: {
       },
     };
   }
-
-  const issued = await prisma.certificate.findMany({
-    where: {
-      publicId: { not: null },
-      OR: [
-        { studentProfileId: profile.id },
-        ...(profile.user.email
-          ? [{ inviteEmail: profile.user.email.toLowerCase() }]
-          : []),
-      ],
-    },
-    select: {
-      publicId: true,
-      type: true,
-      course: true,
-      issueDate: true,
-      status: true,
-    },
-    orderBy: { issueDate: "desc" },
-  });
 
   return {
     student: {
@@ -133,36 +110,24 @@ export async function publicStudentBundle(opts: {
       headline: profile.headline,
       directorComment: profile.directorComment,
     },
-    projects: profile.projects.map((p) => ({
-      id: p.id,
-      title: p.title,
-      url: p.url,
-      description: p.description,
-      completedAt: p.completedAt,
-    })),
-    credentials: profile.credentials.map((c) => ({
-      id: c.id,
-      title: c.title,
-      url: c.url,
-      issuer: c.issuer,
-      earnedAt: c.earnedAt,
-    })),
-    certificates: Array.from(
-      new Map(
-        issued
-          .filter((c) => c.publicId)
-          .map((c) => [
-            c.publicId as string,
-            {
-              publicId: c.publicId as string,
-              type: c.type,
-              course: c.course,
-              issueDate: c.issueDate,
-              status: c.status,
-            },
-          ]),
-      ).values(),
-    ),
+    projects: profile.projects
+      .filter((p) => isSafeHttpUrl(p.url))
+      .map((p) => ({
+        id: p.id,
+        title: p.title,
+        url: p.url,
+        description: p.description,
+        completedAt: p.completedAt,
+      })),
+    credentials: profile.credentials
+      .filter((c) => isSafeHttpUrl(c.url))
+      .map((c) => ({
+        id: c.id,
+        title: c.title,
+        url: c.url,
+        issuer: c.issuer,
+        earnedAt: c.earnedAt,
+      })),
     assessments: {
       performance: profile.assessments
         .filter((a) => a.kind === AssessmentKind.PERFORMANCE)

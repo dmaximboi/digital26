@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { apiGet } from "../lib/api";
+import { publicLookupPath } from "../lib/checkoutProof";
 import { CertificateArt } from "../components/CertificateArt";
 import { PublicRecordQr } from "../components/PublicRecordQr";
 import { LockedDownload } from "../components/LockedDownload";
@@ -34,6 +35,7 @@ type CertPublic = {
   accessPaid?: boolean;
   amountUsd?: string;
   canDownloadTemplatePng?: boolean;
+  downloadConsumed?: boolean;
   downloadToken?: string | null;
   student?: {
     fullName: string;
@@ -58,13 +60,6 @@ type CertPublic = {
     issuer: string | null;
     earnedAt: string | null;
   }>;
-  certificates?: Array<{
-    publicId: string;
-    type: string;
-    course: string;
-    issueDate: string;
-    status: string;
-  }>;
   assessments?: {
     performance: Assessment[];
     tests: Assessment[];
@@ -86,7 +81,7 @@ export function StudentRecordPage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await apiGet<CertPublic>(`/api/public/verify/${encodeURIComponent(id)}`);
+      const data = await apiGet<CertPublic>(publicLookupPath("CERTIFICATE", id));
       setResult(data);
       setJsonLd(
         "d26-jsonld-cert",
@@ -203,24 +198,32 @@ export function StudentRecordPage() {
             course={result.course || ""}
             issueDate={result.issueDate || ""}
             photoUrl={result.photoUrl}
-            verifyUrl={siteUrl(`/verify/${result.publicId}`)}
           />
         </div>
-        <PublicRecordQr url={siteUrl(`/verify/${result.publicId}`)} />
-        <LockedDownload
-          kind="CERTIFICATE"
-          publicId={result.publicId}
-          accessPaid={Boolean(result.accessPaid)}
-          amountUsd={result.amountUsd || "1.00"}
-          canDownload={Boolean(result.canDownloadTemplatePng)}
-          downloadToken={result.downloadToken}
-          onUnlocked={() => void load(result.publicId)}
-          onConsumed={() =>
-            setResult((prev) =>
-              prev ? { ...prev, canDownloadTemplatePng: false, downloadToken: null } : prev,
-            )
-          }
-        />
+        <div className="record-cert-tools">
+          <PublicRecordQr url={siteUrl(`/verify/${result.publicId}`)} size={168} />
+          <LockedDownload
+            kind="CERTIFICATE"
+            publicId={result.publicId}
+            amountUsd={result.amountUsd || "1.00"}
+            canDownload={Boolean(result.canDownloadTemplatePng)}
+            downloadConsumed={Boolean(result.downloadConsumed)}
+            downloadToken={result.downloadToken}
+            onUnlocked={() => void load(result.publicId)}
+            onConsumed={() =>
+              setResult((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      canDownloadTemplatePng: false,
+                      downloadToken: null,
+                      downloadConsumed: true,
+                    }
+                  : prev,
+              )
+            }
+          />
+        </div>
       </div>
 
       <section className="record-section">
@@ -248,22 +251,7 @@ export function StudentRecordPage() {
 
       <section className="record-section">
         <h2>{t("record.certs")}</h2>
-        {result.certificates && result.certificates.length > 0 && (
-          <ul className="record-list">
-            {result.certificates.map((cert) => (
-              <li key={cert.publicId}>
-                <Link to={`/verify/${encodeURIComponent(cert.publicId)}`}>
-                  <strong>{cert.publicId}</strong>
-                  <span>
-                    {cert.type} · {cert.course}
-                  </span>
-                  <em>{formatCertDate(cert.issueDate)}</em>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-        {result.credentials && result.credentials.length > 0 && (
+        {result.credentials && result.credentials.length > 0 ? (
           <ul className="record-list">
             {result.credentials.map((cred) => (
               <li key={cred.id}>
@@ -275,11 +263,9 @@ export function StudentRecordPage() {
               </li>
             ))}
           </ul>
+        ) : (
+          <p className="muted">{t("record.noCerts")}</p>
         )}
-        {(!result.certificates || result.certificates.length === 0) &&
-          (!result.credentials || result.credentials.length === 0) && (
-            <p className="muted">{t("record.noCerts")}</p>
-          )}
       </section>
 
       <section className="record-section">

@@ -295,6 +295,8 @@ export const en = {
   "paywall.confirming": "Confirming payment with Bachs…",
   "paywall.cancelled": "Checkout cancelled. You can try again.",
   "paywall.unlocked": "Payment verified. Download unlocked…",
+  "paywall.notPayer":
+    "This email did not pay for this download. Use the same email from checkout.",
 
   // privacy / terms short
   "privacy.title": "Privacy Policy",

@@ -22,6 +22,7 @@ import {
 } from "../lib/payments.js";
 import { isValidPublicId } from "../lib/publicId.js";
 import { writeAudit } from "../lib/audit.js";
+import { payerDownloadGrant, paidCheckoutIdForEmail } from "../lib/payerDownload.js";
 
 export const paymentsRouter = Router();
 
@@ -74,7 +75,23 @@ paymentsRouter.post(
           return;
         }
         if (cert.viewPaidAt) {
-          res.json({ ok: true, alreadyPaid: true });
+          const grant = await payerDownloadGrant({
+            kind: "CERTIFICATE",
+            publicId,
+            email,
+          });
+          const checkoutId = await paidCheckoutIdForEmail(
+            PaymentKind.CERTIFICATE,
+            publicId,
+            email,
+          );
+          res.json({
+            ok: true,
+            alreadyPaid: true,
+            payerMatch: Boolean(checkoutId),
+            checkoutId,
+            ...grant,
+          });
           return;
         }
       } else {
@@ -87,7 +104,23 @@ paymentsRouter.post(
           return;
         }
         if (agr.viewPaidAt) {
-          res.json({ ok: true, alreadyPaid: true });
+          const grant = await payerDownloadGrant({
+            kind: "AGREEMENT",
+            publicId,
+            email,
+          });
+          const checkoutId = await paidCheckoutIdForEmail(
+            PaymentKind.AGREEMENT,
+            publicId,
+            email,
+          );
+          res.json({
+            ok: true,
+            alreadyPaid: true,
+            payerMatch: Boolean(checkoutId),
+            checkoutId,
+            ...grant,
+          });
           return;
         }
       }
@@ -99,11 +132,12 @@ paymentsRouter.post(
           ? `/verify/${encodeURIComponent(publicId)}`
           : `/check-agreement/${encodeURIComponent(publicId)}`;
 
-      // Reuse a recent open checkout for the same document (avoids double-charge UX).
+      // Reuse a recent open checkout for the same payer + document only.
       const recentOpen = await prisma.paymentOrder.findFirst({
         where: {
           kind: kind as PaymentKind,
           publicId,
+          customerEmail: email.toLowerCase(),
           status: PaymentStatus.PENDING,
           checkoutId: { not: null },
           createdAt: { gte: new Date(Date.now() - 45 * 60 * 1000) },
@@ -120,7 +154,18 @@ paymentsRouter.post(
               reference: recentOpen.reference,
               chargeId: remote.charge?.charge_id,
             });
-            res.json({ ok: true, alreadyPaid: true });
+            res.json({
+              ok: true,
+              alreadyPaid: true,
+              payerMatch: true,
+              checkoutId: recentOpen.checkoutId,
+              ...(await payerDownloadGrant({
+                kind,
+                publicId,
+                checkoutId: recentOpen.checkoutId,
+                email,
+              })),
+            });
             return;
           }
           if (String(remote.status).toUpperCase() === "OPEN" && remote.checkout_url) {

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useT } from "../i18n/LocaleContext";
 import { apiPost } from "../lib/api";
+import { checkoutStorageKey, setCheckoutProof } from "../lib/checkoutProof";
 
 type Props = {
   kind: "CERTIFICATE" | "AGREEMENT";
@@ -12,10 +13,6 @@ type Props = {
 
 const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
-function storageKey(kind: string, publicId: string) {
-  return `d26_checkout_${kind}_${publicId}`;
-}
-
 export function DocumentPaywall({ kind, publicId, amountUsd, compact, onUnlocked }: Props) {
   const t = useT();
   const [email, setEmail] = useState("");
@@ -26,7 +23,7 @@ export function DocumentPaywall({ kind, publicId, amountUsd, compact, onUnlocked
   const [notice, setNotice] = useState("");
   const [checkoutId, setCheckoutId] = useState<string | null>(() => {
     try {
-      return sessionStorage.getItem(storageKey(kind, publicId));
+      return sessionStorage.getItem(checkoutStorageKey(kind, publicId));
     } catch {
       return null;
     }
@@ -56,11 +53,7 @@ export function DocumentPaywall({ kind, publicId, amountUsd, compact, onUnlocked
       };
       if (!res.ok) throw new Error(data.error || t("common.error"));
       if (data.status === "PAID") {
-        try {
-          sessionStorage.removeItem(storageKey(kind, publicId));
-        } catch {
-          /* ignore */
-        }
+        if (cid) setCheckoutProof(kind, publicId, cid);
         onUnlocked?.();
       }
       return { status: data.status ?? null };
@@ -85,7 +78,7 @@ export function DocumentPaywall({ kind, publicId, amountUsd, compact, onUnlocked
         setNotice(t("paywall.confirming"));
         if (returnedId) {
           try {
-            sessionStorage.setItem(storageKey(kind, publicId), returnedId);
+            sessionStorage.setItem(checkoutStorageKey(kind, publicId), returnedId);
           } catch {
             /* ignore */
           }
@@ -163,6 +156,8 @@ export function DocumentPaywall({ kind, publicId, amountUsd, compact, onUnlocked
         checkoutUrl?: string;
         checkoutId?: string;
         alreadyPaid?: boolean;
+        payerMatch?: boolean;
+        downloadConsumed?: boolean;
       }>("/api/public/payments/checkout", {
         kind,
         publicId,
@@ -171,18 +166,22 @@ export function DocumentPaywall({ kind, publicId, amountUsd, compact, onUnlocked
       });
 
       if (data.alreadyPaid) {
-        setNotice(t("pay.notice.already"));
-        onUnlocked?.();
+        if (data.checkoutId) {
+          setCheckoutProof(kind, publicId, data.checkoutId);
+          setCheckoutId(data.checkoutId);
+        }
+        if (data.payerMatch || data.downloadConsumed) {
+          setNotice(t("paywall.unlocked"));
+          onUnlocked?.();
+        } else {
+          setNotice(t("paywall.notPayer"));
+        }
         setBusy(false);
         return;
       }
       if (!data.checkoutUrl) throw new Error(t("common.error"));
       if (data.checkoutId) {
-        try {
-          sessionStorage.setItem(storageKey(kind, publicId), data.checkoutId);
-        } catch {
-          /* ignore */
-        }
+        setCheckoutProof(kind, publicId, data.checkoutId);
         setCheckoutId(data.checkoutId);
       }
       window.location.href = data.checkoutUrl;

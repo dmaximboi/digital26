@@ -47,7 +47,6 @@ export function AdminLibraryPage() {
       })
       .catch((e) => {
         const msg = e instanceof Error ? e.message : "Failed to load";
-        // Empty catalog is fine — only surface real failures.
         if (/not found/i.test(msg)) {
           setItems([]);
           setError("Library is still setting up. Refresh in a moment.");
@@ -147,7 +146,7 @@ export function AdminLibraryPage() {
       <div className="ops-page__head">
         <div>
           <h2>Library</h2>
-          <p className="muted">Course materials for students</p>
+          <p className="muted">Upload covers, set access, and share course material links with students.</p>
         </div>
         {canWrite && (
           <div className="ops-page__actions">
@@ -181,10 +180,30 @@ export function AdminLibraryPage() {
       )}
 
       {canWrite && showForm && (
-        <form className="library-ops__form sign-form" onSubmit={(e) => void onSubmit(e)}>
-          <h3>{editingId ? "Edit material" : "New material"}</h3>
+        <form className="library-ops__form" onSubmit={(e) => void onSubmit(e)}>
+          <div className="library-ops__form-head">
+            <h3>{editingId ? "Edit material" : "New material"}</h3>
+            <p className="muted">Cover on the left, details on the right. Students open the material link after they can see the card.</p>
+          </div>
 
           <div className="library-ops__form-grid">
+            <div className="library-ops__cover">
+              <span className="library-ops__label">Cover image</span>
+              <label className="library-ops__drop">
+                {coverPreview ? (
+                  <img src={coverPreview} alt="" />
+                ) : (
+                  <span className="muted">JPG, PNG, or WebP · 16:10 works best</span>
+                )}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(e) => pickCover(e.target.files?.[0] ?? null)}
+                  required={!editingId}
+                />
+              </label>
+            </div>
+
             <div className="library-ops__fields">
               <label>
                 Title
@@ -217,67 +236,48 @@ export function AdminLibraryPage() {
                   placeholder="https://…"
                 />
               </label>
-
-              <div className="library-ops__meta">
-                <label className="library-ops__check">
-                  <input
-                    type="checkbox"
-                    checked={form.isFree}
-                    onChange={(e) => setForm((f) => ({ ...f, isFree: e.target.checked }))}
-                  />
-                  Free access
-                </label>
-
-                {!form.isFree && (
-                  <label>
-                    Price (USD)
-                    <input
-                      value={form.priceUsd}
-                      onChange={(e) => setForm((f) => ({ ...f, priceUsd: e.target.value }))}
-                      required
-                      inputMode="decimal"
-                    />
-                  </label>
-                )}
-
-                <label className="library-ops__check">
-                  <input
-                    type="checkbox"
-                    checked={form.published}
-                    onChange={(e) => setForm((f) => ({ ...f, published: e.target.checked }))}
-                  />
-                  Visible to students
-                </label>
-
-                <label>
-                  Order
-                  <input
-                    type="number"
-                    value={form.sortOrder}
-                    onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value }))}
-                  />
-                </label>
-              </div>
             </div>
+          </div>
 
-            <div className="library-ops__cover">
+          <div className="library-ops__access">
+            <label className="library-ops__check">
+              <input
+                type="checkbox"
+                checked={form.isFree}
+                onChange={(e) => setForm((f) => ({ ...f, isFree: e.target.checked }))}
+              />
+              Free access
+            </label>
+
+            {!form.isFree && (
               <label>
-                Cover image
+                Price (USD)
                 <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(e) => pickCover(e.target.files?.[0] ?? null)}
-                  required={!editingId}
+                  value={form.priceUsd}
+                  onChange={(e) => setForm((f) => ({ ...f, priceUsd: e.target.value }))}
+                  required
+                  inputMode="decimal"
                 />
               </label>
-              <div className="library-ops__cover-preview">
-                {coverPreview ? (
-                  <img src={coverPreview} alt="" />
-                ) : (
-                  <span className="muted">Preview appears here</span>
-                )}
-              </div>
-            </div>
+            )}
+
+            <label className="library-ops__check">
+              <input
+                type="checkbox"
+                checked={form.published}
+                onChange={(e) => setForm((f) => ({ ...f, published: e.target.checked }))}
+              />
+              Visible to students
+            </label>
+
+            <label>
+              Order
+              <input
+                type="number"
+                value={form.sortOrder}
+                onChange={(e) => setForm((f) => ({ ...f, sortOrder: e.target.value }))}
+              />
+            </label>
           </div>
 
           <div className="library-ops__form-actions">
@@ -297,40 +297,34 @@ export function AdminLibraryPage() {
         <div className="library-ops__empty">
           <p>No materials yet.</p>
           {canWrite && (
-            <button
-              type="button"
-              className="btn primary"
-              onClick={() => setShowForm(true)}
-            >
+            <button type="button" className="btn primary" onClick={() => setShowForm(true)}>
               Add the first one
             </button>
           )}
         </div>
       ) : (
-        <div className="library-ops__list">
+        <div className="library-ops__grid">
           {items.map((item) => (
-            <article key={item.id} className="library-ops__row">
-              <img src={item.coverUrl} alt="" className="library-ops__thumb" />
-              <div className="library-ops__row-body">
-                <div className="library-ops__row-top">
-                  <h3>{item.title}</h3>
-                  <span className={`library-ops__pill ${item.published ? "on" : "off"}`}>
-                    {item.published ? "Live" : "Hidden"}
-                  </span>
-                  <span className="library-ops__pill price">
-                    {item.isFree ? "Free" : `$${item.priceUsd}`}
-                  </span>
-                </div>
+            <article key={item.id} className="library-ops__card">
+              <div className="library-ops__card-cover">
+                <img src={item.coverUrl} alt="" />
+                <span className={`library-ops__pill ${item.published ? "on" : "off"}`}>
+                  {item.published ? "Live" : "Hidden"}
+                </span>
+                <span className="library-ops__pill price">{item.isFree ? "Free" : `$${item.priceUsd}`}</span>
+              </div>
+              <div className="library-ops__card-body">
+                <h3>{item.title}</h3>
                 {item.description && <p className="muted">{item.description}</p>}
                 <p className="library-ops__url muted">{item.externalUrl}</p>
                 {canWrite && (
                   <div className="library-ops__row-actions">
-                    <button type="button" className="btn" onClick={() => startEdit(item)}>
+                    <button type="button" className="btn sm" onClick={() => startEdit(item)}>
                       Edit
                     </button>
                     <button
                       type="button"
-                      className="btn danger"
+                      className="btn sm danger"
                       disabled={busy}
                       onClick={() => void remove(item.id)}
                     >

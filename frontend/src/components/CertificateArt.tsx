@@ -17,7 +17,6 @@ export function CertificateArt({
   course = "6-Day Vibe Coding Masterclass",
   issueDate,
   photoUrl,
-  verifyUrl,
 }: CertificateArtProps) {
   const isCompletion =
     String(type).toUpperCase() === "COMPLETION" || type === "completion";
@@ -27,7 +26,6 @@ export function CertificateArt({
     : `with a warm welcome into the ${course}. You are part of The Digital 26, arriving with curiosity, good energy, and an open mind to learn, vibe, and grow. We're glad you're here.`;
 
   const dateLabel = formatDisplayDate(issueDate);
-  const verifyDisplay = (verifyUrl || "").replace(/^https?:\/\//, "");
 
   return (
     <div className="d26-cert" id="d26-cert">
@@ -39,24 +37,24 @@ export function CertificateArt({
       <div className="d26-cert__side left" />
       <div className="d26-cert__side right" />
 
-      <div className="d26-cert__logo">
-        <img src="/logo.png" alt="The Digital 26" />
-      </div>
-
-      <div className="d26-cert__photo">
-        {photoUrl ? (
-          <img src={photoUrl} alt="" />
-        ) : (
-          <div className="d26-cert__photo-ph">Student</div>
-        )}
-      </div>
-
       <div className="d26-cert__content">
-        <div className="d26-cert__brand-row">
-          <span className="line" />
-          <span className="brand">The Digital 26</span>
-          <span className="line right" />
-        </div>
+        <header className="d26-cert__top">
+          <div className="d26-cert__logo">
+            <img src="/logo.png" alt="The Digital 26" />
+          </div>
+          <div className="d26-cert__brand-row">
+            <span className="line" />
+            <span className="brand">The Digital 26</span>
+            <span className="line right" />
+          </div>
+          <div className="d26-cert__photo">
+            {photoUrl ? (
+              <img src={photoUrl} alt="" />
+            ) : (
+              <div className="d26-cert__photo-ph">Student</div>
+            )}
+          </div>
+        </header>
 
         <p className="d26-cert__presents">hereby proudly presents this</p>
         <h2 className="d26-cert__type">{title}</h2>
@@ -108,7 +106,6 @@ export function CertificateArt({
             <p className="meta-label">
               {isCompletion ? "Date of Completion" : "Date of Participation"}
             </p>
-            {verifyDisplay && <p className="meta-verify">Verify: {verifyDisplay}</p>}
           </div>
         </div>
       </div>

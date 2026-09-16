@@ -6,12 +6,10 @@ import { env } from "../config/env.js";
 import { isValidPublicId } from "../lib/publicId.js";
 import { publicLookupLimiter, templateDownloadLimiter, gateLimiter } from "../middleware/security.js";
 import { cacheFetch } from "../lib/cache.js";
-import {
-  issueTemplateDownloadToken,
-  verifyTemplateDownloadToken,
-} from "../lib/downloadToken.js";
+import { verifyTemplateDownloadToken } from "../lib/downloadToken.js";
 import { PAYMENT_AMOUNTS_USD } from "../lib/payments.js";
 import { publicPhotoUrl, publicStudentBundle } from "../lib/studentRecord.js";
+import { payerDownloadGrant } from "../lib/payerDownload.js";
 
 export const publicRouter = Router();
 
@@ -131,36 +129,26 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     return;
   }
 
-  let accessPaid = false;
-  let canDownloadTemplatePng = false;
-  let downloadToken: string | null = null;
   let studentProfileId: string | null = null;
   let inviteEmail: string | null = null;
   try {
     const row = await prisma.certificate.findUnique({
       where: { publicId },
-      select: {
-        templatePngDownloadedAt: true,
-        status: true,
-        viewPaidAt: true,
-        studentProfileId: true,
-        inviteEmail: true,
-      },
+      select: { studentProfileId: true, inviteEmail: true },
     });
-    accessPaid = Boolean(row?.viewPaidAt);
     studentProfileId = row?.studentProfileId ?? null;
     inviteEmail = row?.inviteEmail ?? null;
-    canDownloadTemplatePng =
-      accessPaid &&
-      Boolean(row) &&
-      row!.status === "VALID" &&
-      !row!.templatePngDownloadedAt;
-    if (canDownloadTemplatePng) {
-      downloadToken = issueTemplateDownloadToken("certificate", publicId).token;
-    }
   } catch {
-    canDownloadTemplatePng = false;
+    /* lookup continues without profile */
   }
+
+  const checkoutId =
+    typeof req.query.checkout_id === "string" ? req.query.checkout_id.trim() : "";
+  const grant = await payerDownloadGrant({
+    kind: "CERTIFICATE",
+    publicId,
+    checkoutId,
+  });
 
   const photoUrl = publicPhotoUrl(record.photoUrl, { status: record.status, width: 400 });
   const bundle = await publicStudentBundle({ studentProfileId, inviteEmail });
@@ -196,10 +184,11 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     verifyUrl: verifyUrl(record.publicId),
     issuer: "The Digital 26",
     program: "Vibe Coding",
-    accessPaid,
+    accessPaid: grant.accessPaid,
+    downloadConsumed: grant.downloadConsumed,
     amountUsd: PAYMENT_AMOUNTS_USD.CERTIFICATE,
-    canDownloadTemplatePng,
-    downloadToken,
+    canDownloadTemplatePng: grant.canDownloadTemplatePng,
+    downloadToken: grant.downloadToken,
     ...bundle,
   });
 });
@@ -334,23 +323,13 @@ publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
     return;
   }
 
-  let accessPaid = false;
-  let canDownloadTemplatePng = false;
-  let downloadToken: string | null = null;
-  try {
-    const row = await prisma.agreement.findUnique({
-      where: { publicId },
-      select: { templatePngDownloadedAt: true, consumedAt: true, viewPaidAt: true },
-    });
-    accessPaid = Boolean(row?.viewPaidAt);
-    canDownloadTemplatePng =
-      accessPaid && Boolean(row?.consumedAt) && !row!.templatePngDownloadedAt;
-    if (canDownloadTemplatePng) {
-      downloadToken = issueTemplateDownloadToken("agreement", publicId).token;
-    }
-  } catch {
-    canDownloadTemplatePng = false;
-  }
+  const checkoutId =
+    typeof req.query.checkout_id === "string" ? req.query.checkout_id.trim() : "";
+  const grant = await payerDownloadGrant({
+    kind: "AGREEMENT",
+    publicId,
+    checkoutId,
+  });
 
   res.setHeader("Cache-Control", "no-store");
 
@@ -362,10 +341,11 @@ publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
     signedAt: record.signedAt,
     signature: record.signatureName,
     issuer: "The Digital 26",
-    accessPaid,
+    accessPaid: grant.accessPaid,
+    downloadConsumed: grant.downloadConsumed,
     amountUsd: PAYMENT_AMOUNTS_USD.AGREEMENT,
-    canDownloadTemplatePng,
-    downloadToken,
+    canDownloadTemplatePng: grant.canDownloadTemplatePng,
+    downloadToken: grant.downloadToken,
   });
 });
 
