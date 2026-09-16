@@ -66,9 +66,9 @@ export function CheckAgreementPage() {
       <DocBrandHeader title="Check agreement letter" />
       <p className="lede">Enter a public agreement ID (e.g. D26aB3xY9k).</p>
 
-      <form className="lookup-form" onSubmit={onSubmit}>
+      <form className="lookup-form verify-lookup" onSubmit={onSubmit}>
         <label htmlFor="agrId">Agreement ID</label>
-        <div className="lookup-row">
+        <div className="lookup-row verify-lookup__row">
           <input
             id="agrId"
             value={input}
@@ -76,6 +76,8 @@ export function CheckAgreementPage() {
             placeholder="D26aB3xY9k"
             autoComplete="off"
             spellCheck={false}
+            maxLength={24}
+            inputMode="text"
           />
           <button className="btn primary" type="submit" disabled={loading}>
             {loading ? "Checking…" : "Check"}

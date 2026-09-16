@@ -89,6 +89,8 @@ export const fr: Record<MessageKey, string> = {
   "contact.metaTitle": "Contact The Digital 26",
   "contact.lede": "Envoyez un message ou contactez-nous sur WhatsApp.",
   "contact.whatsapp": "Discuter sur WhatsApp",
+  "contact.whatsappNg": "WhatsApp · Nigeria",
+  "contact.whatsappCi": "WhatsApp · Côte d’Ivoire",
   "contact.name": "Nom",
   "contact.email": "E-mail",
   "contact.phone": "Téléphone (optionnel)",

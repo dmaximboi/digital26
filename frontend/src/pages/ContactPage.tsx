@@ -53,16 +53,29 @@ export function ContactPage() {
       <DocBrandHeader title={t("contact.title")} />
       <p className="lede">{t("contact.lede")}</p>
 
-      <div className="contact-whatsapp">
-        <a
-          href="https://wa.me/2349123165792"
-          target="_blank"
-          rel="noreferrer"
-          className="btn primary whatsapp-btn"
-        >
-          {t("contact.whatsapp")}
-        </a>
-        <span className="muted">+234 91 23 16 5792</span>
+      <div className="contact-whatsapp-list">
+        <div className="contact-whatsapp">
+          <a
+            href="https://wa.me/2349123165792"
+            target="_blank"
+            rel="noreferrer"
+            className="btn primary whatsapp-btn"
+          >
+            {t("contact.whatsappNg")}
+          </a>
+          <span className="muted">+234 91 23 16 5792</span>
+        </div>
+        <div className="contact-whatsapp">
+          <a
+            href="https://wa.me/2250152353217"
+            target="_blank"
+            rel="noreferrer"
+            className="btn primary whatsapp-btn"
+          >
+            {t("contact.whatsappCi")}
+          </a>
+          <span className="muted">+225 01 52 35 3217</span>
+        </div>
       </div>
 
       {done ? (

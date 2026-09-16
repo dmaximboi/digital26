@@ -89,6 +89,8 @@ export const ar: Record<MessageKey, string> = {
   "contact.metaTitle": "تواصل مع The Digital 26",
   "contact.lede": "أرسل رسالة أو تواصل معنا عبر واتساب.",
   "contact.whatsapp": "محادثة واتساب",
+  "contact.whatsappNg": "واتساب · نيجيريا",
+  "contact.whatsappCi": "واتساب · كوت ديفوار",
   "contact.name": "الاسم",
   "contact.email": "البريد الإلكتروني",
   "contact.phone": "الهاتف (اختياري)",

@@ -92,6 +92,8 @@ export const en = {
   "contact.metaTitle": "Contact The Digital 26",
   "contact.lede": "Send a message or reach us on WhatsApp.",
   "contact.whatsapp": "Chat on WhatsApp",
+  "contact.whatsappNg": "WhatsApp · Nigeria",
+  "contact.whatsappCi": "WhatsApp · Côte d’Ivoire",
   "contact.name": "Name",
   "contact.email": "Email",
   "contact.phone": "Phone (optional)",

@@ -1159,23 +1159,26 @@ dd {
 }
 
 .verify-lookup {
-  max-width: 28rem;
+  max-width: 26rem;
 }
 
 .verify-lookup__row {
   flex-wrap: nowrap;
+  flex-direction: row;
   align-items: stretch;
 }
 
 .verify-lookup__row input {
-  flex: 1 1 auto;
-  min-width: 0;
-  max-width: 18rem;
+  flex: 0 1 14rem;
+  width: 14rem;
+  max-width: 16rem;
+  min-width: 10rem;
 }
 
 .verify-lookup__row .btn {
   flex: 0 0 auto;
   white-space: nowrap;
+  width: auto;
 }
 
 .verify-result {
@@ -1366,7 +1369,13 @@ dd {
   }
 
   .verify-lookup__row input {
-    max-width: none;
+    width: 14rem;
+    max-width: 16rem;
+    flex: 0 1 14rem;
+  }
+
+  .verify-lookup__row .btn {
+    width: auto;
   }
 }
 
@@ -2210,13 +2219,18 @@ dd {
   gap: .5rem;
 }
 
+.contact-whatsapp-list {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
 .contact-whatsapp {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: 0.75rem 1rem;
   padding: .75rem 1rem;
-  border-radius: .5rem;
+  border-radius: .75rem;
   background: var(--surface, #111);
   border: 1px solid var(--border, #333);
 }
