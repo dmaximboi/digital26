@@ -3,8 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { apiGet, apiPost, apiPostForm } from "../lib/api";
 import { DocBrandHeader } from "../components/BrandMark";
 import { AgreementArt } from "../components/AgreementArt";
-import { OneTimeTemplateDownload } from "../components/OneTimeTemplateDownload";
 import { PublicRecordQr } from "../components/PublicRecordQr";
+import { LockedDownload } from "../components/LockedDownload";
 import { compressImage } from "../lib/compressImage";
 
 type StatusResponse =
@@ -395,6 +395,8 @@ function SignedAgreementResult({ publicId }: { publicId: string }) {
     dealTag?: string | null;
     signedAt: string;
     signature: string;
+    accessPaid?: boolean;
+    amountUsd?: string;
     canDownloadTemplatePng?: boolean;
     downloadToken?: string | null;
   } | null>(null);
@@ -423,11 +425,18 @@ function SignedAgreementResult({ publicId }: { publicId: string }) {
             checkUrl={`${SITE}/check-agreement/${data.publicId}`}
           />
           <PublicRecordQr url={`${SITE}/check-agreement/${data.publicId}`} />
-          <OneTimeTemplateDownload
-            kind="agreement"
+          <LockedDownload
+            kind="AGREEMENT"
             publicId={data.publicId}
-            available={Boolean(data.canDownloadTemplatePng)}
+            accessPaid={Boolean(data.accessPaid)}
+            amountUsd={data.amountUsd || "1.00"}
+            canDownload={Boolean(data.canDownloadTemplatePng)}
             downloadToken={data.downloadToken}
+            onUnlocked={() => {
+              apiGet<NonNullable<typeof data>>(`/api/public/a/${encodeURIComponent(publicId)}`)
+                .then(setData)
+                .catch(() => {});
+            }}
             onConsumed={() =>
               setData((prev) =>
                 prev ? { ...prev, canDownloadTemplatePng: false, downloadToken: null } : prev,

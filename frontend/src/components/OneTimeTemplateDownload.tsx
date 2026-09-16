@@ -77,7 +77,7 @@ export function OneTimeTemplateDownload({
         {busy ? "Preparing PNG…" : "Download template PNG (one time)"}
       </button>
       <p className="muted one-time-dl__hint">
-        Exact on-screen template with QR. Secured one-time download — button disappears forever after use.
+        Official template PNG with QR. One-time download — the button disappears after use.
       </p>
       {error && (
         <p className="form-error" role="alert">

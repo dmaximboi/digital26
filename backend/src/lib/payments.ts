@@ -19,7 +19,7 @@ export const PAYMENT_AMOUNTS_USD: Record<PaymentKind, string> = {
 
 export function paymentLabel(kind: PaymentKind): string {
   if (kind === "REGISTRATION") return "Student registration fee";
-  if (kind === "CERTIFICATE") return "Certificate access";
+  if (kind === "CERTIFICATE") return "Certificate download";
   if (kind === "LIBRARY") return "Library resource access";
   return "Agreement letter access";
 }

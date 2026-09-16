@@ -6,6 +6,7 @@ type Props = {
   kind: "CERTIFICATE" | "AGREEMENT";
   publicId: string;
   amountUsd: string;
+  compact?: boolean;
   onUnlocked?: () => void;
 };
 
@@ -15,7 +16,7 @@ function storageKey(kind: string, publicId: string) {
   return `d26_checkout_${kind}_${publicId}`;
 }
 
-export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props) {
+export function DocumentPaywall({ kind, publicId, amountUsd, compact, onUnlocked }: Props) {
   const t = useT();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -212,7 +213,7 @@ export function DocumentPaywall({ kind, publicId, amountUsd, onUnlocked }: Props
   }
 
   return (
-    <div className="doc-paywall">
+    <div className={`doc-paywall${compact ? " doc-paywall--compact" : ""}`}>
       <div className="doc-paywall__hero">
         <div>
           <p className="doc-paywall__eyebrow">{t("paywall.eyebrow")}</p>

@@ -7,6 +7,7 @@ import { BottomNav } from "./components/BottomNav";
 import { AppSplash } from "./components/AppSplash";
 import { HomePage } from "./pages/HomePage";
 import { VerifyPage } from "./pages/VerifyPage";
+import { StudentRecordPage } from "./pages/StudentRecordPage";
 import { CheckAgreementPage } from "./pages/CheckAgreementPage";
 import { ContactPage } from "./pages/ContactPage";
 import { AboutPage } from "./pages/AboutPage";
@@ -33,6 +34,7 @@ import { AdminAuditLogPage } from "./pages/admin/AdminAuditLogPage";
 import { AdminMessagesPage } from "./pages/admin/AdminMessagesPage";
 import { AdminVisitsPage } from "./pages/admin/AdminVisitsPage";
 import { AdminStudentsPage } from "./pages/admin/AdminStudentsPage";
+import { AdminStudentRecordPage } from "./pages/admin/AdminStudentRecordPage";
 import { AdminStoragePage } from "./pages/admin/AdminStoragePage";
 import { AdminCreateAgreementPage } from "./pages/AdminCreateAgreementPage";
 import { AdminIssueCertificatePage } from "./pages/AdminIssueCertificatePage";
@@ -46,7 +48,7 @@ function AppRoutes() {
       <Route path="/" element={<HomePage />} />
       <Route path="/about" element={<AboutPage />} />
       <Route path="/verify" element={<VerifyPage />} />
-      <Route path="/verify/:publicId" element={<VerifyPage />} />
+      <Route path="/verify/:publicId" element={<StudentRecordPage />} />
       <Route path="/check-agreement" element={<CheckAgreementPage />} />
       <Route path="/check-agreement/:publicId" element={<CheckAgreementPage />} />
       <Route path="/contact" element={<ContactPage />} />
@@ -69,6 +71,7 @@ function AppRoutes() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboardPage />} />
         <Route path="students" element={<AdminStudentsPage />} />
+        <Route path="students/:id/record" element={<AdminStudentRecordPage />} />
         <Route path="library" element={<AdminLibraryPage />} />
         <Route path="messages" element={<AdminMessagesPage />} />
         <Route path="visits" element={<AdminVisitsPage />} />

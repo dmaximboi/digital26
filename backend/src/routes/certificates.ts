@@ -155,6 +155,7 @@ certificatesRouter.post(
             publicId,
             photoUrl,
             inviteEmail: profile.user.email.toLowerCase(),
+            studentProfileId: profile.id,
           },
         });
 

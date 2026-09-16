@@ -5,13 +5,13 @@ import { prisma } from "../db/prisma.js";
 import { env } from "../config/env.js";
 import { isValidPublicId } from "../lib/publicId.js";
 import { publicLookupLimiter, templateDownloadLimiter, gateLimiter } from "../middleware/security.js";
-import { optimizedPhotoUrl } from "../lib/studentPhoto.js";
 import { cacheFetch } from "../lib/cache.js";
 import {
   issueTemplateDownloadToken,
   verifyTemplateDownloadToken,
 } from "../lib/downloadToken.js";
 import { PAYMENT_AMOUNTS_USD } from "../lib/payments.js";
+import { publicPhotoUrl, publicStudentBundle } from "../lib/studentRecord.js";
 
 export const publicRouter = Router();
 
@@ -134,12 +134,22 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
   let accessPaid = false;
   let canDownloadTemplatePng = false;
   let downloadToken: string | null = null;
+  let studentProfileId: string | null = null;
+  let inviteEmail: string | null = null;
   try {
     const row = await prisma.certificate.findUnique({
       where: { publicId },
-      select: { templatePngDownloadedAt: true, status: true, viewPaidAt: true },
+      select: {
+        templatePngDownloadedAt: true,
+        status: true,
+        viewPaidAt: true,
+        studentProfileId: true,
+        inviteEmail: true,
+      },
     });
     accessPaid = Boolean(row?.viewPaidAt);
+    studentProfileId = row?.studentProfileId ?? null;
+    inviteEmail = row?.inviteEmail ?? null;
     canDownloadTemplatePng =
       accessPaid &&
       Boolean(row) &&
@@ -152,15 +162,8 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     canDownloadTemplatePng = false;
   }
 
-  let photoUrl = accessPaid ? record.photoUrl : null;
-  if (record.status !== "VALID") {
-    photoUrl = null;
-  } else if (photoUrl && !photoUrl.startsWith("http") && !photoUrl.startsWith("/")) {
-    photoUrl = `/api/public/files/students/${photoUrl}`;
-  }
-  if (photoUrl) {
-    photoUrl = optimizedPhotoUrl(photoUrl, 400, 70);
-  }
+  const photoUrl = publicPhotoUrl(record.photoUrl, { status: record.status, width: 400 });
+  const bundle = await publicStudentBundle({ studentProfileId, inviteEmail });
 
   res.setHeader("Access-Control-Allow-Origin", "*");
 
@@ -170,20 +173,13 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     /text\/plain|text\/markdown/i.test(String(req.headers.accept ?? ""));
 
   if (wantsText) {
-    if (!accessPaid) {
-      res.type("text/markdown; charset=utf-8").send(
-        [
-          `# Certificate ${record.publicId}`,
-          "",
-          `Status: ${record.status}`,
-          `Type: ${record.type}`,
-          "",
-          `Full certificate art unlocks after a one-time $${PAYMENT_AMOUNTS_USD.CERTIFICATE} USD payment (charged in local currency at checkout).`,
-        ].join("\n"),
-      );
-      return;
-    }
-    res.type("text/markdown; charset=utf-8").send(certMarkdown(record));
+    res.type("text/markdown; charset=utf-8").send(
+      [
+        certMarkdown(record),
+        "",
+        `Download PNG unlocks after a one-time $${PAYMENT_AMOUNTS_USD.CERTIFICATE} USD payment (charged in local currency at checkout).`,
+      ].join("\n"),
+    );
     return;
   }
 
@@ -191,10 +187,10 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.json({
     publicId: record.publicId,
-    name: accessPaid ? record.displayName : "Locked",
-    course: accessPaid ? record.course : null,
+    name: record.displayName,
+    course: record.course,
     type: record.type,
-    issueDate: accessPaid ? record.issueDate : null,
+    issueDate: record.issueDate,
     status: record.status,
     photoUrl,
     verifyUrl: verifyUrl(record.publicId),
@@ -204,6 +200,7 @@ publicRouter.get("/verify/:publicId", publicLookupLimiter, async (req, res) => {
     amountUsd: PAYMENT_AMOUNTS_USD.CERTIFICATE,
     canDownloadTemplatePng,
     downloadToken,
+    ...bundle,
   });
 });
 
@@ -359,11 +356,11 @@ publicRouter.get("/a/:publicId", publicLookupLimiter, async (req, res) => {
 
   res.json({
     publicId: record.publicId,
-    name: accessPaid ? record.displayName : "Locked",
-    dealType: accessPaid ? record.dealType : null,
-    dealTag: accessPaid ? record.dealTag : null,
-    signedAt: accessPaid ? record.signedAt : null,
-    signature: accessPaid ? record.signatureName : null,
+    name: record.displayName,
+    dealType: record.dealType,
+    dealTag: record.dealTag,
+    signedAt: record.signedAt,
+    signature: record.signatureName,
     issuer: "The Digital 26",
     accessPaid,
     amountUsd: PAYMENT_AMOUNTS_USD.AGREEMENT,

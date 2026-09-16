@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { apiFetch } from "../../lib/authApi";
 import { programmeShort, programmeWeeks } from "../../lib/programme";
@@ -237,6 +238,9 @@ export function AdminStudentsPage() {
                       )}
                     </>
                   )}
+                  <Link className="btn" to={`/admin/students/${s.id}/record`}>
+                    Public record
+                  </Link>
                   <button className="btn" onClick={() => void openChat(s.id)}>
                     {chatOpen === s.id ? "Close chat" : `Chat (${s.messageCount})`}
                   </button>
@@ -330,9 +334,13 @@ export function AdminStudentsPage() {
                   <td>{s.attendanceCount} / {programmeWeeks(s.programme, s.customMonths)}</td>
                   <td>{s.startDate ? new Date(s.startDate).toLocaleDateString() : ""}</td>
                   <td>
+                    <div className="ops-download-row">
                     <button className="btn" onClick={() => void openChat(s.id)}>
                       Chat ({s.messageCount})
                     </button>
+                    <Link className="btn primary" to={`/admin/students/${s.id}/record`}>
+                      Public record
+                    </Link>
                     {canWrite && !s.registrationPaid && (
                       <button className="btn" onClick={() => void verifyPayment(s.id)} disabled={busy === s.id}>
                         Verify payment
@@ -343,6 +351,7 @@ export function AdminStudentsPage() {
                         Revoke
                       </button>
                     )}
+                    </div>
                   </td>
                 </tr>
               ))}

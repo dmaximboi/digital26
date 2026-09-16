@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { ProgrammeType, StudentStatus } from "@prisma/client";
+import { AssessmentKind, ProgrammeType, StudentStatus } from "@prisma/client";
 import { prisma } from "../db/prisma.js";
 import { requireAuth, requireAdmin, requireAdminWrite } from "../middleware/requireAuth.js";
 import type { AuthedRequest } from "../middleware/requireAuth.js";
@@ -8,6 +8,8 @@ import { compressAndStoreStudentPhoto } from "../lib/studentPhoto.js";
 import { authLimiter, otpLimiter } from "../middleware/security.js";
 import { sendStudentDecisionEmail } from "../lib/mail.js";
 import { writeAudit } from "../lib/audit.js";
+import { cacheDelPattern } from "../lib/cache.js";
+import { publicPhotoUrl } from "../lib/studentRecord.js";
 import { programmeLabel, programmeWeeks, PROGRAMME_CODES } from "../lib/programme.js";
 import multer from "multer";
 import path from "node:path";
@@ -697,6 +699,340 @@ studentsRouter.get("/ops/students/:id/attendance", requireAdmin, async (req, res
     res.status(500).json({ error: "Failed to load attendance" });
   }
 });
+
+const httpUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((u) => /^https?:\/\/[^\s]+$/i.test(u), "URL must start with http:// or https://");
+
+const optionalDate = z
+  .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal("")])
+  .optional()
+  .transform((v) => (v ? new Date(`${v}T12:00:00.000Z`) : null));
+
+function parseOptionalDate(raw: unknown): Date | null | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null || raw === "") return null;
+  const parsed = optionalDate.safeParse(raw);
+  return parsed.success ? parsed.data : undefined;
+}
+
+async function loadStudentRecord(id: string) {
+  const profile = await prisma.studentProfile.findUnique({
+    where: { id },
+    include: {
+      user: { select: { email: true, name: true } },
+      projects: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+      credentials: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+      assessments: { orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }] },
+      certificates: {
+        where: { publicId: { not: null } },
+        select: {
+          publicId: true,
+          type: true,
+          course: true,
+          issueDate: true,
+          status: true,
+        },
+        orderBy: { issueDate: "desc" },
+      },
+    },
+  });
+  return profile;
+}
+
+function serializeRecord(profile: NonNullable<Awaited<ReturnType<typeof loadStudentRecord>>>) {
+  return {
+    student: {
+      id: profile.id,
+      fullName: profile.fullName,
+      email: profile.user.email,
+      photoUrl: publicPhotoUrl(profile.photoUrl, { width: 320, allowInvalid: true }),
+      programme: profile.programme,
+      programmeLabel: programmeLabel(profile.programme, profile.customMonths),
+      classMode: profile.classMode,
+      headline: profile.headline,
+      directorComment: profile.directorComment,
+      status: profile.status,
+    },
+    projects: profile.projects,
+    credentials: profile.credentials,
+    assessments: profile.assessments,
+    certificates: profile.certificates.filter((c) => c.publicId),
+  };
+}
+
+studentsRouter.get("/ops/students/:id/record", requireAdmin, async (req, res) => {
+  try {
+    const profile = await loadStudentRecord(String(req.params.id));
+    if (!profile) {
+      res.status(404).json({ error: "Student not found" });
+      return;
+    }
+    res.json(serializeRecord(profile));
+  } catch (err) {
+    console.error("[ops.students.record.get]", err);
+    res.status(500).json({ error: "Failed to load student record" });
+  }
+});
+
+const recordMetaSchema = z.object({
+  headline: z.string().max(200).optional().nullable(),
+  directorComment: z.string().max(4000).optional().nullable(),
+});
+
+studentsRouter.post(
+  "/ops/students/:id/record",
+  authLimiter,
+  requireAdminWrite,
+  async (req: AuthedRequest, res) => {
+    try {
+      const id = String(req.params.id);
+      const parsed = recordMetaSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Invalid profile fields" });
+        return;
+      }
+      const existing = await prisma.studentProfile.findUnique({ where: { id }, select: { id: true } });
+      if (!existing) {
+        res.status(404).json({ error: "Student not found" });
+        return;
+      }
+      await prisma.studentProfile.update({
+        where: { id },
+        data: {
+          headline: parsed.data.headline?.trim() || null,
+          directorComment: parsed.data.directorComment?.trim() || null,
+        },
+      });
+      cacheDelPattern("cert:");
+      await writeAudit({
+        adminEmail: req.userEmail!,
+        action: "student.record.update",
+        targetId: id,
+      });
+      const profile = await loadStudentRecord(id);
+      res.json(serializeRecord(profile!));
+    } catch (err) {
+      console.error("[ops.students.record.post]", err);
+      res.status(500).json({ error: "Failed to save student record" });
+    }
+  },
+);
+
+const projectSchema = z.object({
+  title: z.string().trim().min(2).max(160),
+  url: httpUrl,
+  description: z.string().max(1000).optional().nullable(),
+  completedAt: z.string().optional().nullable(),
+  sortOrder: z.coerce.number().int().min(0).max(999).optional(),
+});
+
+studentsRouter.post(
+  "/ops/students/:id/projects",
+  authLimiter,
+  requireAdminWrite,
+  async (req: AuthedRequest, res) => {
+    try {
+      const id = String(req.params.id);
+      const parsed = projectSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Add a project title and http(s) link" });
+        return;
+      }
+      const existing = await prisma.studentProfile.findUnique({ where: { id }, select: { id: true } });
+      if (!existing) {
+        res.status(404).json({ error: "Student not found" });
+        return;
+      }
+      const count = await prisma.studentProject.count({ where: { studentProfileId: id } });
+      await prisma.studentProject.create({
+        data: {
+          studentProfileId: id,
+          title: parsed.data.title,
+          url: parsed.data.url,
+          description: parsed.data.description?.trim() || null,
+          completedAt: parseOptionalDate(parsed.data.completedAt) ?? null,
+          sortOrder: parsed.data.sortOrder ?? count,
+        },
+      });
+      cacheDelPattern("cert:");
+      const profile = await loadStudentRecord(id);
+      res.status(201).json(serializeRecord(profile!));
+    } catch (err) {
+      console.error("[ops.students.projects.post]", err);
+      res.status(500).json({ error: "Failed to add project" });
+    }
+  },
+);
+
+studentsRouter.post(
+  "/ops/students/:id/projects/:itemId/delete",
+  authLimiter,
+  requireAdminWrite,
+  async (req: AuthedRequest, res) => {
+    try {
+      const id = String(req.params.id);
+      const itemId = String(req.params.itemId);
+      await prisma.studentProject.deleteMany({ where: { id: itemId, studentProfileId: id } });
+      cacheDelPattern("cert:");
+      const profile = await loadStudentRecord(id);
+      if (!profile) {
+        res.status(404).json({ error: "Student not found" });
+        return;
+      }
+      res.json(serializeRecord(profile));
+    } catch (err) {
+      console.error("[ops.students.projects.delete]", err);
+      res.status(500).json({ error: "Failed to remove project" });
+    }
+  },
+);
+
+const credentialSchema = z.object({
+  title: z.string().trim().min(2).max(160),
+  url: httpUrl,
+  issuer: z.string().max(120).optional().nullable(),
+  earnedAt: z.string().optional().nullable(),
+  sortOrder: z.coerce.number().int().min(0).max(999).optional(),
+});
+
+studentsRouter.post(
+  "/ops/students/:id/credentials",
+  authLimiter,
+  requireAdminWrite,
+  async (req: AuthedRequest, res) => {
+    try {
+      const id = String(req.params.id);
+      const parsed = credentialSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Add a credential title and http(s) link" });
+        return;
+      }
+      const existing = await prisma.studentProfile.findUnique({ where: { id }, select: { id: true } });
+      if (!existing) {
+        res.status(404).json({ error: "Student not found" });
+        return;
+      }
+      const count = await prisma.studentCredential.count({ where: { studentProfileId: id } });
+      await prisma.studentCredential.create({
+        data: {
+          studentProfileId: id,
+          title: parsed.data.title,
+          url: parsed.data.url,
+          issuer: parsed.data.issuer?.trim() || null,
+          earnedAt: parseOptionalDate(parsed.data.earnedAt) ?? null,
+          sortOrder: parsed.data.sortOrder ?? count,
+        },
+      });
+      cacheDelPattern("cert:");
+      const profile = await loadStudentRecord(id);
+      res.status(201).json(serializeRecord(profile!));
+    } catch (err) {
+      console.error("[ops.students.credentials.post]", err);
+      res.status(500).json({ error: "Failed to add credential" });
+    }
+  },
+);
+
+studentsRouter.post(
+  "/ops/students/:id/credentials/:itemId/delete",
+  authLimiter,
+  requireAdminWrite,
+  async (req: AuthedRequest, res) => {
+    try {
+      const id = String(req.params.id);
+      const itemId = String(req.params.itemId);
+      await prisma.studentCredential.deleteMany({ where: { id: itemId, studentProfileId: id } });
+      cacheDelPattern("cert:");
+      const profile = await loadStudentRecord(id);
+      if (!profile) {
+        res.status(404).json({ error: "Student not found" });
+        return;
+      }
+      res.json(serializeRecord(profile));
+    } catch (err) {
+      console.error("[ops.students.credentials.delete]", err);
+      res.status(500).json({ error: "Failed to remove credential" });
+    }
+  },
+);
+
+const assessmentSchema = z.object({
+  kind: z.nativeEnum(AssessmentKind),
+  title: z.string().trim().min(2).max(160),
+  score: z.string().max(40).optional().nullable(),
+  maxScore: z.string().max(40).optional().nullable(),
+  notes: z.string().max(2000).optional().nullable(),
+  takenAt: z.string().optional().nullable(),
+  sortOrder: z.coerce.number().int().min(0).max(999).optional(),
+});
+
+studentsRouter.post(
+  "/ops/students/:id/assessments",
+  authLimiter,
+  requireAdminWrite,
+  async (req: AuthedRequest, res) => {
+    try {
+      const id = String(req.params.id);
+      const parsed = assessmentSchema.safeParse(req.body);
+      if (!parsed.success) {
+        res.status(400).json({ error: "Add an assessment title and type" });
+        return;
+      }
+      const existing = await prisma.studentProfile.findUnique({ where: { id }, select: { id: true } });
+      if (!existing) {
+        res.status(404).json({ error: "Student not found" });
+        return;
+      }
+      const count = await prisma.studentAssessment.count({
+        where: { studentProfileId: id, kind: parsed.data.kind },
+      });
+      await prisma.studentAssessment.create({
+        data: {
+          studentProfileId: id,
+          kind: parsed.data.kind,
+          title: parsed.data.title,
+          score: parsed.data.score?.trim() || null,
+          maxScore: parsed.data.maxScore?.trim() || null,
+          notes: parsed.data.notes?.trim() || null,
+          takenAt: parseOptionalDate(parsed.data.takenAt) ?? null,
+          sortOrder: parsed.data.sortOrder ?? count,
+        },
+      });
+      cacheDelPattern("cert:");
+      const profile = await loadStudentRecord(id);
+      res.status(201).json(serializeRecord(profile!));
+    } catch (err) {
+      console.error("[ops.students.assessments.post]", err);
+      res.status(500).json({ error: "Failed to add assessment" });
+    }
+  },
+);
+
+studentsRouter.post(
+  "/ops/students/:id/assessments/:itemId/delete",
+  authLimiter,
+  requireAdminWrite,
+  async (req: AuthedRequest, res) => {
+    try {
+      const id = String(req.params.id);
+      const itemId = String(req.params.itemId);
+      await prisma.studentAssessment.deleteMany({ where: { id: itemId, studentProfileId: id } });
+      cacheDelPattern("cert:");
+      const profile = await loadStudentRecord(id);
+      if (!profile) {
+        res.status(404).json({ error: "Student not found" });
+        return;
+      }
+      res.json(serializeRecord(profile));
+    } catch (err) {
+      console.error("[ops.students.assessments.delete]", err);
+      res.status(500).json({ error: "Failed to remove assessment" });
+    }
+  },
+);
 
 function startOfWeekMonday(d: Date): Date {
   const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());

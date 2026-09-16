@@ -4,8 +4,7 @@ import { apiGet } from "../lib/api";
 import { DocBrandHeader } from "../components/BrandMark";
 import { AgreementArt } from "../components/AgreementArt";
 import { PublicRecordQr } from "../components/PublicRecordQr";
-import { OneTimeTemplateDownload } from "../components/OneTimeTemplateDownload";
-import { DocumentPaywall } from "../components/DocumentPaywall";
+import { LockedDownload } from "../components/LockedDownload";
 
 type AgreementPublic = {
   publicId: string;
@@ -91,37 +90,29 @@ export function CheckAgreementPage() {
       {result && (
         <div className="verify-result" aria-live="polite">
           <p className="muted">ID: {result.publicId}</p>
-          {!result.accessPaid ? (
-            <DocumentPaywall
-              kind="AGREEMENT"
-              publicId={result.publicId}
-              amountUsd={result.amountUsd || "1.00"}
-              onUnlocked={() => void load(result.publicId)}
-            />
-          ) : (
-            <>
-              <AgreementArt
-                publicId={result.publicId}
-                displayName={result.name}
-                dealTag={result.dealTag}
-                signedAt={result.signedAt || ""}
-                signature={result.signature || ""}
-                checkUrl={`${SITE}/check-agreement/${result.publicId}`}
-              />
-              <PublicRecordQr url={`${SITE}/check-agreement/${result.publicId}`} />
-              <OneTimeTemplateDownload
-                kind="agreement"
-                publicId={result.publicId}
-                available={Boolean(result.canDownloadTemplatePng)}
-                downloadToken={result.downloadToken}
-                onConsumed={() =>
-                  setResult((prev) =>
-                    prev ? { ...prev, canDownloadTemplatePng: false, downloadToken: null } : prev,
-                  )
-                }
-              />
-            </>
-          )}
+          <AgreementArt
+            publicId={result.publicId}
+            displayName={result.name}
+            dealTag={result.dealTag}
+            signedAt={result.signedAt || ""}
+            signature={result.signature || ""}
+            checkUrl={`${SITE}/check-agreement/${result.publicId}`}
+          />
+          <PublicRecordQr url={`${SITE}/check-agreement/${result.publicId}`} />
+          <LockedDownload
+            kind="AGREEMENT"
+            publicId={result.publicId}
+            accessPaid={Boolean(result.accessPaid)}
+            amountUsd={result.amountUsd || "1.00"}
+            canDownload={Boolean(result.canDownloadTemplatePng)}
+            downloadToken={result.downloadToken}
+            onUnlocked={() => void load(result.publicId)}
+            onConsumed={() =>
+              setResult((prev) =>
+                prev ? { ...prev, canDownloadTemplatePng: false, downloadToken: null } : prev,
+              )
+            }
+          />
         </div>
       )}
     </section>

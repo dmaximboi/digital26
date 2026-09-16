@@ -103,6 +103,7 @@ model AgreementPublic {
 model Certificate {
   id             String            @id @default(cuid())
   personId       String?           @map("person_id")
+  studentProfileId String?         @map("student_profile_id")
   publicId       String?           @unique @map("public_id")
   type           CertificateType
   course         String
@@ -118,12 +119,14 @@ model Certificate {
   viewPaidAt     DateTime?         @map("view_paid_at")
   createdAt      DateTime          @default(now()) @map("created_at")
 
-  person Person?             @relation(fields: [personId], references: [id], onDelete: Restrict)
-  public CertificatePublic?
-  evidence EvidenceImage[]
+  person         Person?          @relation(fields: [personId], references: [id], onDelete: Restrict)
+  studentProfile StudentProfile?  @relation(fields: [studentProfileId], references: [id], onDelete: SetNull)
+  public         CertificatePublic?
+  evidence       EvidenceImage[]
 
   @@index([claimSessionId])
   @@index([publicId])
+  @@index([studentProfileId])
   @@map("certificates")
 }
 
@@ -248,6 +251,12 @@ enum ClassMode {
   ONLINE
 }
 
+enum AssessmentKind {
+  PERFORMANCE
+  TEST
+  EXAMINATION
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -282,15 +291,71 @@ model StudentProfile {
   rejectionNote   String?       @map("rejection_note") @db.Text
   startDate       DateTime?     @map("start_date")
   registrationPaidAt DateTime?  @map("registration_paid_at")
+  headline        String?       @db.VarChar(200)
+  directorComment String?       @map("director_comment") @db.Text
   createdAt       DateTime      @default(now()) @map("created_at")
   updatedAt       DateTime      @updatedAt @map("updated_at")
 
-  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  attendance Attendance[]
-  messages   StudentMessage[]
-  payments   PaymentOrder[]
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attendance   Attendance[]
+  messages     StudentMessage[]
+  payments     PaymentOrder[]
+  certificates Certificate[]
+  projects     StudentProject[]
+  credentials  StudentCredential[]
+  assessments  StudentAssessment[]
 
   @@map("student_profiles")
+}
+
+model StudentProject {
+  id               String    @id @default(cuid())
+  studentProfileId String    @map("student_profile_id")
+  title            String
+  url              String
+  description      String?   @db.Text
+  completedAt      DateTime? @map("completed_at")
+  sortOrder        Int       @default(0) @map("sort_order")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  profile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@index([studentProfileId, sortOrder])
+  @@map("student_projects")
+}
+
+model StudentCredential {
+  id               String    @id @default(cuid())
+  studentProfileId String    @map("student_profile_id")
+  title            String
+  url              String
+  issuer           String?
+  earnedAt         DateTime? @map("earned_at")
+  sortOrder        Int       @default(0) @map("sort_order")
+  createdAt        DateTime  @default(now()) @map("created_at")
+
+  profile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@index([studentProfileId, sortOrder])
+  @@map("student_credentials")
+}
+
+model StudentAssessment {
+  id               String         @id @default(cuid())
+  studentProfileId String         @map("student_profile_id")
+  kind             AssessmentKind
+  title            String
+  score            String?
+  maxScore         String?        @map("max_score")
+  notes            String?        @db.Text
+  takenAt          DateTime?      @map("taken_at")
+  sortOrder        Int            @default(0) @map("sort_order")
+  createdAt        DateTime       @default(now()) @map("created_at")
+
+  profile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@index([studentProfileId, kind])
+  @@map("student_assessments")
 }
 
 model PaymentOrder {
