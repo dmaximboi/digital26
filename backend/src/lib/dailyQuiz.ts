@@ -5,7 +5,8 @@ import { prisma } from "../db/prisma.js";
 import { extractJson, groqChat } from "./groq.js";
 
 export const QUIZ_PLAY = 10;
-export const QUIZ_POOL = 30;
+export const QUIZ_POOL = 50;
+export const QUIZ_PACK = 50;
 
 export type StoredQuestion = {
   id: string;
@@ -164,6 +165,29 @@ export async function peekDailyQuiz(dateKey = utcDateKey()) {
     kept = existing ? asStoredQuestions(existing.questions) : [];
   }
   return { existing, kept };
+}
+
+export async function peekQuizPack(count = QUIZ_PACK, exclude: string[] = []): Promise<StoredQuestion[]> {
+  const take = Math.min(Math.max(count, 1), 80);
+  const excludeSet = new Set(exclude.filter(Boolean));
+  const rows = await prisma.dailyQuiz.findMany({
+    orderBy: { quizDate: "desc" },
+    take: 10,
+  });
+  const out: StoredQuestion[] = [];
+  const seenPrompt = new Set<string>();
+  const seenId = new Set<string>();
+  for (const row of rows) {
+    for (const q of asStoredQuestions(row.questions)) {
+      const key = promptKey(q.prompt);
+      if (!key || excludeSet.has(q.id) || seenId.has(q.id) || seenPrompt.has(key)) continue;
+      seenId.add(q.id);
+      seenPrompt.add(key);
+      out.push(q);
+      if (out.length >= take) return out;
+    }
+  }
+  return out;
 }
 
 export async function ensureDailyQuiz(dateKey = utcDateKey()) {

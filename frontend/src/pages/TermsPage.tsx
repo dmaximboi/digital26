@@ -56,7 +56,7 @@ export function TermsPage() {
 
         <h2>4. Student programme</h2>
         <ul>
-          <li>Enrolment is a one-time $3 USD registration payment. Class access unlocks when that payment is verified. There is no application review queue</li>
+          <li>Enrolment is a one-time $3 USD registration payment. Class access unlocks when that payment is verified.</li>
           <li>Programme tracks are 3, 4, 5, or 6 months (or a custom length). The public curriculum page describes each track month by month</li>
           <li>Weekly attendance is tracked and recorded</li>
           <li>Students must maintain respectful communication in the group chat (limit: 10 messages per 24 hours)</li>

@@ -44,6 +44,7 @@ import { AdminStoragePage } from "./pages/admin/AdminStoragePage";
 import { AdminCreateAgreementPage } from "./pages/AdminCreateAgreementPage";
 import { AdminIssueCertificatePage } from "./pages/AdminIssueCertificatePage";
 import { useVisitorBeacon } from "./lib/visitorBeacon";
+import { warmOfflinePacks } from "./lib/offlinePack";
 
 function AppRoutes() {
   useVisitorBeacon();
@@ -127,6 +128,13 @@ function Shell() {
     const timer = window.setTimeout(() => setComposing(false), 780);
     return () => window.clearTimeout(timer);
   }, [location.pathname]);
+
+  useEffect(() => {
+    const idle = window.setTimeout(() => {
+      void warmOfflinePacks();
+    }, 400);
+    return () => window.clearTimeout(idle);
+  }, []);
 
   return (
     <div

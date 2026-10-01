@@ -8,11 +8,13 @@ import {
   asStoredQuestions,
   ensureDailyQuiz,
   peekDailyQuiz,
+  peekQuizPack,
+  QUIZ_PACK,
   QUIZ_PLAY,
   todayKey,
   toPublicQuestions,
 } from "../lib/dailyQuiz.js";
-import { ensureDailyNews, peekDailyNews } from "../lib/techNews.js";
+import { ensureDailyNews, peekDailyNews, peekNewsPack } from "../lib/techNews.js";
 
 function cronSecretsEqual(a: string, b: string): boolean {
   const left = Buffer.from(a);
@@ -63,6 +65,44 @@ quizRouter.get("/public/news/today", publicLookupLimiter, async (_req, res) => {
   }
 });
 
+quizRouter.get("/public/quiz/pack", publicLookupLimiter, async (req, res) => {
+  try {
+    const countRaw = Number(req.query.count);
+    const count = Number.isFinite(countRaw) ? countRaw : QUIZ_PACK;
+    const exclude = String(req.query.exclude || "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .slice(0, 200);
+    const questions = await peekQuizPack(count, exclude);
+    res.setHeader("Cache-Control", questions.length ? "public, max-age=3600" : "no-store");
+    res.json({
+      ready: questions.length > 0,
+      quizDate: todayKey(),
+      packSize: questions.length,
+      questions,
+    });
+  } catch (err) {
+    console.error("[quiz.pack]", err);
+    res.status(500).json({ error: "Quiz pack is not ready yet" });
+  }
+});
+
+quizRouter.get("/public/news/pack", publicLookupLimiter, async (_req, res) => {
+  try {
+    const items = await peekNewsPack(3);
+    res.setHeader("Cache-Control", items.length ? "public, max-age=3600" : "no-store");
+    res.json({
+      ready: items.length > 0,
+      newsDate: todayKey(),
+      items,
+    });
+  } catch (err) {
+    console.error("[news.pack]", err);
+    res.status(500).json({ error: "News is not ready yet" });
+  }
+});
+
 quizRouter.post("/public/quiz/today/submit", publicLookupLimiter, async (req, res) => {
   try {
     const parsed = submitSchema.safeParse(req.body);
@@ -72,18 +112,18 @@ quizRouter.post("/public/quiz/today/submit", publicLookupLimiter, async (req, re
     }
 
     const { existing, kept } = await peekDailyQuiz();
-    const playSize = Math.min(QUIZ_PLAY, kept.length);
-    if (!existing || playSize < 1) {
+    const pack = await peekQuizPack(200);
+    const questions = pack.length ? pack : kept;
+    if (!existing || questions.length < 1) {
       res.status(503).json({ error: "Quiz is not ready yet" });
       return;
     }
     const quiz = existing;
-    const questions = kept;
 
     const byId = new Map(questions.map((q) => [q.id, q]));
     const pickedIds = Object.keys(parsed.data.answers).filter((id) => byId.has(id));
-    if (pickedIds.length !== playSize) {
-      res.status(400).json({ error: `Answer ${playSize} questions` });
+    if (pickedIds.length < 1) {
+      res.status(400).json({ error: "Answer the quiz questions" });
       return;
     }
 
@@ -107,14 +147,14 @@ quizRouter.post("/public/quiz/today/submit", publicLookupLimiter, async (req, re
         visitorKey: parsed.data.visitorKey.slice(0, 80),
         answers: parsed.data.answers,
         score,
-        total: playSize,
+        total: pickedIds.length,
       },
     });
 
     res.json({
       quizDate: existing.quizDate instanceof Date ? existing.quizDate.toISOString().slice(0, 10) : todayKey(),
       score,
-      total: playSize,
+      total: pickedIds.length,
       breakdown,
     });
   } catch (err) {

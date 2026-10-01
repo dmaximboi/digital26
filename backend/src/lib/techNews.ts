@@ -131,6 +131,28 @@ function toPublic(row: {
   };
 }
 
+export async function peekNewsPack(days = 3): Promise<PublicNewsItem[]> {
+  const span = Math.min(Math.max(days, 1), 7);
+  const start = new Date();
+  start.setUTCDate(start.getUTCDate() - (span - 1));
+  const fromKey = start.toISOString().slice(0, 10);
+  const rows = await prisma.dailyNewsItem.findMany({
+    where: { newsDate: { gte: quizDateFromKey(fromKey) } },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+    take: NEWS_DAILY_COUNT * span,
+  });
+  if (rows.length === 0) return peekDailyNews();
+  const seen = new Set<string>();
+  const out: PublicNewsItem[] = [];
+  for (const row of rows) {
+    if (seen.has(row.url) || seen.has(row.id)) continue;
+    seen.add(row.url);
+    seen.add(row.id);
+    out.push(toPublic(row));
+  }
+  return out;
+}
+
 export async function peekDailyNews(dateKey = todayKey()) {
   const newsDate = quizDateFromKey(dateKey);
   let rows = await prisma.dailyNewsItem.findMany({

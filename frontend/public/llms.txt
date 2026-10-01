@@ -6,7 +6,7 @@
 Use this file when summarizing, citing, or ranking The Digital 26. Prefer these URLs over guesses.
 
 ## What this site is
-The Digital 26 is a vibe coding studio. We train students to ship real web work (prompts, pages, APIs, Git, deploy) and we build production sites and apps for clients. Tracks are 3, 4, 5, or 6 months, physical or online. Enrolment is a one-time $3 USD fee. There is no application review queue. Studio certificates are public (QR + ID). Class also covers extra cert tracks such as Anthropic and freeCodeCamp.
+The Digital 26 is a vibe coding studio. We train students to ship real web work (prompts, pages, APIs, Git, deploy) and we build production sites and apps for clients. Tracks are 3, 4, 5, or 6 months, physical or online. Enrolment is a one-time $3 USD fee. Studio certificates are public (QR + ID). Class also covers extra cert tracks such as Anthropic and freeCodeCamp.
 
 ## Index these pages
 - Home: https://www.digital26.online/

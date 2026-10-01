@@ -192,7 +192,7 @@ export function AdminStudentsPage() {
       <div className="ops-page__head">
         <div>
           <h2>Students</h2>
-          <p className="muted">Enrolment is the $3 payment. Chat, records, and revoke stay here - there is no application review queue.</p>
+          <p className="muted">Enrolment, chat, records, and revoke.</p>
         </div>
         {!canWrite && <p className="muted">Read-only access - approve and edit actions are hidden.</p>}
       </div>

@@ -175,35 +175,9 @@ export function StudentDashboardPage() {
           </Link>
         )}
 
-        <ul className="pending-checklist">
-          <li className={registrationPaid ? "done" : ""}>
-            <span className="pending-checklist__mark" aria-hidden="true">
-              {registrationPaid ? "✓" : "1"}
-            </span>
-            <div>
-              <strong>{t("dash.regDue", { amount: 3 })}</strong>
-              <p className="muted">
-                {registrationPaid ? t("dash.regPaid") : t("dash.payUnlock")}
-              </p>
-              {!registrationPaid && (
-                <Link className="btn primary" to="/dashboard/payment" style={{ marginTop: "0.75rem", display: "inline-block" }}>
-                  {t("dash.payment")}
-                </Link>
-              )}
-            </div>
-          </li>
-        </ul>
-
-        <div className="dashboard-cards" style={{ marginTop: "1.25rem" }}>
-          <Link to="/dashboard/payment" className="dashboard-card dashboard-card--pay">
-            <h3>{t("dash.payment")}</h3>
-            <p>
-              {registrationPaid
-                ? t("dash.paymentDescPaid")
-                : t("dash.paymentDescDue", { amount: 3 })}
-            </p>
-          </Link>
-        </div>
+        {registrationPaid && (
+          <p className="muted">{t("dash.regPaid")}</p>
+        )}
 
         <div className="status-details">
           <p><strong>{t("contact.name")}:</strong> {profile.fullName}</p>

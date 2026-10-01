@@ -2,7 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { DocBrandHeader } from "../components/BrandMark";
 import { useT } from "../i18n/LocaleContext";
-import { apiGet } from "../lib/api";
+import {
+  fetchNewsPack,
+  loadNewsStore,
+  saveNewsStore,
+} from "../lib/offlinePack";
 import {
   formatNewsTime,
   loadInterest,
@@ -12,21 +16,15 @@ import {
 } from "../lib/newsInterest";
 import { setJsonLd, setPageMeta, siteUrl } from "../lib/seo";
 
-const PAGE = 5;
-
-type NewsPayload = {
-  ready?: boolean;
-  newsDate?: string;
-  items?: NewsItem[];
-};
+const PAGE = 6;
 
 export function NewsPage() {
   const t = useT();
   const { id } = useParams();
   const navigate = useNavigate();
-  const [items, setItems] = useState<NewsItem[]>([]);
+  const [items, setItems] = useState<NewsItem[]>(() => loadNewsStore());
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => loadNewsStore().length === 0);
   const [shown, setShown] = useState(PAGE);
 
   useEffect(() => {
@@ -41,19 +39,24 @@ export function NewsPage() {
     let cancelled = false;
 
     async function load() {
+      const cached = loadNewsStore();
+      if (cached.length) {
+        setItems(cached);
+        setLoading(false);
+      }
       try {
-        const data = await apiGet<NewsPayload>("/api/public/news/today");
+        const next = await fetchNewsPack();
         if (cancelled) return;
-        const next = data.items ? [...data.items] : [];
-        for (let i = next.length - 1; i > 0; i -= 1) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [next[i], next[j]] = [next[j]!, next[i]!];
+        if (next.length) {
+          saveNewsStore(next);
+          setItems(next);
+        } else if (!cached.length) {
+          setError("");
         }
-        setItems(next);
         setLoading(false);
       } catch (err: unknown) {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : t("common.error"));
+        if (!cached.length) setError(err instanceof Error ? err.message : t("common.error"));
         setLoading(false);
       }
     }
@@ -69,8 +72,7 @@ export function NewsPage() {
   const story = id ? items.find((item) => item.id === id) : null;
   const feed = useMemo(() => {
     const rest = story ? items.filter((item) => item.id !== story.id) : items;
-    const ranked = rankRelated(rest, interest, story?.id);
-    return ranked;
+    return rankRelated(rest, interest, story?.id);
   }, [items, interest?.lastId, story?.id]);
 
   const featured = !story ? feed[0] : null;
@@ -161,25 +163,7 @@ export function NewsPage() {
 
       {!story && featured && (
         <>
-          {interest && related.filter((item) => item.id !== featured.id).length > 0 && (
-            <section className="news-foryou" aria-label={t("news.forYou")}>
-              <h2>{t("news.forYou")}</h2>
-              <p className="muted">{t("news.because", { title: interest.lastTitle })}</p>
-              <div className="news-foryou__row">
-                {related
-                  .filter((item) => item.id !== featured.id)
-                  .slice(0, 3)
-                  .map((item) => (
-                  <button key={item.id} type="button" className="news-mini" onClick={() => openStory(item)}>
-                    <strong>{item.title}</strong>
-                    <span>{item.source}</span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <button type="button" className="news-feature" onClick={() => openStory(featured)}>
+          <button type="button" className="news-hero" onClick={() => openStory(featured)}>
             <span className="news-kicker">{t("news.featured")}</span>
             <strong>{featured.title}</strong>
             <p>{featured.summary}</p>
@@ -190,22 +174,24 @@ export function NewsPage() {
           </button>
 
           <h2 className="news-feed-title">{t("news.latest")}</h2>
-          <ul className="news-feed">
-            {list.map((item) => (
+          <ol className="news-stack">
+            {list.map((item, index) => (
               <li key={item.id}>
                 <button type="button" onClick={() => openStory(item)}>
-                  <strong>{item.title}</strong>
-                  <p>{item.summary}</p>
-                  <span className="news-meta">
-                    {item.source}
-                    {item.publishedAt ? ` · ${formatNewsTime(item.publishedAt)}` : ""}
+                  <span className="news-stack__n">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="news-stack__body">
+                    <strong>{item.title}</strong>
+                    <em>
+                      {item.source}
+                      {item.publishedAt ? ` · ${formatNewsTime(item.publishedAt)}` : ""}
+                    </em>
                   </span>
                 </button>
               </li>
             ))}
-          </ul>
+          </ol>
           {moreLeft > 0 && (
-            <button className="btn" type="button" onClick={() => setShown((n) => n + PAGE)}>
+            <button className="news-more-link" type="button" onClick={() => setShown((n) => n + PAGE)}>
               {t("news.seeMore")}
             </button>
           )}

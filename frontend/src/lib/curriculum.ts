@@ -892,4 +892,4 @@ export const CURRICULUM_CUSTOM =
   "Custom length is set by admin, not on the student form. About four class weeks per month. Same vibe-coding core as the tracks above, stretched or compressed to those months. Recordings and reviews follow the nearest standard track.";
 
 export const CURRICULUM_ENROL =
-  "Apply with Google, pick a track and class mode (physical or online), then pay $3 USD once. No admin review queue. Class tools unlock when that payment is verified.";
+  "Apply with Google, pick a track and class mode, then pay $3 USD once. Class tools unlock when that payment is verified.";

@@ -2,62 +2,29 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { DocBrandHeader } from "../components/BrandMark";
 import { useT } from "../i18n/LocaleContext";
-import { apiGet, apiPost } from "../lib/api";
+import {
+  loadQuizStore,
+  markQuizUsed,
+  pickPlay,
+  QUIZ_PLAY,
+  refreshQuizPack,
+  reportQuizAttempt,
+  scoreQuiz,
+  unusedQuestions,
+  type CachedQuestion,
+  type QuizResult,
+} from "../lib/offlinePack";
 import { setPageMeta } from "../lib/seo";
-
-type Question = { id: string; prompt: string; choices: string[] };
-
-type TodayQuiz = {
-  ready?: boolean;
-  quizDate: string;
-  playSize: number;
-  poolSize: number;
-  questions: Question[];
-};
-
-type Result = {
-  score: number;
-  total: number;
-  breakdown: Array<{ id: string; correct: boolean; answerIndex: number; yourIndex: number | null }>;
-};
-
-const VISITOR_KEY = "d26_quiz_visitor";
-
-function visitorKey(): string {
-  try {
-    const existing = sessionStorage.getItem(VISITOR_KEY);
-    if (existing && existing.length >= 8) return existing;
-    const next = crypto.randomUUID();
-    sessionStorage.setItem(VISITOR_KEY, next);
-    return next;
-  } catch {
-    return `anon-${Date.now()}`;
-  }
-}
-
-function shuffle<T>(items: T[]): T[] {
-  const out = [...items];
-  for (let i = out.length - 1; i > 0; i -= 1) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [out[i], out[j]] = [out[j]!, out[i]!];
-  }
-  return out;
-}
-
-function pickPlay(pool: Question[], n: number): Question[] {
-  return shuffle(pool).slice(0, Math.min(n, pool.length));
-}
 
 export function QuizPage() {
   const t = useT();
-  const [pool, setPool] = useState<Question[]>([]);
-  const [playSize, setPlaySize] = useState(10);
-  const [shown, setShown] = useState<Question[]>([]);
+  const [pool, setPool] = useState<CachedQuestion[]>([]);
+  const [shown, setShown] = useState<CachedQuestion[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [picks, setPicks] = useState<Record<string, number>>({});
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<Result | null>(null);
+  const [result, setResult] = useState<QuizResult | null>(null);
 
   useEffect(() => {
     setPageMeta({
@@ -71,22 +38,26 @@ export function QuizPage() {
     let cancelled = false;
 
     async function load() {
-      try {
-        const data = await apiGet<TodayQuiz>("/api/public/quiz/today");
-        if (cancelled) return;
-        if (data.ready === false || !data.questions?.length) {
-          setError(t("quiz.notReady"));
-          setLoading(false);
-          return;
-        }
-        const n = data.playSize || 10;
-        setPlaySize(n);
-        setPool(data.questions);
-        setShown(pickPlay(data.questions, n));
+      const cached = loadQuizStore();
+      if (cached.questions.length) {
+        const first = pickPlay(unusedQuestions(cached).length ? unusedQuestions(cached) : cached.questions);
+        setPool(cached.questions);
+        setShown(first);
         setLoading(false);
-      } catch (err: unknown) {
+      }
+
+      try {
+        const next = await refreshQuizPack(false);
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : t("common.error"));
+        const unused = unusedQuestions(next);
+        const ready = unused.length ? unused : next.questions;
+        setPool(next.questions);
+        setShown((current) => (current.length ? current : pickPlay(ready)));
+        if (!next.questions.length) setError(t("quiz.notReady"));
+        setLoading(false);
+      } catch {
+        if (cancelled) return;
+        if (!cached.questions.length) setError(t("quiz.offline"));
         setLoading(false);
       }
     }
@@ -97,33 +68,40 @@ export function QuizPage() {
     };
   }, [t]);
 
-  function shuffleShown() {
+  async function shuffleShown() {
     if (result) return;
+    if (shown.length) markQuizUsed(shown.map((q) => q.id));
+    let unused = unusedQuestions();
+    if (unused.length < QUIZ_PLAY && navigator.onLine) {
+      try {
+        const next = await refreshQuizPack(true);
+        setPool(next.questions);
+        unused = unusedQuestions(next);
+      } catch {
+        /* keep local leftover */
+      }
+    }
+    const nextShown = pickPlay(unused.length ? unused : pool);
     setPicks({});
-    setShown(pickPlay(pool, playSize));
+    setShown(nextShown);
   }
 
-  async function submit() {
+  function submit() {
     if (!shown.length || busy) return;
     setBusy(true);
     setError("");
-    try {
-      const answers: Record<string, number> = {};
-      for (const q of shown) {
-        if (picks[q.id] !== undefined) answers[q.id] = picks[q.id]!;
-      }
-      const data = await apiPost<Result>("/api/public/quiz/today/submit", {
-        visitorKey: visitorKey(),
-        answers,
-      });
-      setResult(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
-    } finally {
-      setBusy(false);
+    const answers: Record<string, number> = {};
+    for (const q of shown) {
+      if (picks[q.id] !== undefined) answers[q.id] = picks[q.id]!;
     }
+    const data = scoreQuiz(answers, shown);
+    setResult(data);
+    markQuizUsed(shown.map((q) => q.id));
+    reportQuizAttempt(answers);
+    setBusy(false);
   }
 
+  const playSize = Math.min(QUIZ_PLAY, shown.length || QUIZ_PLAY);
   const answered = shown.filter((q) => picks[q.id] !== undefined).length;
 
   return (
@@ -135,7 +113,7 @@ export function QuizPage() {
             className="btn quiz-shuffle"
             type="button"
             disabled={Boolean(result) || pool.length < 2}
-            onClick={shuffleShown}
+            onClick={() => void shuffleShown()}
             aria-label={t("quiz.shuffle")}
             title={t("quiz.shuffle")}
           >
@@ -227,7 +205,7 @@ export function QuizPage() {
               className="btn primary"
               type="button"
               disabled={busy || answered < playSize}
-              onClick={() => void submit()}
+              onClick={submit}
             >
               {busy ? t("quiz.scoring") : t("quiz.submit", { n: answered, total: playSize })}
             </button>

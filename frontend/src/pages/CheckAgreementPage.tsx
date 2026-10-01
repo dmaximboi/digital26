@@ -6,6 +6,8 @@ import { DocBrandHeader } from "../components/BrandMark";
 import { AgreementArt } from "../components/AgreementArt";
 import { PublicRecordQr } from "../components/PublicRecordQr";
 import { LockedDownload } from "../components/LockedDownload";
+import { useT } from "../i18n/LocaleContext";
+import { setPageMeta } from "../lib/seo";
 
 type AgreementPublic = {
   publicId: string;
@@ -24,12 +26,21 @@ const SITE =
   import.meta.env.VITE_PUBLIC_SITE_URL || "https://digital26.online";
 
 export function CheckAgreementPage() {
+  const t = useT();
   const { publicId: routeId } = useParams();
   const navigate = useNavigate();
   const [input, setInput] = useState(routeId ?? "");
   const [result, setResult] = useState<AgreementPublic | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setPageMeta({
+      title: t("deals.title"),
+      description: t("deals.metaDesc"),
+      path: "/check-agreement",
+    });
+  }, [t]);
 
   const load = useCallback(async (id: string) => {
     setLoading(true);
@@ -63,11 +74,11 @@ export function CheckAgreementPage() {
 
   return (
     <section className="panel">
-      <DocBrandHeader title="Check agreement letter" />
-      <p className="lede">Enter a public agreement ID (e.g. D26aB3xY9k).</p>
+      <DocBrandHeader title={t("deals.title")} />
+      <p className="lede">{t("deals.lede")}</p>
 
       <form className="lookup-form verify-lookup" onSubmit={onSubmit}>
-        <label htmlFor="agrId">Agreement ID</label>
+        <label htmlFor="agrId">{t("deals.id")}</label>
         <div className="lookup-row verify-lookup__row">
           <input
             id="agrId"
@@ -80,7 +91,7 @@ export function CheckAgreementPage() {
             inputMode="text"
           />
           <button className="btn primary" type="submit" disabled={loading}>
-            {loading ? "Checking…" : "Check"}
+            {loading ? t("verify.checking") : t("deals.btn")}
           </button>
         </div>
       </form>

@@ -102,8 +102,7 @@ export function ApplyPage() {
       <p className="home-kicker">{t("apply.kicker")}</p>
       <h1 className="apply-title">{t("apply.title")}</h1>
       <p className="lede">
-        Fill in your details to join our Vibe Coding programme. After you apply, pay the one-time $3
-        registration fee to unlock class. There is no admin review wait.{" "}
+        {t("apply.lede")}{" "}
         <Link to="/curriculum">{t("curriculum.title")}</Link>
       </p>
 
@@ -112,12 +111,9 @@ export function ApplyPage() {
       <form className="apply-form" onSubmit={handleSubmit}>
         <div className="form-row">
           <label className="form-label">
-            Email (verified with Google)
+            {t("apply.email")}
             <input type="email" value={user.email} disabled className="form-input" />
           </label>
-          <p className="muted" style={{ marginTop: "0.35rem" }}>
-            No email code needed - Google Sign-In already verified this address.
-          </p>
         </div>
 
         <div className="form-row">

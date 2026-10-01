@@ -306,7 +306,6 @@ export function StudentPaymentPage() {
           <button type="button" className="btn" onClick={() => void refreshVerify()}>
             {t("pay.verifyAgain")}
           </button>
-          <p className="muted payment-secure-note">{t("pay.secureNote")}</p>
           <Link className="btn" to="/dashboard">
             {t("pay.backDash")}
           </Link>

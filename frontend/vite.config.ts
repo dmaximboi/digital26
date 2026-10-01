@@ -8,7 +8,16 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: false,
-      includeAssets: ["logo.png", "robots.txt", "sitemap.xml", "llms.txt"],
+      includeAssets: [
+        "logo.png",
+        "icon-192.png",
+        "icon-512.png",
+        "icon-maskable-512.png",
+        "apple-touch-icon.png",
+        "robots.txt",
+        "sitemap.xml",
+        "llms.txt",
+      ],
       manifest: false,
       workbox: {
         navigateFallback: "/index.html",
