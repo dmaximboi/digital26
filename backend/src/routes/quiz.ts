@@ -135,18 +135,37 @@ quizRouter.post("/cron/daily-quiz", async (req, res) => {
     res.status(401).json({ error: "Unauthorized" });
     return;
   }
+  let poolSize = 0;
+  let newsCount = 0;
+  let quizId: string | undefined;
+  let quizError: string | undefined;
+  let newsError: string | undefined;
+
   try {
     const quiz = await ensureDailyQuiz();
-    const news = await ensureDailyNews();
-    res.json({
-      ok: true,
-      quizDate: todayKey(),
-      poolSize: asStoredQuestions(quiz.questions).length,
-      newsCount: news.length,
-      id: quiz.id,
-    });
+    poolSize = asStoredQuestions(quiz.questions).length;
+    quizId = quiz.id;
   } catch (err) {
+    quizError = err instanceof Error ? err.message : "quiz failed";
     console.error("[quiz.cron]", err);
-    res.status(500).json({ error: "Failed to generate quiz" });
   }
+
+  try {
+    const news = await ensureDailyNews();
+    newsCount = news.length;
+  } catch (err) {
+    newsError = err instanceof Error ? err.message : "news failed";
+    console.error("[news.cron]", err);
+  }
+
+  const crashed = Boolean(quizError && newsError && poolSize === 0 && newsCount === 0);
+  res.status(crashed ? 500 : 200).json({
+    ok: poolSize >= QUIZ_PLAY && newsCount > 0,
+    quizDate: todayKey(),
+    poolSize,
+    newsCount,
+    id: quizId,
+    quizError,
+    newsError,
+  });
 });

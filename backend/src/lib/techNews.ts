@@ -62,7 +62,10 @@ function asIncoming(row: unknown): Incoming | null {
 
 async function gnewsPage(page: number, seen: Set<string>): Promise<Incoming[]> {
   const key = env.GNEWS_API_KEY?.trim();
-  if (!key) throw new Error("GNEWS_API_KEY is required");
+  if (!key) {
+    console.warn("[news.gnews] GNEWS_API_KEY missing");
+    return [];
+  }
 
   const url = new URL("https://gnews.io/api/v4/top-headlines");
   url.searchParams.set("category", "technology");

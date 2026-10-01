@@ -90,7 +90,8 @@ async function generateBatch(dateKey: string, batch: string, count: number): Pro
     const content = await groqChat({
       model,
       jsonMode: true,
-      timeoutMs: 40_000,
+      timeoutMs: 22_000,
+      retries: 1,
       messages: [
         { role: "system", content: prompt.system },
         { role: "user", content: prompt.user },
@@ -178,37 +179,19 @@ export async function ensureDailyQuiz(dateKey = utcDateKey()) {
     return existing;
   }
 
-  if (!env.GROQ_API_KEY?.trim() && !env.OPENAI_API_KEY?.trim() && !env.GEMINI_API_KEY?.trim()) {
-    if (pool.length >= QUIZ_PLAY && currentId) {
-      return persistPool(dateKey, currentId, pool.slice(0, QUIZ_POOL), "ai");
-    }
-    throw new Error("AI quiz pool is not ready");
-  }
-
-  const batches = [
-    { topic: "HTML, CSS, JavaScript, the DOM, React, and Vite", count: 15 },
-    { topic: "Git, GitHub, HTTP, REST APIs, JSON, auth, SQL, security, prompting, and deploy", count: 15 },
-  ];
-  for (const batch of batches) {
-    if (pool.length >= QUIZ_POOL) break;
-    const part = await generateBatch(dateKey, batch.topic, batch.count);
+  const hasAi = Boolean(
+    env.GROQ_API_KEY?.trim() || env.OPENAI_API_KEY?.trim() || env.GEMINI_API_KEY?.trim(),
+  );
+  if (hasAi && pool.length < QUIZ_POOL) {
+    const topic =
+      pool.length < 15
+        ? "HTML, CSS, JavaScript, the DOM, React, and Vite"
+        : "Git, GitHub, HTTP, REST APIs, JSON, auth, SQL, security, prompting, and deploy";
+    const part = await generateBatch(dateKey, topic, Math.min(15, QUIZ_POOL - pool.length + 2));
     pool = mergeQuestions(pool, part);
-    if (pool.length > 0) {
-      const row = await persistPool(dateKey, currentId, pool.slice(0, QUIZ_POOL), "ai");
-      currentId = row.id;
-    }
   }
 
-  if (pool.length < QUIZ_POOL) {
-    const extra = await generateBatch(
-      dateKey,
-      "practical web and vibe coding that was not already asked",
-      QUIZ_POOL - pool.length + 4,
-    );
-    pool = mergeQuestions(pool, extra).slice(0, QUIZ_POOL);
-  }
-
-  if (pool.length < QUIZ_PLAY) {
+  if (pool.length === 0) {
     throw new Error("AI quiz pool is not ready");
   }
   return persistPool(dateKey, currentId, pool.slice(0, QUIZ_POOL), "ai");
