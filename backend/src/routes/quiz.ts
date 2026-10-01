@@ -31,19 +31,17 @@ const submitSchema = z.object({
 quizRouter.get("/public/quiz/today", publicLookupLimiter, async (_req, res) => {
   try {
     const { existing, kept } = await peekDailyQuiz();
-    if (kept.length >= QUIZ_PLAY && existing) {
-      res.setHeader("Cache-Control", "public, max-age=60");
-      res.json({
-        ready: true,
-        quizDate: todayKey(),
-        playSize: QUIZ_PLAY,
-        poolSize: kept.length,
-        questions: toPublicQuestions(kept),
-      });
-      return;
-    }
-    res.setHeader("Cache-Control", "no-store");
-    res.json({ ready: false, quizDate: todayKey(), playSize: QUIZ_PLAY, poolSize: kept.length, questions: [] });
+    const playSize = kept.length > 0 ? Math.min(QUIZ_PLAY, kept.length) : QUIZ_PLAY;
+    const quizDate =
+      existing?.quizDate instanceof Date ? existing.quizDate.toISOString().slice(0, 10) : todayKey();
+    res.setHeader("Cache-Control", kept.length ? "public, max-age=60" : "no-store");
+    res.json({
+      ready: kept.length > 0,
+      quizDate,
+      playSize,
+      poolSize: kept.length,
+      questions: toPublicQuestions(kept),
+    });
   } catch (err) {
     console.error("[quiz.today]", err);
     res.status(500).json({ error: "Quiz is not ready yet" });
@@ -74,7 +72,8 @@ quizRouter.post("/public/quiz/today/submit", publicLookupLimiter, async (req, re
     }
 
     const { existing, kept } = await peekDailyQuiz();
-    if (!existing || kept.length < QUIZ_PLAY) {
+    const playSize = Math.min(QUIZ_PLAY, kept.length);
+    if (!existing || playSize < 1) {
       res.status(503).json({ error: "Quiz is not ready yet" });
       return;
     }
@@ -83,8 +82,8 @@ quizRouter.post("/public/quiz/today/submit", publicLookupLimiter, async (req, re
 
     const byId = new Map(questions.map((q) => [q.id, q]));
     const pickedIds = Object.keys(parsed.data.answers).filter((id) => byId.has(id));
-    if (pickedIds.length !== QUIZ_PLAY) {
-      res.status(400).json({ error: `Answer ${QUIZ_PLAY} questions` });
+    if (pickedIds.length !== playSize) {
+      res.status(400).json({ error: `Answer ${playSize} questions` });
       return;
     }
 
@@ -108,14 +107,14 @@ quizRouter.post("/public/quiz/today/submit", publicLookupLimiter, async (req, re
         visitorKey: parsed.data.visitorKey.slice(0, 80),
         answers: parsed.data.answers,
         score,
-        total: QUIZ_PLAY,
+        total: playSize,
       },
     });
 
     res.json({
-      quizDate: todayKey(),
+      quizDate: existing.quizDate instanceof Date ? existing.quizDate.toISOString().slice(0, 10) : todayKey(),
       score,
-      total: QUIZ_PLAY,
+      total: playSize,
       breakdown,
     });
   } catch (err) {

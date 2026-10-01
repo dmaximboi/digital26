@@ -157,10 +157,12 @@ async function persistPool(
 
 export async function peekDailyQuiz(dateKey = utcDateKey()) {
   const quizDate = quizDateFromKey(dateKey);
-  const existing = await prisma.dailyQuiz.findUnique({ where: { quizDate } });
-  const kept = existing
-    ? asStoredQuestions(existing.questions).filter((q) => !isBankId(q.id))
-    : [];
+  let existing = await prisma.dailyQuiz.findUnique({ where: { quizDate } });
+  let kept = existing ? asStoredQuestions(existing.questions) : [];
+  if (kept.length === 0) {
+    existing = await prisma.dailyQuiz.findFirst({ orderBy: { quizDate: "desc" } });
+    kept = existing ? asStoredQuestions(existing.questions) : [];
+  }
   return { existing, kept };
 }
 

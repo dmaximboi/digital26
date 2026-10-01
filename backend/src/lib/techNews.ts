@@ -133,11 +133,24 @@ function toPublic(row: {
 
 export async function peekDailyNews(dateKey = todayKey()) {
   const newsDate = quizDateFromKey(dateKey);
-  const rows = await prisma.dailyNewsItem.findMany({
+  let rows = await prisma.dailyNewsItem.findMany({
     where: { newsDate },
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
     take: NEWS_DAILY_COUNT,
   });
+  if (rows.length === 0) {
+    const latest = await prisma.dailyNewsItem.findFirst({
+      orderBy: { newsDate: "desc" },
+      select: { newsDate: true },
+    });
+    if (latest) {
+      rows = await prisma.dailyNewsItem.findMany({
+        where: { newsDate: latest.newsDate },
+        orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+        take: NEWS_DAILY_COUNT,
+      });
+    }
+  }
   return rows.map(toPublic);
 }
 
