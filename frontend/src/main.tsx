@@ -3,7 +3,10 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { preloadGoogleSignIn } from "./lib/googleSignIn";
 import "./styles.css";
+
+preloadGoogleSignIn();
 
 
 if ("serviceWorker" in navigator) {

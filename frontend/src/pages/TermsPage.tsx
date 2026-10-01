@@ -56,8 +56,8 @@ export function TermsPage() {
 
         <h2>4. Student programme</h2>
         <ul>
-          <li>Student applications are subject to admin review and approval</li>
-          <li>Programme structures (5-month or 6-month) are described at the time of application</li>
+          <li>Enrolment is a one-time $3 USD registration payment. Class access unlocks when that payment is verified. There is no application review queue</li>
+          <li>Programme tracks are 3, 4, 5, or 6 months (or a custom length). The public curriculum page describes each track month by month</li>
           <li>Weekly attendance is tracked and recorded</li>
           <li>Students must maintain respectful communication in the group chat (limit: 10 messages per 24 hours)</li>
           <li>Completion certificates are issued at the discretion of The Digital 26 administration</li>

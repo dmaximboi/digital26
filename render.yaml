@@ -1,7 +1,7 @@
-# Render Web Service — always use these exact settings.
-# Root Directory: backend
-# Build Command: (below — one line)
-# Start Command: npm start
+# Render Web Service. Root Directory: backend
+# Daily pack is written by cron only: POST /api/cron/daily-quiz  Header: X-Cron-Secret
+# Public GET reads the DB and never calls Groq / GNews.
+# Render free sleeps, so also set an external cron (see readme).
 
 services:
   - type: web
@@ -12,3 +12,54 @@ services:
     buildCommand: cd .. && npm install --include=dev && cd backend && npx prisma generate && npx prisma db push && npm run build
     startCommand: npm start
     healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_URL
+        value: https://www.digital26.online
+      - key: PUBLIC_SITE_URL
+        value: https://www.digital26.online
+      - key: CORS_ORIGINS
+        value: https://digital26.online,https://www.digital26.online
+      - key: BACHS_API_BASE
+        value: https://api.bachs.io
+      - key: IMAGEKIT_FOLDER
+        value: digital26/students
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: FIELD_ENCRYPTION_KEY
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: STAFF_EMAILS
+        sync: false
+      - key: STAFF_READONLY_EMAILS
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: API_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GNEWS_API_KEY
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: BACHS_API_KEY
+        sync: false
+      - key: BACHS_WEBHOOK_SECRET
+        sync: false
+      - key: IMAGEKIT_PUBLIC_KEY
+        sync: false
+      - key: IMAGEKIT_PRIVATE_KEY
+        sync: false
+      - key: IMAGEKIT_URL_ENDPOINT
+        sync: false
+      - key: CONSOLE_PATH
+        sync: false

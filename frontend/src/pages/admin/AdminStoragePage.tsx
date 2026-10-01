@@ -237,7 +237,7 @@ export function AdminStoragePage() {
         </>
       ) : (
         <p className="muted" style={{ marginTop: "1.5rem" }}>
-          Read-only access — storage cleanup actions are hidden.
+          Read-only access - storage cleanup actions are hidden.
         </p>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useT } from "../i18n/LocaleContext";
 import { apiPostForm } from "../lib/authApi";
@@ -98,11 +98,13 @@ export function ApplyPage() {
   if (!user) return null;
 
   return (
-    <section className="panel apply-page">
+    <section className="panel apply-page studio-page">
+      <p className="home-kicker">{t("apply.kicker")}</p>
       <h1 className="apply-title">{t("apply.title")}</h1>
       <p className="lede">
-        Fill in your details to join our Vibe Coding programme. After you apply, your account stays
-        pending until an admin approves you and you pay the $3 registration fee.
+        Fill in your details to join our Vibe Coding programme. After you apply, pay the one-time $3
+        registration fee to unlock class. There is no admin review wait.{" "}
+        <Link to="/curriculum">{t("curriculum.title")}</Link>
       </p>
 
       {error && <p className="form-error" role="alert">{error}</p>}
@@ -114,7 +116,7 @@ export function ApplyPage() {
             <input type="email" value={user.email} disabled className="form-input" />
           </label>
           <p className="muted" style={{ marginTop: "0.35rem" }}>
-            No email code needed — Google Sign-In already verified this address.
+            No email code needed - Google Sign-In already verified this address.
           </p>
         </div>
 

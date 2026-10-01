@@ -21,7 +21,7 @@ filesRouter.get("/files/:kind/:filename", (req, res) => {
   const kind = String(req.params.kind ?? "");
   const filename = String(req.params.filename ?? "");
 
-  // Public image serving only — never expose agreement/certificate PDFs here.
+  // Public image serving only - never expose agreement/certificate PDFs here.
   if (kind !== "students" && kind !== "library") {
     res.status(403).json({
       error: "Agreement and certificate PDFs require an authenticated console session.",

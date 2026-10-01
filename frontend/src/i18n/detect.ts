@@ -35,7 +35,7 @@ export function storeLocale(locale: Locale): void {
   }
 }
 
-function localeFromBrowser(): Locale | null {
+export function localeFromBrowser(): Locale | null {
   const tags = [...(navigator.languages || []), navigator.language].filter(Boolean);
   for (const tag of tags) {
     const base = tag.toLowerCase().split("-")[0];
@@ -60,7 +60,7 @@ function withTimeout(ms: number): AbortSignal {
 }
 
 /** Soft IP → country lookup (no API key). Fails quietly. */
-async function localeFromLocation(): Promise<Locale | null> {
+export async function localeFromLocation(): Promise<Locale | null> {
   try {
     const res = await fetch("https://ipapi.co/json/", {
       signal: withTimeout(4500),
@@ -92,21 +92,8 @@ async function localeFromLocation(): Promise<Locale | null> {
   return null;
 }
 
-/**
- * Resolve initial locale:
- * 1) saved preference
- * 2) IP/location country
- * 3) browser language
- * 4) English
- */
-export async function detectLocale(): Promise<Locale> {
-  const stored = readStoredLocale();
-  if (stored) return stored;
-
-  const fromLocation = await localeFromLocation();
-  if (fromLocation) return fromLocation;
-
-  return localeFromBrowser() || "en";
+export function detectInitialLocale(): Locale {
+  return readStoredLocale() || localeFromBrowser() || "en";
 }
 
 export function applyDocumentLocale(locale: Locale): void {

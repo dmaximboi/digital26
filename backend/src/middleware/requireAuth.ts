@@ -72,10 +72,10 @@ export async function requireApprovedStudent(req: AuthedRequest, res: Response, 
   try {
     const profile = await prisma.studentProfile.findUnique({
       where: { userId: req.userId! },
-      select: { status: true },
+      select: { status: true, registrationPaidAt: true },
     });
-    if (!profile || profile.status !== "APPROVED") {
-      res.status(403).json({ error: "Student application not yet approved" });
+    if (!profile || profile.status !== "APPROVED" || !profile.registrationPaidAt) {
+      res.status(403).json({ error: "Pay the $3 registration fee to unlock class" });
       return;
     }
   } catch {

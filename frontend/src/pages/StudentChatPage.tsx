@@ -90,8 +90,9 @@ export function StudentChatPage() {
   }
 
   return (
-    <section className="panel chat-page">
+    <section className="panel chat-page studio-page">
       <Link to={isAdmin ? "/admin" : "/dashboard"} className="back-link">&larr; {isAdmin ? t("admin.eyebrow") : t("dash.title")}</Link>
+      <p className="home-kicker">{t("dash.kicker")}</p>
       <h1>{t("chat.title")}</h1>
       {user?.role !== "ADMIN" && user?.role !== "READONLY" && (
         <p className="muted">{t("chat.remaining", { n: remaining })}</p>

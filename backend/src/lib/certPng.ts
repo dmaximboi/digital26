@@ -193,7 +193,7 @@ function wrapText(text: string, maxChars: number): string[] {
   return lines.slice(0, 5);
 }
 
-/** @deprecated alias — admin 4K download now uses template layout */
+/** @deprecated alias - admin 4K download now uses template layout */
 export async function buildCertificatePng4k(opts: {
   publicId: string;
   displayName: string;

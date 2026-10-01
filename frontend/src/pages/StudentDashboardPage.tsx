@@ -79,6 +79,7 @@ export function StudentDashboardPage() {
 
   const registrationPaid = Boolean(profile?.registrationPaid || profile?.registrationPaidAt);
   const fullyActive = profile?.status === "APPROVED" && registrationPaid;
+  const classLabel = profile?.classMode === "ONLINE" ? t("apply.online") : t("apply.physical");
 
   useEffect(() => {
     if (!profile || !fullyActive) return;
@@ -157,38 +158,14 @@ export function StudentDashboardPage() {
     return <section className="panel"><p>{t("common.error")}</p></section>;
   }
 
-  if (profile.status === "REJECTED") {
-    return (
-      <section className="panel dashboard-status rejected">
-        <div className="status-icon">&#128546;</div>
-        <h1>{t("dash.rejected")}</h1>
-        <p className="lede">
-          Unfortunately, your application was not approved at this time.
-        </p>
-        {profile.rejectionNote && (
-          <div className="rejection-note">
-            <p><strong>Note from admin:</strong> {profile.rejectionNote}</p>
-          </div>
-        )}
-        <MessagesBlock />
-        <p className="muted">If you believe this is an error, please <Link to="/contact">{t("home.contactUs")}</Link>.</p>
-      </section>
-    );
-  }
-
-  const adminDone = profile.status === "APPROVED";
-  const classLabel = profile.classMode === "ONLINE" ? t("apply.online") : t("apply.physical");
-
   if (!fullyActive) {
     return (
-      <section className="panel dashboard-status pending">
-        <div className="status-icon">&#9203;</div>
-        <h1>{t("dash.pending")}</h1>
-        <p className="lede">
-          Complete admin approval and registration payment before class access unlocks.
-        </p>
+      <section className="panel dashboard-status pending studio-page">
+        <p className="home-kicker">{t("dash.kicker")}</p>
+        <h1>{registrationPaid ? t("dash.accessClosedTitle") : t("dash.pending")}</h1>
+        <p className="lede">{registrationPaid ? t("dash.accessClosed") : t("dash.pendingPayOnly")}</p>
 
-        {!registrationPaid ? (
+        {!registrationPaid && (
           <Link to="/dashboard/payment" className="payment-banner">
             <div>
               <strong>{t("dash.regDue", { amount: 3 })}</strong>
@@ -196,44 +173,17 @@ export function StudentDashboardPage() {
             </div>
             <span className="payment-banner__cta">{t("nav.pay")}</span>
           </Link>
-        ) : (
-          <Link to="/dashboard/payment" className="payment-banner payment-banner--paid">
-            <div>
-              <strong>{t("dash.regPaid")}</strong>
-              <p>
-                {adminDone
-                  ? "Payment and admin approval complete."
-                  : t("pay.waitingAdmin")}
-              </p>
-            </div>
-            <span className="payment-banner__cta">{t("common.open")}</span>
-          </Link>
         )}
 
         <ul className="pending-checklist">
-          <li className={adminDone ? "done" : ""}>
-            <span className="pending-checklist__mark" aria-hidden="true">
-              {adminDone ? "✓" : "1"}
-            </span>
-            <div>
-              <strong>{t("dash.adminReview")}</strong>
-              <p className="muted">
-                {adminDone
-                  ? t("pay.step.approved")
-                  : "Your application is waiting for admin approval."}
-              </p>
-            </div>
-          </li>
           <li className={registrationPaid ? "done" : ""}>
             <span className="pending-checklist__mark" aria-hidden="true">
-              {registrationPaid ? "✓" : "2"}
+              {registrationPaid ? "✓" : "1"}
             </span>
             <div>
               <strong>{t("dash.regDue", { amount: 3 })}</strong>
               <p className="muted">
-                {registrationPaid
-                  ? t("dash.regPaid")
-                  : "Required for attendance and class chat."}
+                {registrationPaid ? t("dash.regPaid") : t("dash.payUnlock")}
               </p>
               {!registrationPaid && (
                 <Link className="btn primary" to="/dashboard/payment" style={{ marginTop: "0.75rem", display: "inline-block" }}>
@@ -276,7 +226,8 @@ export function StudentDashboardPage() {
     totalWeeks > 0 ? Math.min(100, Math.round((weeksElapsed / totalWeeks) * 100)) : 0;
 
   return (
-    <section className="panel dashboard-approved">
+    <section className="panel dashboard-approved studio-page">
+      <p className="home-kicker">{t("dash.kicker")}</p>
       <h1>{t("dash.welcome", { name: profile.fullName })}</h1>
       <p className="lede">
         Your account is active. You are enrolled in the{" "}

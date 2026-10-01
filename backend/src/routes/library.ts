@@ -90,7 +90,7 @@ async function requireActiveStudent(req: AuthedRequest): Promise<ActiveStudentGa
   if (profile.status !== StudentStatus.APPROVED || !profile.registrationPaidAt) {
     return {
       ok: false,
-      error: "Library unlocks after admin approval and registration payment",
+      error: "Library unlocks after the $3 registration payment",
       status: 403,
     };
   }
@@ -116,7 +116,7 @@ libraryRouter.get("/ops/library", requireAdmin, async (_req, res) => {
     });
   } catch (err) {
     console.error("[library.ops.list]", err);
-    // Table not migrated yet — return empty so admin UI isn't a hard error.
+    // Table not migrated yet - return empty so admin UI isn't a hard error.
     const code = (err as { code?: string } | null)?.code;
     if (code === "P2021" || code === "P2010" || /library_items|LibraryItem/i.test(String(err))) {
       res.json({ items: [] });
@@ -322,7 +322,7 @@ libraryRouter.delete(
   },
 );
 
-/** Student catalog — never includes externalUrl until /open. */
+/** Student catalog - never includes externalUrl until /open. */
 libraryRouter.get("/student/library", requireAuth, async (req: AuthedRequest, res) => {
   try {
     const gate = await requireActiveStudent(req);
@@ -379,7 +379,7 @@ libraryRouter.get("/student/library", requireAuth, async (req: AuthedRequest, re
 
 /**
  * Issue a one-time view URL after access check.
- * We do not stream or attach files — client opens external viewer only.
+ * We do not stream or attach files - client opens external viewer only.
  */
 libraryRouter.post(
   "/student/library/:id/open",

@@ -1,0 +1,27 @@
+name: Daily pack
+
+on:
+  schedule:
+    - cron: "10 0 * * *"
+  workflow_dispatch:
+
+jobs:
+  daily-pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Generate quiz and news
+        env:
+          API_URL: ${{ secrets.API_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${API_URL:-}" ] || [ -z "${CRON_SECRET:-}" ]; then
+            echo "Add GitHub secrets API_URL and CRON_SECRET"
+            exit 1
+          fi
+          curl -fsS -X POST \
+            -H "X-Cron-Secret: ${CRON_SECRET}" \
+            -H "Accept: application/json" \
+            --max-time 120 \
+            "${API_URL%/}/api/cron/daily-quiz"

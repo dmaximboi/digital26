@@ -302,7 +302,7 @@ export function StudentRecordPage() {
                 <div className="record-assess__meta">
                   {(item.score || item.maxScore) && (
                     <span>
-                      {item.score || "—"}
+                      {item.score || "-"}
                       {item.maxScore ? ` / ${item.maxScore}` : ""}
                     </span>
                   )}

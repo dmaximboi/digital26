@@ -42,7 +42,7 @@ export function AdminLayout() {
         <div className="ops-top__brand">
           <BrandMark size="sm" showText />
           <div>
-            <p className="eyebrow">
+            <p className="eyebrow home-kicker">
               {t("admin.eyebrow")}
               {!user.canWrite ? ` · ${t("admin.readonly")}` : ""}
             </p>

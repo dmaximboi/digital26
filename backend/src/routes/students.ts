@@ -70,7 +70,7 @@ studentsRouter.post(
         return;
       }
 
-      // Prefer Google-verified email — no inbox delivery required to continue apply.
+      // Prefer Google-verified email - no inbox delivery required to continue apply.
       res.json({
         ok: true,
         skipped: true,
@@ -153,8 +153,8 @@ studentsRouter.post(
 
       res.status(201).json({
         ok: true,
-        status: profile.status,
-        message: "Application submitted. Your account is pending admin review.",
+          status: profile.status,
+          message: "Application submitted. Pay the $3 registration fee to unlock class.",
       });
     } catch (err) {
       console.error("[student.apply]", err);
@@ -248,7 +248,7 @@ studentsRouter.post("/student/attendance", authLimiter, requireAuth, async (req:
     });
     if (!profile || profile.status !== StudentStatus.APPROVED || !profile.registrationPaidAt) {
       res.status(403).json({
-        error: "Only approved students who paid the registration fee can sign attendance",
+        error: "Pay the $3 registration fee to sign attendance",
       });
       return;
     }
@@ -339,7 +339,7 @@ studentsRouter.post("/student/chat", authLimiter, requireAuth, async (req: Authe
       });
       if (!profile || profile.status !== StudentStatus.APPROVED || !profile.registrationPaidAt) {
         res.status(403).json({
-          error: "Only approved students who paid the registration fee can chat",
+          error: "Pay the $3 registration fee to use class chat",
         });
         return;
       }
@@ -385,7 +385,7 @@ studentsRouter.get("/student/chat", requireAuth, async (req: AuthedRequest, res)
       const profile = await prisma.studentProfile.findUnique({ where: { userId: req.userId! } });
       if (!profile || profile.status !== StudentStatus.APPROVED || !profile.registrationPaidAt) {
         res.status(403).json({
-          error: "Only approved students who paid the registration fee can view chat",
+          error: "Pay the $3 registration fee to view class chat",
         });
         return;
       }

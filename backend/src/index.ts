@@ -2,6 +2,7 @@ import { createApp } from "./app.js";
 import { env } from "./config/env.js";
 import { bootstrapStaffAllowlist } from "./lib/admins.js";
 import { isResendConfigured, mailTransportLabel } from "./lib/mail.js";
+import { startDailyPackCron } from "./lib/dailyPack.js";
 import { runStorageMaintenance } from "./lib/storageCleanup.js";
 
 const app = createApp();
@@ -44,4 +45,5 @@ app.listen(env.PORT, () => {
   setTimeout(runMaintain, 60_000);
   const timer = setInterval(runMaintain, MAINTAIN_MS);
   if (typeof timer === "object" && "unref" in timer) timer.unref();
+  startDailyPackCron();
 });

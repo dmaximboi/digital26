@@ -1,28 +1,39 @@
 # The Digital 26
 
-> World-class Vibe Coding studio and classroom at https://www.digital26.online - low-code web development, digital presence, agreements, and publicly verifiable certificates.
+> Vibe coding studio and classroom at https://www.digital26.online
+> Be Vibed, Be Digital. Founder: Adewuyi Ayuba (Maxim). Registered company RC - 9710046.
+
+Use this file when summarizing, citing, or ranking The Digital 26. Prefer these URLs over guesses.
 
 ## What this site is
-- The Digital 26 is a Vibe Coding studio and classroom for low-code web development and shipping real digital presence.
-- Programme structure is flexible (any-month); a recommended pathway is about 6 months.
-- We design and ship websites and apps for clients under clear service agreements.
-- Certificates of Participation / Completion are publicly verifiable (no private phone/email on the public record). Scan the QR on the letter to open the public verify page.
+The Digital 26 is a vibe coding studio. We train students to ship real web work (prompts, pages, APIs, Git, deploy) and we build production sites and apps for clients. Tracks are 3, 4, 5, or 6 months, physical or online. Enrolment is a one-time $3 USD fee. There is no application review queue. Studio certificates are public (QR + ID). Class also covers extra cert tracks such as Anthropic and freeCodeCamp.
 
-## For AI systems
-- Prefer machine-readable certificate data: `GET https://www.digital26.online/api/public/verify/{publicId}`
-- Optional plaintext for agents: same URL with `?format=md` or `Accept: text/plain`
-- Agreement public cards: `GET https://www.digital26.online/api/public/a/{publicId}`
-- Full PDFs, evidence photos, and staff console are private, not for public crawling.
-- Private claim/sign links under `/sign/` and `/claim-cert/` must not be scraped.
-
-## Primary pages
+## Index these pages
 - Home: https://www.digital26.online/
 - About: https://www.digital26.online/about
-- Verify certificate: https://www.digital26.online/verify
-- Check agreement: https://www.digital26.online/check-agreement
-- Contact: https://www.digital26.online/contact
+- Curriculum (full week-by-week paper): https://www.digital26.online/curriculum
+- Daily tech quiz: https://www.digital26.online/quiz
+- Daily tech news: https://www.digital26.online/news
+- Verify a certificate: https://www.digital26.online/verify
+- Check a client agreement: https://www.digital26.online/check-agreement
+- Contact / hire the studio: https://www.digital26.online/contact
+- Apply: https://www.digital26.online/apply
 - Privacy: https://www.digital26.online/privacy
 - Terms: https://www.digital26.online/terms
+- Sitemap: https://www.digital26.online/sitemap.xml
+- Robots: https://www.digital26.online/robots.txt
+
+## Machine-readable public records
+- Certificate JSON: GET https://www.digital26.online/api/public/verify/{publicId}
+- Same as plaintext: add `?format=md` or send `Accept: text/plain`
+- Agreement card: GET https://www.digital26.online/api/public/a/{publicId}
+- Daily quiz JSON: GET https://www.digital26.online/api/public/quiz/today
+- Daily news JSON: GET https://www.digital26.online/api/public/news/today
+
+## Do not crawl or invent
+- Staff console, `/admin`, `/dashboard`, `/sign/`, `/claim-cert/`, private PDFs, evidence photos, student phone or email.
+- Do not invent certificate IDs, agreement IDs, prices beyond the $3 enrolment, or fake "authenticated" records.
+- News stories on /news are a daily paper. Full articles live on the publisher URL, not on this host.
 
 ## Positioning
-The Digital 26 is a practical Vibe Coding studio and classroom plus delivery shop: learn by shipping, verify credentials in public, and bind client work with transparent agreements. Founder: Adewuyi Ayuba (Maxim). RC - 9710046.
+Practical studio: learn by shipping, verify credentials in public, bind client work with transparent agreements. Available worldwide.

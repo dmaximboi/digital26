@@ -35,11 +35,7 @@ export function BrandMark({ size = "md", showText = false, className = "" }: Bra
 export function DocBrandHeader({ title }: { title: string }) {
   return (
     <div className="doc-brand-header">
-      <BrandMark size="md" />
-      <div>
-        <p className="doc-brand-header__org">The Digital 26</p>
-        <h1 className="doc-brand-header__title">{title}</h1>
-      </div>
+      <h1 className="doc-brand-header__title">{title}</h1>
     </div>
   );
 }

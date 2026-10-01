@@ -52,6 +52,13 @@ const envSchema = z.object({
   BACHS_API_KEY: z.string().optional(),
   BACHS_WEBHOOK_SECRET: z.string().optional(),
   BACHS_API_BASE: z.string().url().optional(),
+  OPENAI_API_KEY: z.string().optional(),
+  OPENAI_BASE_URL: z.string().url().optional(),
+  OPENAI_MODEL: z.string().optional(),
+  GROQ_API_KEY: z.string().optional(),
+  GEMINI_API_KEY: z.string().optional(),
+  GNEWS_API_KEY: z.string().optional(),
+  CRON_SECRET: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -71,6 +78,24 @@ if (isProd && !data.FIELD_ENCRYPTION_KEY) {
 
 if (isProd && !data.GOOGLE_CLIENT_ID) {
   console.warn("[auth] GOOGLE_CLIENT_ID not set");
+}
+
+function isLocalUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return true;
+  }
+}
+
+if (isProd && isLocalUrl(data.API_URL)) {
+  console.error("API_URL must be the public HTTPS API origin in production, not localhost");
+  process.exit(1);
+}
+
+if (isProd && !data.CRON_SECRET?.trim()) {
+  console.warn("[cron] CRON_SECRET not set - POST /api/cron/daily-quiz will reject");
 }
 
 if (isProd && (!data.JWT_SECRET || data.JWT_SECRET.length < 32)) {

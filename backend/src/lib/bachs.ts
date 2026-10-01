@@ -102,7 +102,7 @@ export async function createBachsCheckout(opts: {
   });
 }
 
-/** Authoritative checkout lookup — never trust webhook body alone. */
+/** Authoritative checkout lookup - never trust webhook body alone. */
 export async function getBachsCheckout(checkoutId: string): Promise<BachsCheckoutSession> {
   return bachsFetch<BachsCheckoutSession>(
     `/v1/checkout-sessions/${encodeURIComponent(checkoutId)}`,

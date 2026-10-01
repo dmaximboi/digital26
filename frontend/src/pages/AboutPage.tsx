@@ -82,14 +82,12 @@ export function AboutPage() {
           <p className="about-card__eyebrow">Studio & classroom</p>
           <h2>Student Training Programme</h2>
           <p>
-            Learn vibe coding, prompt engineering, web development, and deployment. Programme
-            length is flexible: 5 months, 6 months, or any duration depending on student
-            availability. Classes are both physical and online, your choice.
+            Learn vibe coding, prompt engineering, web development, and deployment. Tracks are 3,
+            4, 5, or 6 months (or custom), physical or online.
           </p>
           <p>
-            Students learn with convenience and ease at affordable prices. After completing your
-            project, you receive a publicly verifiable Certificate of Participation or Completion
-            with a QR code and public ID.
+            Your studio certificate is public (QR + ID). In class you also work toward extra
+            certificates from tracks like Anthropic and freeCodeCamp.
           </p>
         </article>
 

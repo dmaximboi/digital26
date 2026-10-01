@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiFetch } from "../../lib/authApi";
+import { useT } from "../../i18n/LocaleContext";
 
 type Dash = {
   agreementsThisMonth: number;
@@ -14,6 +15,7 @@ type Dash = {
 };
 
 export function AdminDashboardPage() {
+  const t = useT();
   const [data, setData] = useState<Dash | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,8 +34,9 @@ export function AdminDashboardPage() {
     <div className="ops-page">
       <div className="ops-page__head">
         <div>
+          <p className="home-kicker">{t("admin.kicker")}</p>
           <h2>Dashboard</h2>
-          <p className="muted">Overview of letters, certs, and inbox</p>
+          <p className="muted">Letters, certs, visits, and inbox</p>
         </div>
         <div className="ops-page__actions">
           <Link className="btn primary" to={`/admin/agreements/new`}>
@@ -53,14 +56,14 @@ export function AdminDashboardPage() {
           <h3>Visits today</h3>
           <p className="stat">{data.visitsToday ?? 0}</p>
           <Link className="muted" to={`/admin/visits`}>
-            Open visitors →
+            Visitors
           </Link>
         </article>
         <article>
           <h3>Unread messages</h3>
           <p className="stat">{data.unreadMessages}</p>
           <Link className="muted" to={`/admin/messages`}>
-            Open inbox →
+            Inbox
           </Link>
         </article>
         <article>

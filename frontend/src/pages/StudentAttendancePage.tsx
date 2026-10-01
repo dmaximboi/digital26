@@ -76,8 +76,9 @@ export function StudentAttendancePage() {
   const signedWeeks = new Set(data.records.map((r) => r.weekNumber));
 
   return (
-    <section className="panel attendance-page">
+    <section className="panel attendance-page studio-page">
       <Link to="/dashboard" className="back-link">&larr; {t("dash.title")}</Link>
+      <p className="home-kicker">{t("dash.kicker")}</p>
       <h1>{t("attendance.title")}</h1>
 
       {data.startDate && (
@@ -109,7 +110,7 @@ export function StudentAttendancePage() {
               ? t("attendance.missed")
               : t("attendance.future");
           return (
-            <div key={week} className={`attendance-cell ${cls}`} title={`${t("dash.week")} ${week} — ${statusLabel}`}>
+            <div key={week} className={`attendance-cell ${cls}`} title={`${t("dash.week")} ${week} - ${statusLabel}`}>
               <span className="attendance-cell__num">{week}</span>
               {signed && <span className="attendance-cell__check">&#10003;</span>}
             </div>

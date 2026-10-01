@@ -168,5 +168,6 @@ authRouter.get("/auth/me", async (req, res) => {
 });
 
 authRouter.get("/auth/google-client-id", (_req, res) => {
+  res.setHeader("Cache-Control", "public, max-age=300");
   res.json({ clientId: env.GOOGLE_CLIENT_ID || null });
 });

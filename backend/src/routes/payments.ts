@@ -19,6 +19,7 @@ import {
   newPaymentReference,
   paymentLabel,
   verifyAndFulfillOrder,
+  activatePaidStudent,
 } from "../lib/payments.js";
 import { isValidPublicId } from "../lib/publicId.js";
 import { writeAudit } from "../lib/audit.js";
@@ -126,7 +127,7 @@ paymentsRouter.post(
       }
 
       const amountUsd = PAYMENT_AMOUNTS_USD[kind];
-      // No query string — Bachs appends ?checkout_id= itself.
+      // No query string - Bachs appends ?checkout_id= itself.
       const successPath =
         kind === "CERTIFICATE"
           ? `/verify/${encodeURIComponent(publicId)}`
@@ -275,10 +276,7 @@ paymentsRouter.get(
           },
         });
         if (paidOrder) {
-          await prisma.studentProfile.update({
-            where: { id: profile.id },
-            data: { registrationPaidAt: paidOrder.paidAt || new Date() },
-          });
+          await activatePaidStudent(prisma, profile.id, paidOrder.paidAt || new Date());
         }
       }
 
@@ -313,7 +311,6 @@ paymentsRouter.get(
 
       const registrationPaid = Boolean(fresh?.registrationPaidAt);
       const adminApproved = fresh?.status === "APPROVED";
-      const rejected = fresh?.status === "REJECTED";
       const paymentsEnabled = isBachsConfigured();
 
       res.json({
@@ -323,10 +320,10 @@ paymentsRouter.get(
         registrationPaid,
         registrationPaidAt: fresh?.registrationPaidAt ?? null,
         adminApproved,
-        rejected,
+        rejected: false,
         studentStatus: fresh?.status ?? profile.status,
         paymentsEnabled,
-        canPay: paymentsEnabled && !registrationPaid && !rejected,
+        canPay: paymentsEnabled && !registrationPaid,
         fullyActive: Boolean(adminApproved && registrationPaid),
         profile: {
           fullName: fresh?.fullName ?? profile.fullName,
@@ -364,12 +361,8 @@ paymentsRouter.post(
         res.status(404).json({ error: "Submit your application first" });
         return;
       }
-      if (profile.status === "REJECTED") {
-        res.status(403).json({ error: "Rejected applications cannot pay registration" });
-        return;
-      }
 
-      // Recover first — student may have already paid.
+      // Recover first - student may have already paid.
       const recovered = await reconcileProfilePayments(profile.id);
       if (recovered.fulfilled > 0) {
         const again = await prisma.studentProfile.findUnique({
@@ -486,7 +479,7 @@ paymentsRouter.post(
   },
 );
 
-/** Authenticated reconcile — verifies pending orders against Bachs ledger. */
+/** Authenticated reconcile - verifies pending orders against Bachs ledger. */
 paymentsRouter.post(
   "/student/payments/reconcile",
   authLimiter,
@@ -535,8 +528,7 @@ paymentsRouter.post(
       res.json({
         ok: true,
         registrationPaid: Boolean(fresh?.registrationPaidAt),
-        fullyActive:
-          fresh?.status === "APPROVED" && Boolean(fresh.registrationPaidAt),
+        fullyActive: Boolean(fresh?.registrationPaidAt),
         direct,
         reconcile,
       });
@@ -590,8 +582,7 @@ paymentsRouter.post(
         status: fresh?.registrationPaidAt ? "PAID" : "PENDING",
         paidAt: fresh?.registrationPaidAt ?? null,
         registrationPaid: Boolean(fresh?.registrationPaidAt),
-        fullyActive:
-          fresh?.status === "APPROVED" && Boolean(fresh.registrationPaidAt),
+        fullyActive: Boolean(fresh?.registrationPaidAt),
         reconcile,
       });
     } catch (err) {
@@ -738,7 +729,7 @@ export async function bachsWebhookHandler(
         return;
       }
     } else if (env.isProd) {
-      console.warn("[payments.webhook] BACHS_WEBHOOK_SECRET not set — rejecting in production");
+      console.warn("[payments.webhook] BACHS_WEBHOOK_SECRET not set - rejecting in production");
       res.status(503).json({ error: "Webhook secret not configured" });
       return;
     }
@@ -768,7 +759,7 @@ export async function bachsWebhookHandler(
       event.type === "collection.succeeded" ||
       event.type === "checkout.completed"
     ) {
-      // Extract IDs only — verify against Bachs API before fulfilling.
+      // Extract IDs only - verify against Bachs API before fulfilling.
       const result = await verifyAndFulfillOrder({
         checkoutId: event.data?.checkout_id,
         reference: event.data?.reference || event.data?.metadata?.reference,

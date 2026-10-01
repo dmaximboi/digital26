@@ -229,11 +229,11 @@ export async function sendStudentDecisionEmail(opts: {
   if (opts.decision === "approved") {
     const result = await trySendMail({
       to: opts.to,
-      subject: "You're approved — Digital 26",
+      subject: "You're approved - Digital 26",
       text: [
         `Hi ${opts.fullName},`,
         "",
-        "Great news — your Digital 26 application has been approved.",
+        "Great news - your Digital 26 application has been approved.",
         `Programme: ${opts.programmeLabel}`,
         "",
         "Sign in to your dashboard to track attendance and join class chat:",

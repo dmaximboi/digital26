@@ -50,13 +50,13 @@ export function programmeWeeks(
     case "FOUR_MONTH":
       return 16;
     case "FIVE_MONTH":
-      return 22;
+      return 20;
     case "SIX_MONTH":
-      return 26;
+      return 24;
     case "CUSTOM":
-      return customMonths && customMonths > 0 ? customMonths * 4 : 26;
+      return customMonths && customMonths > 0 ? customMonths * 4 : 24;
     default:
-      return 26;
+      return 24;
   }
 }
 

@@ -16,6 +16,8 @@ type Tab = {
 
 const PUBLIC_TABS: Tab[] = [
   { to: "/", icon: "Home", labelKey: "nav.home", end: true },
+  { to: "/quiz", icon: "Quiz", labelKey: "nav.quiz" },
+  { to: "/news", icon: "News", labelKey: "nav.news", match: (p) => p.startsWith("/news") },
   { to: "/verify", icon: "Verify", labelKey: "nav.verify", match: (p) => p.startsWith("/verify") },
   {
     to: "/check-agreement",
@@ -81,31 +83,51 @@ function TabIcon({ name }: { name: string }) {
     case "Home":
       return (
         <svg {...common}>
-          <path d="M3 10.5 12 3l9 7.5" />
-          <path d="M5 9.5V21h14V9.5" />
+          <circle cx="12" cy="12" r="7.2" />
+        </svg>
+      );
+    case "Quiz":
+      return (
+        <svg {...common}>
+          <path d="M9 7h11M9 12h11M9 17h7" />
+          <path d="M4 7h.01M4 12h.01M4 17h.01" />
+        </svg>
+      );
+    case "News":
+      return (
+        <svg {...common}>
+          <path d="M4 5h13a3 3 0 0 1 3 3v11H7a3 3 0 0 1-3-3V5z" />
+          <path d="M8 9h8M8 13h5" />
         </svg>
       );
     case "Verify":
+      return (
+        <svg {...common}>
+          <rect x="4.5" y="6.5" width="11" height="13" rx="1.8" />
+          <rect x="8.5" y="3.5" width="11" height="13" rx="1.8" />
+          <path d="M11.5 8.5h5M11.5 11.5h3.5" />
+        </svg>
+      );
     case "Certs":
       return (
         <svg {...common}>
-          <rect x="4" y="3" width="16" height="18" rx="2" />
-          <path d="M8 8h8M8 12h8M8 16h5" />
+          <rect x="4" y="4" width="16" height="12" rx="2" />
+          <path d="M8 8h8M8 11.5h5" />
+          <path d="M10 16v4l2-1.2L14 20v-4" />
         </svg>
       );
     case "Deals":
       return (
-        <svg {...common}>
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <path d="M14 2v6h6M9 13h6M9 17h4" />
-        </svg>
+        <span className="material-symbols-outlined bottom-nav__glyph" aria-hidden>
+          handshake
+        </span>
       );
     case "Contact":
     case "Inbox":
       return (
         <svg {...common}>
-          <path d="M4 5h16v14H4z" />
-          <path d="m4 7 8 6 8-6" />
+          <rect x="3.2" y="5.5" width="17.6" height="13" rx="2.4" />
+          <path d="m3.6 7.6 8.4 6.2 8.4-6.2" />
         </svg>
       );
     case "Pay":
@@ -142,9 +164,9 @@ function TabIcon({ name }: { name: string }) {
     case "Sign in":
       return (
         <svg {...common}>
-          <path d="M10 17h8V7h-8" />
-          <path d="M13 12H4" />
-          <path d="m7 9-3 3 3 3" />
+          <path d="M14.5 4.5H18a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-3.5" />
+          <path d="M3.8 12H15" />
+          <path d="m11.2 8.2 3.8 3.8-3.8 3.8" />
         </svg>
       );
     case "More":

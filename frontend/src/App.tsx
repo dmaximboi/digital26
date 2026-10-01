@@ -1,6 +1,8 @@
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { AuthProvider } from "./auth/AuthContext";
 import { LocaleProvider } from "./i18n/LocaleContext";
+import { GridVeil } from "./components/GridVeil";
 import { SiteFooter } from "./components/SiteFooter";
 import { SiteHeader } from "./components/SiteHeader";
 import { BottomNav } from "./components/BottomNav";
@@ -11,6 +13,9 @@ import { StudentRecordPage } from "./pages/StudentRecordPage";
 import { CheckAgreementPage } from "./pages/CheckAgreementPage";
 import { ContactPage } from "./pages/ContactPage";
 import { AboutPage } from "./pages/AboutPage";
+import { CurriculumPage } from "./pages/CurriculumPage";
+import { QuizPage } from "./pages/QuizPage";
+import { NewsPage } from "./pages/NewsPage";
 import { AgreementPublicPage } from "./pages/AgreementPublicPage";
 import { SignPage } from "./pages/SignPage";
 import { ClaimCertPage } from "./pages/ClaimCertPage";
@@ -47,6 +52,10 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/about" element={<AboutPage />} />
+      <Route path="/curriculum" element={<CurriculumPage />} />
+      <Route path="/quiz" element={<QuizPage />} />
+      <Route path="/news" element={<NewsPage />} />
+      <Route path="/news/:id" element={<NewsPage />} />
       <Route path="/verify" element={<VerifyPage />} />
       <Route path="/verify/:publicId" element={<StudentRecordPage />} />
       <Route path="/check-agreement" element={<CheckAgreementPage />} />
@@ -92,18 +101,44 @@ function AppRoutes() {
   );
 }
 
+function showSiteFooter(pathname: string): boolean {
+  if (pathname.startsWith("/admin")) return false;
+  if (pathname.startsWith("/dashboard")) return false;
+  if (pathname.startsWith("/signin")) return false;
+  if (pathname.startsWith("/apply")) return false;
+  if (pathname.startsWith("/sign/")) return false;
+  if (pathname.startsWith("/claim-cert/")) return false;
+  return true;
+}
+
 function Shell() {
   const location = useLocation();
   const isAdmin = location.pathname.startsWith("/admin");
+  const withFooter = showSiteFooter(location.pathname);
+  const [composing, setComposing] = useState(true);
+
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setComposing(false);
+      return;
+    }
+    setComposing(true);
+    const timer = window.setTimeout(() => setComposing(false), 780);
+    return () => window.clearTimeout(timer);
+  }, [location.pathname]);
 
   return (
-    <div className={`app-shell${isAdmin ? " app-shell--admin" : ""}`}>
+    <div
+      className={`app-shell${isAdmin ? " app-shell--admin" : ""}${composing ? " is-composing" : ""}`}
+    >
+      <GridVeil />
       <AppSplash />
       {!isAdmin && <SiteHeader />}
-      <main>
+      <main className={location.pathname === "/" ? "is-home" : undefined}>
         <AppRoutes />
       </main>
-      {!isAdmin && <SiteFooter />}
+      {withFooter && <SiteFooter />}
       <BottomNav />
     </div>
   );

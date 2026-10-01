@@ -116,10 +116,11 @@ export function StudentLibraryPage() {
   }
 
   return (
-    <section className="panel library-page">
+    <section className="panel library-page studio-page">
       <Link to="/dashboard" className="back-link">
         &larr; {t("library.back")}
       </Link>
+      <p className="home-kicker">{t("dash.kicker")}</p>
       <h1>{t("library.title")}</h1>
       <p className="lede">{t("library.lede")}</p>
 

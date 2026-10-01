@@ -7,7 +7,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { applyDocumentLocale, detectLocale, storeLocale } from "./detect";
+import {
+  applyDocumentLocale,
+  detectInitialLocale,
+  localeFromLocation,
+  readStoredLocale,
+  storeLocale,
+} from "./detect";
 import type { Locale } from "./types";
 import { en, type MessageKey } from "./locales/en";
 import { fr } from "./locales/fr";
@@ -34,18 +40,20 @@ function interpolate(template: string, vars?: Vars): string {
 }
 
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("en");
-  const [ready, setReady] = useState(false);
+  const [locale, setLocaleState] = useState<Locale>(detectInitialLocale);
+  const ready = true;
 
   useEffect(() => {
+    applyDocumentLocale(locale);
+  }, [locale]);
+
+  useEffect(() => {
+    if (readStoredLocale()) return;
     let cancelled = false;
-    void (async () => {
-      const detected = await detectLocale();
-      if (cancelled) return;
-      setLocaleState(detected);
-      applyDocumentLocale(detected);
-      setReady(true);
-    })();
+    void localeFromLocation().then((fromLocation) => {
+      if (cancelled || !fromLocation) return;
+      setLocaleState((current) => (current === fromLocation ? current : fromLocation));
+    });
     return () => {
       cancelled = true;
     };

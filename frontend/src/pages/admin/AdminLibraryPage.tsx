@@ -212,7 +212,7 @@ export function AdminLibraryPage() {
                   onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                   required
                   maxLength={160}
-                  placeholder="e.g. Week 1 — Intro to Digital Marketing"
+                  placeholder="e.g. Week 1 - Intro to Digital Marketing"
                 />
               </label>
 

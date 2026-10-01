@@ -32,7 +32,7 @@ type StudentMsg = {
   createdAt: string;
 };
 
-type StatusFilter = "PENDING" | "APPROVED" | "REJECTED";
+type StatusFilter = "unpaid" | "active" | "closed";
 
 export function AdminStudentsPage() {
   const { user } = useAuth();
@@ -41,7 +41,7 @@ export function AdminStudentsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState<StatusFilter>("PENDING");
+  const [filter, setFilter] = useState<StatusFilter>("unpaid");
   const [chatOpen, setChatOpen] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<StudentMsg[]>([]);
   const [chatBody, setChatBody] = useState("");
@@ -60,32 +60,16 @@ export function AdminStudentsPage() {
 
   useEffect(load, [load]);
 
-  const pending = items.filter((s) => s.status === "PENDING");
-  const approved = items.filter((s) => s.status === "APPROVED");
-  const rejected = items.filter((s) => s.status === "REJECTED");
-  const counts = { PENDING: pending.length, APPROVED: approved.length, REJECTED: rejected.length };
+  const unpaid = items.filter((s) => s.status !== "APPROVED" && !s.registrationPaid);
+  const active = items.filter((s) => s.status === "APPROVED");
+  const closed = items.filter((s) => s.status !== "APPROVED" && Boolean(s.registrationPaid));
+  const counts = { unpaid: unpaid.length, active: active.length, closed: closed.length };
 
   const visible = useMemo(() => {
-    if (filter === "PENDING") return pending;
-    if (filter === "APPROVED") return approved;
-    return rejected;
-  }, [filter, pending, approved, rejected]);
-
-  async function approve(id: string) {
-    setBusy(id);
-    try {
-      await apiFetch("/api/ops/students/" + id + "/approve", {
-        method: "POST",
-        body: "{}",
-        headers: { "Content-Type": "application/json" },
-      });
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setBusy(null);
-    }
-  }
+    if (filter === "unpaid") return unpaid;
+    if (filter === "active") return active;
+    return closed;
+  }, [filter, unpaid, active, closed]);
 
   async function verifyPayment(id: string) {
     setBusy(id);
@@ -111,27 +95,11 @@ export function AdminStudentsPage() {
     }
   }
 
-  async function reject(id: string) {
-    const note = prompt("Rejection reason (optional):");
+  async function restoreAccess(id: string) {
+    if (!confirm("Restore class access for this student?")) return;
     setBusy(id);
     try {
-      await apiFetch("/api/ops/students/" + id + "/reject", {
-        method: "POST",
-        body: JSON.stringify({ note: note || "" }),
-        headers: { "Content-Type": "application/json" },
-      });
-      load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function reconsider(id: string) {
-    setBusy(id);
-    try {
-      await apiFetch("/api/ops/students/" + id + "/reconsider", {
+      await apiFetch("/api/ops/students/" + id + "/approve", {
         method: "POST",
         body: "{}",
         headers: { "Content-Type": "application/json" },
@@ -145,7 +113,7 @@ export function AdminStudentsPage() {
   }
 
   async function revoke(id: string) {
-    if (!confirm("Revoke this student's approval? They will need to be re-approved.")) return;
+    if (!confirm("Revoke this student? They lose class access. Payment stays on file until you restore access.")) return;
     setBusy(id);
     try {
       await apiFetch("/api/ops/students/" + id + "/revoke", {
@@ -224,9 +192,9 @@ export function AdminStudentsPage() {
       <div className="ops-page__head">
         <div>
           <h2>Students</h2>
-          <p className="muted">Review applications, chat, update programmes, and revoke access from one card per student.</p>
+          <p className="muted">Enrolment is the $3 payment. Chat, records, and revoke stay here - there is no application review queue.</p>
         </div>
-        {!canWrite && <p className="muted">Read-only access — approve and edit actions are hidden.</p>}
+        {!canWrite && <p className="muted">Read-only access - approve and edit actions are hidden.</p>}
       </div>
 
       {error && <p className="form-error">{error}</p>}
@@ -234,9 +202,9 @@ export function AdminStudentsPage() {
       <div className="student-filter" role="tablist">
         {(
           [
-            ["PENDING", "Pending"],
-            ["APPROVED", "Approved"],
-            ["REJECTED", "Rejected"],
+            ["unpaid", "Unpaid"],
+            ["active", "Active"],
+            ["closed", "Closed"],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -257,7 +225,7 @@ export function AdminStudentsPage() {
 
       {!loading && visible.length === 0 && (
         <div className="library-ops__empty">
-          <p>No {filter.toLowerCase()} students.</p>
+          <p>No {filter} students.</p>
         </div>
       )}
 
@@ -272,7 +240,11 @@ export function AdminStudentsPage() {
                 <div className="student-card__title-row">
                   <h4>{s.fullName}</h4>
                   <span className={`student-card__badge student-card__badge--${s.status.toLowerCase()}`}>
-                    {s.status === "PENDING" ? "Pending" : s.status === "APPROVED" ? "Approved" : "Rejected"}
+                    {s.status === "APPROVED"
+                      ? "Active"
+                      : s.registrationPaid
+                        ? "Revoked"
+                        : "Unpaid"}
                   </span>
                 </div>
                 <p className="muted">{s.user.email}</p>
@@ -356,20 +328,6 @@ export function AdminStudentsPage() {
                 </div>
               </div>
 
-              {canWrite && s.status === "PENDING" && (
-                <div className="student-card__group">
-                  <span className="student-card__group-label">Decision</span>
-                  <div className="student-card__group-btns">
-                    <button className="btn sm primary" onClick={() => approve(s.id)} disabled={busy === s.id}>
-                      Approve
-                    </button>
-                    <button className="btn sm danger" onClick={() => reject(s.id)} disabled={busy === s.id}>
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {canWrite && s.status === "APPROVED" && (
                 <div className="student-card__group">
                   <span className="student-card__group-label">Access</span>
@@ -381,12 +339,12 @@ export function AdminStudentsPage() {
                 </div>
               )}
 
-              {canWrite && s.status === "REJECTED" && (
+              {canWrite && s.status !== "APPROVED" && s.registrationPaid && (
                 <div className="student-card__group">
-                  <span className="student-card__group-label">Decision</span>
+                  <span className="student-card__group-label">Access</span>
                   <div className="student-card__group-btns">
-                    <button className="btn sm primary" onClick={() => reconsider(s.id)} disabled={busy === s.id}>
-                      Reconsider
+                    <button className="btn sm primary" onClick={() => void restoreAccess(s.id)} disabled={busy === s.id}>
+                      Restore access
                     </button>
                   </div>
                 </div>

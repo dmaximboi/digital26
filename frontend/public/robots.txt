@@ -1,20 +1,33 @@
+# The Digital 26 · https://www.digital26.online
+# Machine-readable site map for crawlers and AI agents: https://www.digital26.online/llms.txt
+
 User-agent: *
 Allow: /
+Allow: /about
+Allow: /curriculum
+Allow: /quiz
+Allow: /news
+Allow: /news/
 Allow: /verify
 Allow: /verify/
 Allow: /check-agreement
 Allow: /check-agreement/
 Allow: /contact
-Allow: /about
+Allow: /privacy
+Allow: /terms
+Allow: /apply
 Allow: /a/
 Allow: /llms.txt
 Allow: /sitemap.xml
+Allow: /logo.png
 Disallow: /sign/
 Disallow: /claim-cert/
+Disallow: /dashboard
+Disallow: /dashboard/
 Disallow: /admin
+Disallow: /admin/
 Disallow: /ops
 Disallow: /api/
-# Staff console (secret path) must never be indexed
 Disallow: /*/login
 Disallow: /*/messages
 Disallow: /*/visits
@@ -23,11 +36,23 @@ Disallow: /*/certificates
 Disallow: /*/clients
 Disallow: /*/audit
 
+User-agent: Googlebot
+Allow: /
+Allow: /llms.txt
+Allow: /sitemap.xml
+Disallow: /sign/
+Disallow: /claim-cert/
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /api/
+
 User-agent: GPTBot
 Allow: /
-Allow: /verify
-Allow: /a/
 Allow: /about
+Allow: /curriculum
+Allow: /quiz
+Allow: /news
+Allow: /verify
 Allow: /llms.txt
 Disallow: /sign/
 Disallow: /claim-cert/
@@ -35,36 +60,28 @@ Disallow: /api/
 
 User-agent: Google-Extended
 Allow: /
-Allow: /verify
-Allow: /a/
-Allow: /about
 Allow: /llms.txt
 Disallow: /sign/
 Disallow: /claim-cert/
+Disallow: /api/
 
 User-agent: ClaudeBot
 Allow: /
-Allow: /verify
-Allow: /a/
-Allow: /about
 Allow: /llms.txt
 Disallow: /sign/
 Disallow: /claim-cert/
+Disallow: /api/
 
 User-agent: PerplexityBot
 Allow: /
-Allow: /verify
-Allow: /a/
-Allow: /about
 Allow: /llms.txt
 Disallow: /sign/
 Disallow: /claim-cert/
+Disallow: /api/
 
 User-agent: Applebot-Extended
 Allow: /
-Allow: /verify
-Allow: /a/
-Allow: /about
+Allow: /llms.txt
 Disallow: /sign/
 Disallow: /claim-cert/
 

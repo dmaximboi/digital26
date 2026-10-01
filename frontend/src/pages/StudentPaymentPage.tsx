@@ -226,8 +226,8 @@ export function StudentPaymentPage() {
   }
 
   return (
-    <section className="panel payment-page">
-      <p className="payment-page__eyebrow">{t("pay.eyebrow")}</p>
+    <section className="panel payment-page studio-page">
+      <p className="home-kicker">{t("pay.eyebrow")}</p>
       <h1>{t("pay.title")}</h1>
       <p className="lede">{t("pay.lede", { name: status.profile.fullName })}</p>
 
@@ -259,20 +259,10 @@ export function StudentPaymentPage() {
               : t("pay.step.feePay", { amount: status.amountUsd })}
           </span>
         </li>
-        <li className={status.adminApproved ? "done" : status.rejected ? "bad" : ""}>
-          <strong>{t("pay.step.review")}</strong>
-          <span>
-            {status.rejected
-              ? t("pay.step.rejected")
-              : status.adminApproved
-                ? t("pay.step.approved")
-                : t("pay.step.waiting")}
-          </span>
-        </li>
         <li className={status.fullyActive ? "done" : ""}>
           <strong>{t("pay.step.access")}</strong>
           <span>
-            {status.fullyActive ? t("pay.step.unlocked") : t("pay.step.needsBoth")}
+            {status.fullyActive ? t("pay.step.unlocked") : t("pay.step.needsPay")}
           </span>
         </li>
       </ul>
@@ -290,18 +280,14 @@ export function StudentPaymentPage() {
         </p>
       )}
 
-      {status.rejected ? (
-        <p className="muted">
-          {t("pay.rejectedNote")} <Link to="/contact">{t("pay.contactUs")}</Link>
-        </p>
-      ) : status.registrationPaid ? (
+      {status.registrationPaid ? (
         <div className="payment-actions">
           {status.fullyActive ? (
             <Link className="btn primary" to="/dashboard">
               {t("pay.goDash")}
             </Link>
           ) : (
-            <p className="muted">{t("pay.waitingAdmin")}</p>
+            <p className="muted">{t("pay.notice.verified")}</p>
           )}
           <Link className="btn" to="/dashboard">
             {t("pay.backDash")}

@@ -465,3 +465,45 @@ model EvidenceImage {
   @@index([kind])
   @@map("evidence_images")
 }
+
+model DailyQuiz {
+  id         String   @id @default(cuid())
+  quizDate   DateTime @unique @map("quiz_date") @db.Date
+  title      String
+  source     String
+  questions  Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  attempts DailyQuizAttempt[]
+
+  @@map("daily_quizzes")
+}
+
+model DailyQuizAttempt {
+  id          String   @id @default(cuid())
+  quizId      String   @map("quiz_id")
+  visitorKey  String   @map("visitor_key")
+  answers     Json
+  score       Int
+  total       Int
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  quiz DailyQuiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId, visitorKey])
+  @@map("daily_quiz_attempts")
+}
+
+model DailyNewsItem {
+  id          String    @id @default(cuid())
+  newsDate    DateTime  @map("news_date") @db.Date
+  url         String    @unique
+  title       String
+  summary     String    @db.Text
+  source      String
+  publishedAt DateTime? @map("published_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@index([newsDate])
+  @@map("daily_news")
+}

@@ -172,7 +172,6 @@ export function CodingLaptop() {
           <span className="cl-hint">tap keyboard</span>
         </button>
       </div>
-      <p className="cl-caption">The Digital 26</p>
     </div>
   );
 }

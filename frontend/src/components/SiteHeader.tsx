@@ -3,15 +3,28 @@ import { BrandMark } from "./BrandMark";
 import { LanguageToggle } from "./LanguageToggle";
 import { useT } from "../i18n/LocaleContext";
 
-/** Slim top brand bar — primary navigation lives in BottomNav. */
 export function SiteHeader() {
   const t = useT();
   return (
     <header className="site-header site-header--slim">
-      <Link className="brand-link" to="/" aria-label={t("common.brand")}>
-        <BrandMark size="sm" showText />
-      </Link>
-      <LanguageToggle variant="header" />
+      <div className="site-header__inner">
+        <Link className="brand-link" to="/" aria-label={t("common.brand")}>
+          <BrandMark size="sm" showText />
+        </Link>
+        <nav className="site-header__nav" aria-label={t("footer.navigate")}>
+          <Link to="/about">{t("nav.about")}</Link>
+          <Link to="/curriculum">{t("nav.training")}</Link>
+          <Link to="/contact">{t("nav.services")}</Link>
+          <Link to="/verify">{t("nav.verify")}</Link>
+          <Link to="/news">{t("footer.news")}</Link>
+        </nav>
+        <div className="site-header__tools">
+          <LanguageToggle variant="header" />
+          <Link className="btn sm header-signin" to="/signin">
+            {t("home.signInGoogle")}
+          </Link>
+        </div>
+      </div>
     </header>
   );
 }

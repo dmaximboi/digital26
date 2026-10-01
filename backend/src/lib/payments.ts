@@ -1,4 +1,4 @@
-import { PaymentKind, PaymentStatus, Prisma } from "@prisma/client";
+import { PaymentKind, PaymentStatus, Prisma, StudentStatus } from "@prisma/client";
 import { randomBytes } from "node:crypto";
 import { prisma } from "../db/prisma.js";
 import {
@@ -56,11 +56,37 @@ function moneyEqual(a: string, b: string): boolean {
   return Math.abs(left - right) < 0.009;
 }
 
-async function repairRegistrationPaid(profileId: string, paidAt: Date): Promise<void> {
-  await prisma.studentProfile.updateMany({
-    where: { id: profileId, registrationPaidAt: null },
-    data: { registrationPaidAt: paidAt },
+type StudentDb = Prisma.TransactionClient | typeof prisma;
+
+/** $3 registration is the only enrolment gate - payment also marks the student approved. */
+export async function activatePaidStudent(
+  db: StudentDb,
+  profileId: string,
+  paidAt: Date,
+): Promise<void> {
+  const profile = await db.studentProfile.findUnique({
+    where: { id: profileId },
+    select: { registrationPaidAt: true, startDate: true, status: true },
   });
+  if (!profile) return;
+  // First payment unlocks class. Later repairs must not undo an admin revoke.
+  if (profile.registrationPaidAt) return;
+
+  await db.studentProfile.update({
+    where: { id: profileId },
+    data: {
+      registrationPaidAt: paidAt,
+      status: StudentStatus.APPROVED,
+      rejectionNote: null,
+      startDate: profile.startDate ?? paidAt,
+      reviewedAt: paidAt,
+      reviewedBy: "registration_payment",
+    },
+  });
+}
+
+async function repairRegistrationPaid(profileId: string, paidAt: Date): Promise<void> {
+  await activatePaidStudent(prisma, profileId, paidAt);
 }
 
 async function applyFulfillmentSideEffects(
@@ -74,10 +100,7 @@ async function applyFulfillmentSideEffects(
   paidAt: Date,
 ): Promise<void> {
   if (order.kind === PaymentKind.REGISTRATION && order.profileId) {
-    await tx.studentProfile.updateMany({
-      where: { id: order.profileId, registrationPaidAt: null },
-      data: { registrationPaidAt: paidAt },
-    });
+    await activatePaidStudent(tx, order.profileId, paidAt);
   }
   if (order.kind === PaymentKind.CERTIFICATE && order.publicId) {
     await tx.certificate.updateMany({

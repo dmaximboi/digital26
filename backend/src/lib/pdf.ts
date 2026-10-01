@@ -628,7 +628,7 @@ export async function buildCertificatePdf(opts: {
     borderOpacity: 0.15,
   });
 
-  // Corner media — brand text is placed below this band.
+  // Corner media - brand text is placed below this band.
   if (logo) {
     const lx = 52;
     const ly = height - 118;

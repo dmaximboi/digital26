@@ -41,7 +41,7 @@ export function clearToken(): void {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(getToken()));
   const [user, setUser] = useState<AppUser | null>(null);
 
   const fetchMe = useCallback(async (token: string): Promise<AppUser | null> => {
@@ -57,13 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refresh = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setUser(null);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
-      const token = getToken();
-      if (!token) {
-        setUser(null);
-        return;
-      }
       const me = await fetchMe(token);
       if (me) {
         setUser(me);
