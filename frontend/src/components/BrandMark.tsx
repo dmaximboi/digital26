@@ -16,7 +16,7 @@ export function BrandMark({ size = "md", showText = false, className = "" }: Bra
   return (
     <div className={`brand-mark ${className}`.trim()}>
       <img
-        src="/logo.png"
+        src="/logo-mark.png"
         alt="The Digital 26"
         width={px}
         height={px}

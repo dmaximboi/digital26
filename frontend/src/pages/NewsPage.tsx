@@ -16,7 +16,8 @@ import {
 } from "../lib/newsInterest";
 import { setJsonLd, setPageMeta, siteUrl } from "../lib/seo";
 
-const PAGE = 6;
+const PAGE = 8;
+type NewsTab = "foryou" | "featured";
 
 export function NewsPage() {
   const t = useT();
@@ -25,6 +26,7 @@ export function NewsPage() {
   const [items, setItems] = useState<NewsItem[]>(() => loadNewsStore());
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(() => loadNewsStore().length === 0);
+  const [tab, setTab] = useState<NewsTab>("featured");
   const [shown, setShown] = useState(PAGE);
 
   useEffect(() => {
@@ -50,8 +52,6 @@ export function NewsPage() {
         if (next.length) {
           saveNewsStore(next);
           setItems(next);
-        } else if (!cached.length) {
-          setError("");
         }
         setLoading(false);
       } catch (err: unknown) {
@@ -68,16 +68,15 @@ export function NewsPage() {
   }, [t]);
 
   const interest = loadInterest();
-  const related = useMemo(() => rankRelated(items, interest).slice(0, 3), [items, interest?.lastId]);
+  const related = useMemo(
+    () => (interest ? rankRelated(items, interest).slice(0, shown) : []),
+    [items, interest?.lastId, shown],
+  );
   const story = id ? items.find((item) => item.id === id) : null;
-  const feed = useMemo(() => {
-    const rest = story ? items.filter((item) => item.id !== story.id) : items;
-    return rankRelated(rest, interest, story?.id);
-  }, [items, interest?.lastId, story?.id]);
-
-  const featured = !story ? feed[0] : null;
-  const list = !story ? feed.slice(1, 1 + shown) : [];
-  const moreLeft = !story ? Math.max(0, feed.length - 1 - shown) : 0;
+  const featuredList = useMemo(() => items.slice(0, shown), [items, shown]);
+  const moreLeft = tab === "foryou"
+    ? Math.max(0, (interest ? rankRelated(items, interest).length : 0) - shown)
+    : Math.max(0, items.length - shown);
 
   useEffect(() => {
     if (!items.length) return;
@@ -103,6 +102,11 @@ export function NewsPage() {
     navigate(`/news/${item.id}`);
   }
 
+  function switchTab(next: NewsTab) {
+    setTab(next);
+    setShown(PAGE);
+  }
+
   if (id && !loading && items.length > 0 && !story) {
     return (
       <section className="panel news-page">
@@ -115,10 +119,34 @@ export function NewsPage() {
     );
   }
 
+  const list = tab === "foryou" ? related : featuredList;
+
   return (
     <section className="panel news-page">
       <DocBrandHeader title={t("news.title")} />
-      <p className="lede">{t("news.lede")}</p>
+
+      {!story && (
+        <div className="news-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "foryou"}
+            className={tab === "foryou" ? "is-on" : ""}
+            onClick={() => switchTab("foryou")}
+          >
+            {t("news.forYou")}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={tab === "featured"}
+            className={tab === "featured" ? "is-on" : ""}
+            onClick={() => switchTab("featured")}
+          >
+            {t("news.featured")}
+          </button>
+        </div>
+      )}
 
       {loading && <p className="muted">{t("common.loading")}</p>}
       {error && (
@@ -145,9 +173,9 @@ export function NewsPage() {
           </a>
           {related.length > 0 && (
             <div className="news-related">
-              <h3>{t("news.because", { title: interest?.lastTitle || story.title })}</h3>
+              <h3>{t("news.forYou")}</h3>
               <ul>
-                {related.map((item) => (
+                {related.slice(0, 3).map((item) => (
                   <li key={item.id}>
                     <button type="button" onClick={() => openStory(item)}>
                       {item.title}
@@ -161,35 +189,27 @@ export function NewsPage() {
         </article>
       )}
 
-      {!story && featured && (
-        <>
-          <button type="button" className="news-hero" onClick={() => openStory(featured)}>
-            <span className="news-kicker">{t("news.featured")}</span>
-            <strong>{featured.title}</strong>
-            <p>{featured.summary}</p>
-            <span className="news-meta">
-              {featured.source}
-              {featured.publishedAt ? ` · ${formatNewsTime(featured.publishedAt)}` : ""}
-            </span>
-          </button>
+      {!story && !loading && items.length > 0 && tab === "foryou" && related.length === 0 && (
+        <p className="muted news-foryou-empty">
+          {interest ? t("news.forYouNone") : t("news.forYouEmpty")}
+        </p>
+      )}
 
-          <h2 className="news-feed-title">{t("news.latest")}</h2>
-          <ol className="news-stack">
-            {list.map((item, index) => (
+      {!story && list.length > 0 && (
+        <>
+          <ul className="news-headlines">
+            {list.map((item) => (
               <li key={item.id}>
                 <button type="button" onClick={() => openStory(item)}>
-                  <span className="news-stack__n">{String(index + 1).padStart(2, "0")}</span>
-                  <span className="news-stack__body">
-                    <strong>{item.title}</strong>
-                    <em>
-                      {item.source}
-                      {item.publishedAt ? ` · ${formatNewsTime(item.publishedAt)}` : ""}
-                    </em>
+                  <strong>{item.title}</strong>
+                  <span className="news-meta">
+                    {item.source}
+                    {item.publishedAt ? ` · ${formatNewsTime(item.publishedAt)}` : ""}
                   </span>
                 </button>
               </li>
             ))}
-          </ol>
+          </ul>
           {moreLeft > 0 && (
             <button className="news-more-link" type="button" onClick={() => setShown((n) => n + PAGE)}>
               {t("news.seeMore")}

@@ -10,6 +10,7 @@ export default defineConfig({
       injectRegister: false,
       includeAssets: [
         "logo.png",
+        "logo-mark.png",
         "icon-192.png",
         "icon-512.png",
         "icon-maskable-512.png",
