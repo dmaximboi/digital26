@@ -2475,14 +2475,14 @@ dd {
 }
 
 .home-hero__headline,
-.home-hero > .lede,
+.home-hero__points,
 .home-hero > .cta-row,
 .home-hero__stage {
   position: relative;
   z-index: 1;
 }
 
-.home-hero > .lede,
+.home-hero__points,
 .home-hero > .cta-row,
 .home-hero__stage {
   padding-inline: 1.25rem;
@@ -2628,11 +2628,19 @@ dd {
 .home-hero__memphis .cl-hint {
   display: none;
 }
-.home-hero > .lede {
-  max-width: 36rem;
-  margin: 0.7rem 0 0;
-  font-size: 0.92rem;
-  line-height: 1.5;
+.home-hero__points {
+  display: grid;
+  gap: 0.85rem;
+  max-width: 44rem;
+  margin: 1rem 0 0;
+}
+.home-hero__points p {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.12rem, 2.1vw, 1.38rem);
+  font-weight: 750;
+  line-height: 1.4;
+  letter-spacing: -0.015em;
 }
 .home-hero > .cta-row {
   margin-top: 1rem;

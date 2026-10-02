@@ -57,7 +57,11 @@ export const en = {
   "home.metaDesc":
     "The Digital 26 trains students in vibe coding, ships clean fast websites, and issues a public studio certificate. Extra class certs include Anthropic and freeCodeCamp.",
   "home.lede":
-    "We train students in vibe coding, ship clean fast websites, and lock in a public studio certificate. In class you also earn extra certs from tracks like Anthropic and freeCodeCamp.",
+    "We train students in vibe coding with a public studio certificate. We also build clean, fast websites for clients.",
+  "home.ledeTrain":
+    "We train students in vibe coding. They earn a public Digital 26 certificate, plus extra class certificates from Anthropic and freeCodeCamp.",
+  "home.ledeBuild":
+    "We build clean, fast websites and apps for clients. The pages stay light, the work is checked, and the site can go live in days.",
   "home.applyNow": "Apply now",
   "home.curriculum": "Curriculum",
   "home.quiz": "Daily quiz",
@@ -84,7 +88,7 @@ export const en = {
     "Tracks of 3, 4, 5, or 6 months cover vibe coding, prompt engineering, web development, and deploy. Online or in-person, with a publicly verifiable certificate. Read the curriculum paper for the month-by-month plan.",
   "home.f6.title": "How Google Sign-In is Used",
   "home.f6.body":
-    "Students and admins sign in with Google so we can verify identity, manage applications, track attendance, and enable communication - without storing passwords.",
+    "Students sign in with Google so we can verify identity, manage applications, track attendance, and enable communication - without storing passwords.",
   "home.ready": "Ready to start?",
   "home.readyBody":
     "Apply for the Vibe Coding programme, hire us to build your system, or explore our public verification tools.",

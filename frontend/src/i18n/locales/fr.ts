@@ -56,7 +56,11 @@ export const fr: Record<MessageKey, string> = {
   "home.metaDesc":
     "The Digital 26 forme au vibe coding, livre des sites propres et rapides, et délivre un certificat public. Certificats extra en classe : Anthropic, freeCodeCamp.",
   "home.lede":
-    "Nous formons au vibe coding, livrons des sites propres et rapides, et verrouillons un certificat studio public. En classe, vous gagnez aussi des certificats Anthropic, freeCodeCamp, et similaires.",
+    "Nous formons au vibe coding avec un certificat studio public. Nous construisons aussi des sites propres et rapides.",
+  "home.ledeTrain":
+    "Nous formons les étudiants au vibe coding. Ils obtiennent un certificat Digital 26 public, plus des certificats Anthropic et freeCodeCamp en classe.",
+  "home.ledeBuild":
+    "Nous construisons des sites et apps propres et rapides pour les clients. Pages légères, travail vérifié, mise en ligne en quelques jours.",
   "home.applyNow": "Postuler",
   "home.curriculum": "Programme",
   "home.quiz": "Quiz du jour",
@@ -83,7 +87,7 @@ export const fr: Record<MessageKey, string> = {
     "Parcours de 3, 4, 5 ou 6 mois : vibe coding, prompts, web et déploiement. En ligne ou en présentiel, certificats vérifiables. Le programme public détaille chaque mois.",
   "home.f6.title": "Utilisation de la connexion Google",
   "home.f6.body":
-    "Étudiants et administrateurs se connectent avec Google pour vérifier l’identité, gérer les candidatures, suivre la présence et communiquer - sans stocker de mots de passe.",
+    "Les étudiants se connectent avec Google pour vérifier l’identité, gérer les candidatures, suivre la présence et communiquer - sans stocker de mots de passe.",
   "home.ready": "Prêt à commencer ?",
   "home.readyBody":
     "Postulez au programme Vibe Coding, confiez-nous votre système, ou explorez nos outils de vérification publics.",

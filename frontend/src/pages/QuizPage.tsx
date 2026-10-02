@@ -118,22 +118,18 @@ export function QuizPage() {
             title={t("quiz.shuffle")}
           >
             <svg
-              width="20"
-              height="20"
+              width="22"
+              height="22"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.8"
+              strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden
             >
-              <path d="M16 3h5v5" />
-              <path d="m21 3-8 8" />
-              <path d="M4 20 10 14" />
-              <path d="M16 21h5v-5" />
-              <path d="m21 21-6-6" />
-              <path d="M4 4 8 8" />
+              <path d="M21 12a9 9 0 1 1-3.1-6.7" />
+              <path d="M21 3v6h-6" />
             </svg>
           </button>
         )}

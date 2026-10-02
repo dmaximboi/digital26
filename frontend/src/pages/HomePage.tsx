@@ -72,7 +72,6 @@ export function HomePage() {
           Digital26
         </p>
         <div className="home-hero__headline">
-          <p className="home-kicker">{t("home.heroKicker")}</p>
           <h1>
             {t("home.heroTitle")}
             <br />
@@ -82,7 +81,10 @@ export function HomePage() {
             <CodingLaptop />
           </div>
         </div>
-        <p className="lede">{t("home.lede")}</p>
+        <div className="home-hero__points">
+          <p>{t("home.ledeTrain")}</p>
+          <p>{t("home.ledeBuild")}</p>
+        </div>
         <div className="cta-row">
           <Link className="btn primary" to="/apply">
             {t("home.applyNow")}
