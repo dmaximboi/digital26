@@ -8,7 +8,7 @@ export function AboutPage() {
     setPageMeta({
       title: "About Us",
       description:
-        "The Digital 26 is the first and best Vibe Coding studio in the world. We build secure systems in days, train students, and deliver faster and cheaper than freelancers. Available worldwide. RC - 9710046.",
+        "The Digital 26 is a vibe coding studio. We build websites and apps, train students, and issue public certificates. Available worldwide. RC - 9710046.",
       path: "/about",
     });
     setJsonLd("d26-jsonld-about", {
@@ -17,7 +17,7 @@ export function AboutPage() {
       name: "About The Digital 26",
       url: siteUrl("/about"),
       description:
-        "The first and best Vibe Coding studio. We build secure websites and apps in days, train students in 5 or 6 months, and deliver worldwide.",
+        "The Digital 26 is a vibe coding studio. We build websites and apps, train students, and deliver worldwide.",
       mainEntity: {
         "@type": "Organization",
         name: "The Digital 26",
@@ -37,10 +37,8 @@ export function AboutPage() {
       <DocBrandHeader title="About Us" />
 
       <p className="about-lead">
-        The Digital 26 is the first and best Vibe Coding studio in the world. We build secure
-        websites and apps in just days, train students in vibe coding on a flexible schedule,
-        and deliver faster and cheaper than any freelancing platform. We are always available
-        for work worldwide.
+        The Digital 26 is a vibe coding studio. We build websites and apps, train students
+        on a flexible schedule, and take client work worldwide.
       </p>
 
       <div className="about-grid">

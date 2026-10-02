@@ -52,7 +52,7 @@ export const ar: Record<MessageKey, string> = {
   "footer.tagline": "Be Vibed, Be Digital · استوديو Vibe Coding",
   "footer.copy": "© {{year}} The Digital 26 by Maxim",
 
-  "home.metaTitle": "أفضل استوديو Vibe Coding",
+  "home.metaTitle": "استوديو Vibe Coding",
   "home.metaDesc":
     "The Digital 26 يدرّب على vibe coding، يبني مواقع نظيفة وسريعة، ويصدر شهادة استوديو عامة. شهادات إضافية من Anthropic وfreeCodeCamp.",
   "home.lede":
@@ -90,9 +90,9 @@ export const ar: Record<MessageKey, string> = {
   "home.signInGoogle": "تسجيل الدخول عبر Google",
   "home.hireUs": "وظّفنا",
   "home.learnMore": "اعرف المزيد",
-  "home.heroKicker": "أول استوديو vibe coding في العالم",
+  "home.heroKicker": "استوديو وصف دراسي",
   "home.rc": "RC - 9710046",
-  "home.heroTitle": "الأول والأفضل في العالم",
+  "home.heroTitle": "The Digital 26",
   "home.heroAccent": "استوديو Vibe Coding",
   "home.velocity": "سرعة التسليم",
   "home.velocityValue": "3 - 5 أيام",

@@ -52,7 +52,7 @@ export const fr: Record<MessageKey, string> = {
   "footer.tagline": "Be Vibed, Be Digital · Studio Vibe Coding",
   "footer.copy": "© {{year}} The Digital 26 by Maxim",
 
-  "home.metaTitle": "Meilleur studio Vibe Coding",
+  "home.metaTitle": "Studio Vibe Coding",
   "home.metaDesc":
     "The Digital 26 forme au vibe coding, livre des sites propres et rapides, et délivre un certificat public. Certificats extra en classe : Anthropic, freeCodeCamp.",
   "home.lede":
@@ -90,10 +90,10 @@ export const fr: Record<MessageKey, string> = {
   "home.signInGoogle": "Se connecter avec Google",
   "home.hireUs": "Nous embaucher",
   "home.learnMore": "En savoir plus",
-  "home.heroKicker": "Premier studio vibe coding au monde",
+  "home.heroKicker": "Studio et salle de classe",
   "home.rc": "RC - 9710046",
-  "home.heroTitle": "Le premier et le meilleur",
-  "home.heroAccent": "Studio Vibe Coding",
+  "home.heroTitle": "The Digital 26",
+  "home.heroAccent": "Studio vibe coding",
   "home.velocity": "Vitesse de livraison",
   "home.velocityValue": "3 - 5 jours",
   "home.velocityStatus": "Sprints actifs dans le monde",

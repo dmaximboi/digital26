@@ -53,7 +53,7 @@ export const en = {
   "footer.copy": "© {{year}} The Digital 26 by Maxim",
 
   // home
-  "home.metaTitle": "Best Vibe Coding Studio",
+  "home.metaTitle": "Vibe Coding Studio",
   "home.metaDesc":
     "The Digital 26 trains students in vibe coding, ships clean fast websites, and issues a public studio certificate. Extra class certs include Anthropic and freeCodeCamp.",
   "home.lede":
@@ -91,10 +91,10 @@ export const en = {
   "home.signInGoogle": "Sign in with Google",
   "home.hireUs": "Hire us",
   "home.learnMore": "Learn more",
-  "home.heroKicker": "World's first vibe coding studio",
+  "home.heroKicker": "Studio and classroom",
   "home.rc": "RC - 9710046",
-  "home.heroTitle": "The world's first and best",
-  "home.heroAccent": "Vibe Coding Studio",
+  "home.heroTitle": "The Digital 26",
+  "home.heroAccent": "Vibe coding studio",
   "home.velocity": "Deployment velocity",
   "home.velocityValue": "3 - 5 days",
   "home.velocityStatus": "Active sprints worldwide",

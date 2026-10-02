@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 
 const SPLASH_KEY = "d26_splash_seen";
 const DURATION_MS = 3200;
-const HEADLINE = "The world's first and best";
+const HEADLINE = "The Digital 26";
 
 const PHASES = [
   { until: 22, label: "Sketching the frame" },

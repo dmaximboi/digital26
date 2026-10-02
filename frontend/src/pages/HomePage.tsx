@@ -72,6 +72,7 @@ export function HomePage() {
           Digital26
         </p>
         <div className="home-hero__headline">
+          <p className="home-kicker">{t("home.heroKicker")}</p>
           <h1>
             {t("home.heroTitle")}
             <br />

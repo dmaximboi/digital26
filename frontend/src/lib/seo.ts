@@ -3,7 +3,7 @@ const SITE = (
 ).replace(/\/$/, "");
 
 const DEFAULT_DESC =
-  "The Digital 26 is the first and best Vibe Coding studio in the world. We build secure websites and apps in days, train students in 5 or 6 months, and deliver faster and cheaper than any freelancing platform. Available worldwide. RC - 9710046.";
+  "The Digital 26 is a vibe coding studio. We build secure websites and apps, train students, and issue public certificates. Available worldwide. RC - 9710046.";
 
 export function siteUrl(path = "/"): string {
   if (!path || path === "/") return `${SITE}/`;
@@ -19,7 +19,7 @@ export function setPageMeta(opts: {
 }): void {
   const title = opts.title
     ? `${opts.title} · The Digital 26`
-    : "The Digital 26 · Best Vibe Coding Studio";
+    : "The Digital 26 · Vibe Coding Studio";
   const description = opts.description || DEFAULT_DESC;
   const url = siteUrl(opts.path || "/");
   const image = opts.image?.startsWith("http")
@@ -163,7 +163,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
           name: "What is The Digital 26?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "The Digital 26 is the first and best Vibe Coding studio in the world, led by Adewuyi Ayuba (Maxim). We build secure websites and apps in days, train students in vibe coding, and deliver faster and cheaper than any freelancing platform. RC - 9710046.",
+            text: "The Digital 26 is a vibe coding studio led by Adewuyi Ayuba (Maxim). We build websites and apps, train students, and issue public certificates. RC - 9710046.",
           },
         },
         {
@@ -187,7 +187,7 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
           name: "Why choose The Digital 26 for Vibe Coding?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "We are the first and best of our kind. We build any system (payment, tracking, order management, mapping, and 50+ more) faster and cheaper than any freelancing platform. Senior engineers review every codebase. We are always available worldwide and deliver in days.",
+            text: "The Digital 26 builds payment, tracking, order, mapping, and other production systems, and trains students in vibe coding. Senior engineers review the work. RC - 9710046.",
           },
         },
         {
