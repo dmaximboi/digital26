@@ -18,10 +18,19 @@ export default defineConfig({
         "robots.txt",
         "sitemap.xml",
         "llms.txt",
+        "dictionary.md",
+        "glossary.html",
       ],
       manifest: false,
       workbox: {
         navigateFallback: "/index.html",
+        navigateFallbackDenylist: [
+          /^\/robots\.txt$/,
+          /^\/sitemap\.xml$/,
+          /^\/llms\.txt$/,
+          /^\/dictionary\.md$/,
+          /^\/glossary\.html$/,
+        ],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
         runtimeCaching: [
           {

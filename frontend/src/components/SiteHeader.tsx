@@ -17,6 +17,7 @@ export function SiteHeader() {
           <Link to="/contact">{t("nav.services")}</Link>
           <Link to="/verify">{t("nav.verify")}</Link>
           <Link to="/news">{t("footer.news")}</Link>
+          <Link to="/dictionary">{t("nav.dictionary")}</Link>
         </nav>
         <div className="site-header__tools">
           <LanguageToggle variant="header" />

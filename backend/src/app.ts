@@ -13,6 +13,7 @@ import { studentsRouter } from "./routes/students.js";
 import { bachsWebhookHandler, paymentsRouter } from "./routes/payments.js";
 import { libraryRouter } from "./routes/library.js";
 import { quizRouter } from "./routes/quiz.js";
+import { dictionaryRouter } from "./routes/dictionary.js";
 
 export function createApp() {
   const app = express();
@@ -51,6 +52,7 @@ export function createApp() {
   app.use("/api", paymentsRouter);
   app.use("/api", libraryRouter);
   app.use("/api", quizRouter);
+  app.use("/api", dictionaryRouter);
   app.use("/api", studentsRouter);
   app.use("/api", agreementsRouter);
   app.use("/api", certificatesRouter);

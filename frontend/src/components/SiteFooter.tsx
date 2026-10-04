@@ -29,6 +29,7 @@ export function SiteFooter() {
             <Link to="/curriculum">{t("footer.vibeTrack")}</Link>
             <Link to="/curriculum">{t("footer.curriculum")}</Link>
             <Link to="/quiz">{t("footer.quiz")}</Link>
+            <Link to="/dictionary">{t("nav.dictionary")}</Link>
             <Link to="/verify">{t("footer.certificates")}</Link>
           </nav>
           <nav className="footer-nav" aria-label={t("footer.studio")}>

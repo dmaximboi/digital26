@@ -118,6 +118,24 @@ export function ApplyPage() {
       {error && <p className="form-error" role="alert">{error}</p>}
 
       <form className="apply-form" onSubmit={handleSubmit}>
+        <div className="apply-photo">
+          <label className="apply-photo__card">
+            <input type="file" accept="image/*" onChange={handlePhoto} required />
+            {photoPreview ? (
+              <img src={photoPreview} alt="" />
+            ) : (
+              <span className="apply-photo__empty" aria-hidden>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7">
+                  <circle cx="12" cy="8" r="3.2" />
+                  <path d="M5 19.2c1.6-3.2 3.8-4.7 7-4.7s5.4 1.5 7 4.7" />
+                </svg>
+              </span>
+            )}
+            <span className="apply-photo__cta">{photoPreview ? t("apply.photoChange") : t("apply.photo")}</span>
+          </label>
+          <p className="form-hint">{t("apply.photoHint")}</p>
+        </div>
+
         <div className="form-row">
           <label className="form-label">
             {t("apply.email")}
@@ -244,19 +262,6 @@ export function ApplyPage() {
             </div>
           </label>
         </fieldset>
-
-        <div className="form-row">
-          <label className="form-label">
-            {t("apply.photo")} *
-            <p className="form-hint">{t("apply.photoHint")}</p>
-            <input type="file" accept="image/*" onChange={handlePhoto} className="form-input" required />
-          </label>
-          {photoPreview && (
-            <div className="photo-preview">
-              <img src={photoPreview} alt="Preview" />
-            </div>
-          )}
-        </div>
 
         <button type="submit" className="btn primary" disabled={busy}>
           {busy ? t("apply.submitting") : t("apply.submit")}

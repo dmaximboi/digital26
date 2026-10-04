@@ -10,12 +10,17 @@ export function siteUrl(path = "/"): string {
   return `${SITE}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
+const DEFAULT_KEYWORDS =
+  "vibe coding, low code, web development, digital26, Adewuyi Ayuba, Maxim, coding studio, verifiable certificate, Nigeria tech education, freelancer alternative, build apps fast, secure web development, payment system, tracking dashboard, worldwide";
+
 export function setPageMeta(opts: {
   title?: string;
   description?: string;
   path?: string;
   image?: string;
   type?: string;
+  keywords?: string;
+  robots?: string;
 }): void {
   const title = opts.title
     ? `${opts.title} · The Digital 26`
@@ -29,11 +34,8 @@ export function setPageMeta(opts: {
   document.title = title;
   upsertMeta("name", "description", description);
   upsertMeta("name", "theme-color", "#ff9e00");
-  upsertMeta(
-    "name",
-    "keywords",
-    "vibe coding, low code, web development, digital26, Adewuyi Ayuba, Maxim, coding studio, verifiable certificate, Nigeria tech education, freelancer alternative, build apps fast, secure web development, payment system, tracking dashboard, worldwide",
-  );
+  upsertMeta("name", "keywords", opts.keywords || DEFAULT_KEYWORDS);
+  upsertMeta("name", "robots", opts.robots || "index,follow,max-image-preview:large");
   upsertLink("canonical", url);
 
   upsertMeta("property", "og:type", opts.type || "website");
@@ -88,6 +90,9 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
       knowsAbout: [
         "Vibe Coding",
         "Low-code web development",
+        "Tech dictionary",
+        "Programming glossary",
+        "Software terminology",
         "Payment systems",
         "Tracking dashboards",
         "Order management",
@@ -105,11 +110,26 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
       url: siteUrl("/"),
       description: DEFAULT_DESC,
       inLanguage: "en",
-      potentialAction: {
-        "@type": "SearchAction",
-        target: `${siteUrl("/verify")}?q={search_term_string}`,
-        "query-input": "required name=search_term_string",
-      },
+      potentialAction: [
+        {
+          "@type": "SearchAction",
+          name: "Look up a tech term",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${siteUrl("/dictionary")}?q={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
+        {
+          "@type": "SearchAction",
+          name: "Verify a certificate",
+          target: {
+            "@type": "EntryPoint",
+            urlTemplate: `${siteUrl("/verify")}?q={search_term_string}`,
+          },
+          "query-input": "required name=search_term_string",
+        },
+      ],
     },
     {
       "@context": "https://schema.org",
@@ -158,6 +178,14 @@ export function orgWebsiteJsonLd(): Record<string, unknown>[] {
       "@context": "https://schema.org",
       "@type": "FAQPage",
       mainEntity: [
+        {
+          "@type": "Question",
+          name: "Where can I look up tech terms or a programming dictionary?",
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: "Use the public Digital 26 tech dictionary at digital26.online/dictionary. It is free to read. Search Git, GitHub, HTTP, JavaScript, CSS, security, and studio terms. No account is required.",
+          },
+        },
         {
           "@type": "Question",
           name: "What is The Digital 26?",

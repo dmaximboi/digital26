@@ -1750,6 +1750,60 @@ dd {
   border: 0;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
 }
+.apply-photo {
+  display: grid;
+  justify-items: center;
+  gap: 0.55rem;
+  margin: -0.35rem 0 0.4rem;
+}
+.apply-photo__card {
+  position: relative;
+  width: 8.5rem;
+  height: 8.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 88%, var(--accent));
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow:
+    0 0 0 3px var(--bg0),
+    0 0 0 5px var(--accent),
+    0 14px 32px rgba(0, 0, 0, 0.32);
+}
+.apply-photo__card input {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0;
+  cursor: pointer;
+}
+.apply-photo__card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.apply-photo__empty {
+  color: var(--muted);
+}
+.apply-photo__cta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  padding: 0.5rem 0.3rem 0.6rem;
+  background: linear-gradient(180deg, transparent, rgba(8, 8, 10, 0.9));
+  color: var(--ink);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-align: center;
+}
+.apply-photo .form-hint {
+  margin: 0;
+  text-align: center;
+  max-width: 22rem;
+}
 
 .studio-page .home-kicker { margin-bottom: 0.4rem; }
 
@@ -3683,6 +3737,167 @@ dd {
 .bottom-nav__backdrop,
 .bottom-nav__sheet {
   transform: none !important;
+}
+.bottom-nav__backdrop {
+  z-index: 1050;
+}
+.bottom-nav__apps {
+  position: fixed;
+  left: 0.75rem;
+  right: 0.75rem;
+  bottom: calc(4.7rem + env(safe-area-inset-bottom));
+  z-index: 1100;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border-radius: 1.1rem;
+  border: 1px solid rgba(245, 166, 35, 0.28);
+  background: #161518;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+.bottom-nav__app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 5.4rem;
+  padding: 0.7rem 0.4rem;
+  border-radius: 0.95rem;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+.bottom-nav__app svg {
+  width: 26px;
+  height: 26px;
+}
+.bottom-nav__app.is-active {
+  color: var(--accent-ink);
+  background: var(--accent);
+}
+
+.dict-page { max-width: 58rem; margin: 0 auto; }
+.dict-shell {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  gap: 1rem 1.15rem;
+  align-items: start;
+}
+.dict-az {
+  position: sticky;
+  top: 5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  max-height: calc(100dvh - 8rem);
+  overflow: auto;
+  padding-right: 0.1rem;
+}
+.dict-az button:first-child {
+  min-width: 2.35rem;
+  font-size: 0.62rem;
+}
+.dict-az button {
+  min-width: 1.7rem;
+  height: 1.55rem;
+  border: 0;
+  border-radius: 0.35rem;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.dict-az button.is-active,
+.dict-az button:hover {
+  background: var(--surface);
+  color: var(--accent);
+}
+.dict-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.dict-head h1 { margin-bottom: 0.35rem; }
+.dict-head .lede {
+  margin: 0;
+  max-width: 28rem;
+  font-size: 1rem;
+  font-weight: 500;
+}
+.dict-pack-toggle { flex: 0 0 auto; margin-top: 0.35rem; }
+.dict-pack {
+  margin: 0.85rem 0 0;
+  padding: 0.7rem 0.85rem;
+  border-radius: 0.85rem;
+  background: var(--surface);
+}
+.dict-pay {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+.dict-pay .form-input { flex: 1 1 12rem; padding: 0.55rem 0.75rem; }
+.dict-toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+  margin: 1.1rem 0 0.55rem;
+}
+.dict-search { min-width: 0; }
+.dict-shuffle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.dict-count { margin: 0 0 0.35rem; }
+.dict-list { margin: 0; }
+.dict-entry {
+  padding: 1.05rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.dict-entry dt {
+  margin: 0 0 0.3rem;
+  font-family: var(--font-display);
+  font-size: 1.28rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+.dict-entry dt span {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 550;
+}
+.dict-entry dd { margin: 0; }
+.dict-cat {
+  margin: 0 0 0.4rem;
+  color: var(--accent);
+  font-size: var(--fs-kicker);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.dict-entry dd p:last-child {
+  margin: 0;
+  line-height: 1.65;
+}
+@media (max-width: 720px) {
+  .dict-shell { grid-template-columns: 1fr; }
+  .dict-az {
+    position: static;
+    flex-direction: row;
+    flex-wrap: wrap;
+    max-height: none;
+    gap: 0.28rem;
+  }
+  .dict-toolbar { grid-template-columns: 1fr; }
 }
 
 @media (min-width: 1100px) {

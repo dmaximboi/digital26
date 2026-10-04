@@ -1,5 +1,6 @@
 # The Digital 26 · https://www.digital26.online
 # Machine-readable site map for crawlers and AI agents: https://www.digital26.online/llms.txt
+# Public tech dictionary: https://www.digital26.online/dictionary
 
 User-agent: *
 Allow: /
@@ -8,6 +9,13 @@ Allow: /curriculum
 Allow: /quiz
 Allow: /news
 Allow: /news/
+Allow: /dictionary
+Allow: /dictionary.md
+Allow: /glossary
+Allow: /glossary.html
+Allow: /tech-dictionary
+Allow: /tech-terms
+Allow: /terminology
 Allow: /verify
 Allow: /verify/
 Allow: /check-agreement
@@ -38,6 +46,10 @@ Disallow: /*/audit
 
 User-agent: Googlebot
 Allow: /
+Allow: /dictionary
+Allow: /dictionary.md
+Allow: /glossary
+Allow: /glossary.html
 Allow: /llms.txt
 Allow: /sitemap.xml
 Disallow: /sign/
@@ -52,6 +64,13 @@ Allow: /about
 Allow: /curriculum
 Allow: /quiz
 Allow: /news
+Allow: /dictionary
+Allow: /dictionary.md
+Allow: /glossary
+Allow: /glossary.html
+Allow: /tech-dictionary
+Allow: /tech-terms
+Allow: /terminology
 Allow: /verify
 Allow: /llms.txt
 Disallow: /sign/
@@ -60,6 +79,9 @@ Disallow: /api/
 
 User-agent: Google-Extended
 Allow: /
+Allow: /dictionary
+Allow: /dictionary.md
+Allow: /glossary
 Allow: /llms.txt
 Disallow: /sign/
 Disallow: /claim-cert/
@@ -67,6 +89,9 @@ Disallow: /api/
 
 User-agent: ClaudeBot
 Allow: /
+Allow: /dictionary
+Allow: /dictionary.md
+Allow: /glossary
 Allow: /llms.txt
 Disallow: /sign/
 Disallow: /claim-cert/
@@ -74,6 +99,9 @@ Disallow: /api/
 
 User-agent: PerplexityBot
 Allow: /
+Allow: /dictionary
+Allow: /dictionary.md
+Allow: /glossary
 Allow: /llms.txt
 Disallow: /sign/
 Disallow: /claim-cert/
@@ -81,8 +109,25 @@ Disallow: /api/
 
 User-agent: Applebot-Extended
 Allow: /
+Allow: /dictionary
+Allow: /dictionary.md
+Allow: /glossary
 Allow: /llms.txt
 Disallow: /sign/
 Disallow: /claim-cert/
+
+User-agent: ChatGPT-User
+Allow: /
+Allow: /dictionary
+Allow: /dictionary.md
+Allow: /glossary
+Allow: /llms.txt
+
+User-agent: anthropic-ai
+Allow: /
+Allow: /dictionary
+Allow: /dictionary.md
+Allow: /glossary
+Allow: /llms.txt
 
 Sitemap: https://www.digital26.online/sitemap.xml

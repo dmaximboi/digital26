@@ -16,8 +16,6 @@ type Tab = {
 
 const PUBLIC_TABS: Tab[] = [
   { to: "/", icon: "Home", labelKey: "nav.home", end: true },
-  { to: "/quiz", icon: "Quiz", labelKey: "nav.quiz" },
-  { to: "/news", icon: "News", labelKey: "nav.news", match: (p) => p.startsWith("/news") },
   { to: "/verify", icon: "Verify", labelKey: "nav.verify", match: (p) => p.startsWith("/verify") },
   {
     to: "/check-agreement",
@@ -26,6 +24,12 @@ const PUBLIC_TABS: Tab[] = [
     match: (p) => p.startsWith("/check-agreement") || p.startsWith("/a/"),
   },
   { to: "/contact", icon: "Contact", labelKey: "nav.contact" },
+];
+
+const APP_ITEMS = [
+  { to: "/quiz", icon: "Quiz", labelKey: "apps.quiz" as const },
+  { to: "/news", icon: "News", labelKey: "apps.news" as const },
+  { to: "/dictionary", icon: "Dictionary", labelKey: "apps.dictionary" as const },
 ];
 
 const STUDENT_TABS: Tab[] = [
@@ -175,6 +179,22 @@ function TabIcon({ name }: { name: string }) {
           <path d="M4 7h16M4 12h16M4 17h16" />
         </svg>
       );
+    case "Apps":
+      return (
+        <svg {...common} strokeWidth="1.7">
+          <rect x="3.2" y="3.2" width="7.4" height="7.4" rx="1.7" />
+          <rect x="13.4" y="3.2" width="7.4" height="7.4" rx="1.7" />
+          <rect x="3.2" y="13.4" width="7.4" height="7.4" rx="1.7" />
+          <rect x="13.4" y="13.4" width="7.4" height="7.4" rx="1.7" />
+        </svg>
+      );
+    case "Dictionary":
+      return (
+        <svg {...common}>
+          <path d="M5 4.5h10.5A3.5 3.5 0 0 1 19 8v11.5H8.2A3.2 3.2 0 0 1 5 16.3V4.5z" />
+          <path d="M8.5 8.5h7M8.5 12h5" />
+        </svg>
+      );
     default:
       return (
         <svg {...common}>
@@ -215,10 +235,23 @@ function PublicBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const t = useT();
+  const [appsOpen, setAppsOpen] = useState(false);
   const isAdmin = user?.role === "ADMIN" || user?.role === "READONLY";
   const isStudent = user?.role === "STUDENT" && user.hasProfile;
   const onStudentArea =
     location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/apply");
+  const appsActive =
+    location.pathname.startsWith("/quiz") ||
+    location.pathname.startsWith("/news") ||
+    location.pathname.startsWith("/dictionary") ||
+    location.pathname === "/glossary" ||
+    location.pathname === "/tech-dictionary" ||
+    location.pathname === "/tech-terms" ||
+    location.pathname === "/terminology";
+
+  useEffect(() => {
+    setAppsOpen(false);
+  }, [location.pathname]);
 
   if (!loading && isStudent && onStudentArea) {
     return (
@@ -244,8 +277,32 @@ function PublicBottomNav() {
   }
 
   return (
+    <>
     <nav className="bottom-nav" aria-label="Primary">
-      {PUBLIC_TABS.map((tab) => (
+      {PUBLIC_TABS.slice(0, 1).map((tab) => (
+        <NavLink
+          key={tab.to}
+          to={tab.to}
+          end={tab.end}
+          className={() =>
+            isActiveTab(tab, location.pathname) ? "bottom-nav__item is-active" : "bottom-nav__item"
+          }
+        >
+          <TabIcon name={tab.icon} />
+          <span>{t(tab.labelKey)}</span>
+        </NavLink>
+      ))}
+      <button
+        type="button"
+        className={appsOpen || appsActive ? "bottom-nav__item is-active" : "bottom-nav__item"}
+        aria-expanded={appsOpen}
+        aria-haspopup="dialog"
+        onClick={() => setAppsOpen((v) => !v)}
+      >
+        <TabIcon name="Apps" />
+        <span>{t("nav.apps")}</span>
+      </button>
+      {PUBLIC_TABS.slice(1).map((tab) => (
         <NavLink
           key={tab.to}
           to={tab.to}
@@ -296,6 +353,34 @@ function PublicBottomNav() {
         </NavLink>
       )}
     </nav>
+      {appsOpen && (
+        <>
+          <button
+            type="button"
+            className="bottom-nav__backdrop"
+            aria-label={t("common.closeMenu")}
+            onClick={() => setAppsOpen(false)}
+          />
+          <div className="bottom-nav__apps" role="dialog" aria-label={t("apps.title")}>
+            {APP_ITEMS.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={() =>
+                  location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)
+                    ? "bottom-nav__app is-active"
+                    : "bottom-nav__app"
+                }
+                onClick={() => setAppsOpen(false)}
+              >
+                <TabIcon name={item.icon} />
+                <span>{t(item.labelKey)}</span>
+              </NavLink>
+            ))}
+          </div>
+        </>
+      )}
+    </>
   );
 }
 

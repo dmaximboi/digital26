@@ -16,6 +16,7 @@ import { AboutPage } from "./pages/AboutPage";
 import { CurriculumPage } from "./pages/CurriculumPage";
 import { QuizPage } from "./pages/QuizPage";
 import { NewsPage } from "./pages/NewsPage";
+import { DictionaryPage } from "./pages/DictionaryPage";
 import { AgreementPublicPage } from "./pages/AgreementPublicPage";
 import { SignPage } from "./pages/SignPage";
 import { ClaimCertPage } from "./pages/ClaimCertPage";
@@ -57,6 +58,11 @@ function AppRoutes() {
       <Route path="/quiz" element={<QuizPage />} />
       <Route path="/news" element={<NewsPage />} />
       <Route path="/news/:id" element={<NewsPage />} />
+      <Route path="/dictionary" element={<DictionaryPage />} />
+      <Route path="/glossary" element={<DictionaryPage />} />
+      <Route path="/tech-dictionary" element={<DictionaryPage />} />
+      <Route path="/tech-terms" element={<DictionaryPage />} />
+      <Route path="/terminology" element={<DictionaryPage />} />
       <Route path="/verify" element={<VerifyPage />} />
       <Route path="/verify/:publicId" element={<StudentRecordPage />} />
       <Route path="/check-agreement" element={<CheckAgreementPage />} />

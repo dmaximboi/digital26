@@ -17,6 +17,25 @@ export const PAYMENT_AMOUNTS_USD: Record<PaymentKind, string> = {
   LIBRARY: "0.00", // actual amount stored per order from LibraryItem.priceUsd
 };
 
+export const DICTIONARY_PACK_PUBLIC_ID = "D26DICTPACK";
+export const DICTIONARY_PACK_AMOUNT_USD = "1.00";
+
+async function catalogAmountUsd(order: {
+  kind: PaymentKind;
+  publicId: string | null;
+}): Promise<string | null> {
+  if (order.kind === PaymentKind.LIBRARY) {
+    if (order.publicId === DICTIONARY_PACK_PUBLIC_ID) return DICTIONARY_PACK_AMOUNT_USD;
+    if (!order.publicId) return null;
+    const item = await prisma.libraryItem.findUnique({
+      where: { id: order.publicId },
+      select: { priceUsd: true },
+    });
+    return item?.priceUsd?.trim() || null;
+  }
+  return PAYMENT_AMOUNTS_USD[order.kind];
+}
+
 export function paymentLabel(kind: PaymentKind): string {
   if (kind === "REGISTRATION") return "Student registration fee";
   if (kind === "CERTIFICATE") return "Certificate download";
@@ -254,6 +273,18 @@ export async function verifyAndFulfillOrder(opts: {
     return { ok: true, orderId: order.id, reason: "already_paid" };
   }
 
+  const catalog = await catalogAmountUsd(order);
+  if (!catalog || !moneyEqual(order.amountUsd, catalog)) {
+    console.error("[payments.verify] catalog amount mismatch", {
+      orderId: order.id,
+      kind: order.kind,
+      publicId: order.publicId,
+      stored: order.amountUsd,
+      catalog,
+    });
+    return { ok: false, orderId: order.id, reason: "catalog_amount_mismatch" };
+  }
+
   const checkoutId = opts.checkoutId || order.checkoutId;
   if (!checkoutId && !opts.chargeId) {
     return { ok: false, orderId: order.id, reason: "missing_checkout_or_charge" };
@@ -309,13 +340,20 @@ export async function verifyAndFulfillOrder(opts: {
     if (remote.checkout_id && order.checkoutId && remote.checkout_id !== order.checkoutId) {
       return { ok: false, orderId: order.id, reason: "checkout_id_mismatch" };
     }
+    if (remote.metadata?.order_id && remote.metadata.order_id !== order.id) {
+      return { ok: false, orderId: order.id, reason: "order_id_mismatch" };
+    }
+    if (remote.metadata?.public_id && order.publicId && remote.metadata.public_id !== order.publicId) {
+      return { ok: false, orderId: order.id, reason: "public_id_mismatch" };
+    }
 
     const remoteCurrency = String(remote.currency || "USD").toUpperCase();
     const expectedCurrency = String(order.currency || "USD").toUpperCase();
     if (remote.amount && remoteCurrency === expectedCurrency) {
-      if (!moneyEqual(remote.amount, order.amountUsd)) {
+      if (!moneyEqual(remote.amount, order.amountUsd) || !moneyEqual(remote.amount, catalog)) {
         console.error("[payments.verify] amount mismatch", {
           expected: order.amountUsd,
+          catalog,
           got: remote.amount,
           currency: remoteCurrency,
           orderId: order.id,

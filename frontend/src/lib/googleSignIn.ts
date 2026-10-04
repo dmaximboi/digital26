@@ -78,7 +78,7 @@ export function loadGsiScript(): Promise<GsiId> {
   if (existing) return Promise.resolve(existing);
   if (gsiPromise) return gsiPromise;
 
-  gsiPromise = new Promise((resolve, reject) => {
+  gsiPromise = new Promise<GsiId>((resolve, reject) => {
     const finish = (err?: Error) => {
       window.clearTimeout(timer);
       if (err) {
@@ -119,7 +119,7 @@ export function loadGsiScript(): Promise<GsiId> {
     if (!(window as GsiWindow).google?.accounts?.id) gsiPromise = null;
   });
 
-  return gsiPromise;
+  return gsiPromise ?? Promise.reject(new Error("Google Sign-In failed to load"));
 }
 
 export async function renderGoogleSignInButton(
