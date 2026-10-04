@@ -212,6 +212,8 @@ export const en = {
   "signin.lede": "Sign in with your Google account to continue.",
   "signin.loadingConfig": "Preparing Google…",
   "signin.configError": "Could not load sign-in configuration",
+  "signin.retryHint": "Google is still opening. You can wait or try again.",
+  "signin.retry": "Try Google again",
   "signin.failed": "Sign-in failed",
 
   // apply

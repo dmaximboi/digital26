@@ -2,21 +2,26 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useT } from "../i18n/LocaleContext";
-import { loadGoogleClientId, loadGsiScript } from "../lib/googleSignIn";
+import { renderGoogleSignInButton } from "../lib/googleSignIn";
 import { setPageMeta } from "../lib/seo";
+
+function sleep(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
 
 export function SignInPage() {
   const t = useT();
   const { user, loading, signIn } = useAuth();
   const navigate = useNavigate();
   const btnRef = useRef<HTMLDivElement>(null);
-  const initedRef = useRef(false);
   const signInRef = useRef(signIn);
   const tRef = useRef(t);
   signInRef.current = signIn;
   tRef.current = t;
   const [error, setError] = useState("");
   const [ready, setReady] = useState(false);
+  const [retryVisible, setRetryVisible] = useState(false);
+  const [mountKey, setMountKey] = useState(0);
 
   useEffect(() => {
     setPageMeta({ title: t("signin.title"), description: t("signin.lede") });
@@ -35,62 +40,46 @@ export function SignInPage() {
 
   useEffect(() => {
     let cancelled = false;
-    initedRef.current = false;
 
     async function mountButton() {
-      try {
-        void loadGsiScript();
-        const clientId = await loadGoogleClientId();
-        if (cancelled) return;
-        if (!clientId) {
-          setError(tRef.current("signin.configError"));
-          setReady(true);
-          return;
-        }
+      setReady(false);
+      setRetryVisible(false);
+      setError("");
 
-        const gsi = await loadGsiScript();
+      const waits = [0, 600, 1400, 2800, 4500];
+      for (const wait of waits) {
         if (cancelled) return;
-        if (!btnRef.current || initedRef.current) {
-          setReady(true);
-          return;
-        }
-
-        initedRef.current = true;
-        gsi.initialize({
-          client_id: clientId,
-          callback: async (response: { credential: string }) => {
+        if (wait) await sleep(wait);
+        try {
+          const ok = await renderGoogleSignInButton(btnRef.current, async (credential) => {
             setError("");
             try {
-              await signInRef.current(response.credential);
+              await signInRef.current(credential);
             } catch (err) {
               setError(err instanceof Error ? err.message : tRef.current("signin.failed"));
             }
-          },
-          ux_mode: "popup",
-        });
-        gsi.renderButton(btnRef.current, {
-          theme: "filled_black",
-          size: "large",
-          width: 320,
-          shape: "pill",
-          text: "signin_with",
-        });
-        setReady(true);
-      } catch {
-        if (!cancelled) {
-          setError(tRef.current("signin.configError"));
-          setReady(true);
+          });
+          if (cancelled) return;
+          if (ok) {
+            setReady(true);
+            return;
+          }
+        } catch {
+          // Keep waiting. Ads traffic should not see a config error flash.
         }
+      }
+
+      if (!cancelled) {
+        setReady(true);
+        setRetryVisible(true);
       }
     }
 
     void mountButton();
     return () => {
       cancelled = true;
-      initedRef.current = false;
-      if (btnRef.current) btnRef.current.innerHTML = "";
     };
-  }, []);
+  }, [mountKey]);
 
   return (
     <section className="panel signin-page studio-page">
@@ -105,12 +94,24 @@ export function SignInPage() {
       )}
 
       <div className="google-btn-slot">
-        {!ready && !error && (
+        {!ready && (
           <p className="muted signin-wait" role="status">
             {t("signin.loadingConfig")}
           </p>
         )}
         <div className="google-btn-wrap" ref={btnRef} />
+        {retryVisible && (
+          <div className="signin-retry">
+            <p className="muted">{t("signin.retryHint")}</p>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setMountKey((n) => n + 1)}
+            >
+              {t("signin.retry")}
+            </button>
+          </div>
+        )}
       </div>
     </section>
   );

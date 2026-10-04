@@ -83,11 +83,17 @@ studentsRouter.post(
   },
 );
 
+const optionalText = (min: number, max: number) =>
+  z.preprocess(
+    (value) => (typeof value === "string" && value.trim() === "" ? undefined : value),
+    z.string().min(min).max(max).optional(),
+  );
+
 const applySchema = z.object({
   fullName: z.string().min(2).max(120),
   phone: z.string().min(5).max(32),
-  parentPhone: z.string().min(5).max(32).optional(),
-  address: z.string().min(5).max(500).optional(),
+  parentPhone: optionalText(5, 32),
+  address: optionalText(5, 500),
   programme: z.nativeEnum(ProgrammeType),
   classMode: z.enum(["PHYSICAL", "ONLINE"]).default("PHYSICAL"),
   // Optional for backward compatibility; ignored (Google auth already verified email).

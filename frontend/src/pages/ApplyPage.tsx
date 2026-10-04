@@ -10,7 +10,7 @@ type Programme = "THREE_MONTH" | "FOUR_MONTH" | "FIVE_MONTH" | "SIX_MONTH";
 
 export function ApplyPage() {
   const t = useT();
-  const { user, loading } = useAuth();
+  const { user, loading, markHasProfile, refresh } = useAuth();
   const navigate = useNavigate();
 
   const [fullName, setFullName] = useState("");
@@ -33,7 +33,7 @@ export function ApplyPage() {
   }, [loading, user, navigate]);
 
   useEffect(() => {
-    if (!loading && user?.hasProfile) navigate("/dashboard", { replace: true });
+    if (!loading && user?.hasProfile) navigate("/dashboard/payment", { replace: true });
   }, [loading, user, navigate]);
 
   useEffect(() => {
@@ -73,16 +73,25 @@ export function ApplyPage() {
       const form = new FormData();
       form.append("fullName", fullName.trim());
       form.append("phone", phone.trim());
-      form.append("parentPhone", parentPhone.trim());
-      form.append("address", address.trim());
+      if (parentPhone.trim()) form.append("parentPhone", parentPhone.trim());
+      if (address.trim()) form.append("address", address.trim());
       form.append("programme", programme);
       form.append("classMode", classMode);
       form.append("photo", photo);
 
       await apiPostForm("/api/student/apply", form);
-      navigate("/dashboard", { replace: true });
+      markHasProfile();
+      void refresh();
+      navigate("/dashboard/payment", { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("common.error"));
+      const msg = err instanceof Error ? err.message : t("common.error");
+      if (/already submitted/i.test(msg)) {
+        markHasProfile();
+        void refresh();
+        navigate("/dashboard/payment", { replace: true });
+        return;
+      }
+      setError(msg);
     } finally {
       setBusy(false);
     }

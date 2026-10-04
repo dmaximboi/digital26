@@ -36,7 +36,7 @@ type Progress = {
 
 export function StudentDashboardPage() {
   const t = useT();
-  const { user, loading } = useAuth();
+  const { user, loading, markHasProfile } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [fetching, setFetching] = useState(true);
@@ -59,16 +59,35 @@ export function StudentDashboardPage() {
       navigate("/admin", { replace: true });
       return;
     }
-    if (!user.hasProfile) {
-      navigate("/apply", { replace: true });
-      return;
-    }
-
+    let cancelled = false;
+    setFetching(true);
     apiFetch<{ profile: Profile | null }>("/api/student/me")
-      .then((d) => setProfile(d.profile))
-      .catch(() => setProfile(null))
-      .finally(() => setFetching(false));
-  }, [user, navigate]);
+      .then((d) => {
+        if (cancelled) return;
+        if (d.profile) {
+          markHasProfile();
+          setProfile(d.profile);
+          if (!d.profile.registrationPaid && !d.profile.registrationPaidAt) {
+            navigate("/dashboard/payment", { replace: true });
+          }
+          return;
+        }
+        if (!user.hasProfile) {
+          navigate("/apply", { replace: true });
+          return;
+        }
+        setProfile(null);
+      })
+      .catch(() => {
+        if (!cancelled && !user.hasProfile) navigate("/apply", { replace: true });
+      })
+      .finally(() => {
+        if (!cancelled) setFetching(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, navigate, markHasProfile]);
 
   useEffect(() => {
     if (!profile) return;

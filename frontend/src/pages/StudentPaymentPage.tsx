@@ -36,7 +36,7 @@ type PaymentStatus = {
 
 export function StudentPaymentPage() {
   const t = useT();
-  const { user, loading } = useAuth();
+  const { user, loading, markHasProfile } = useAuth();
   const navigate = useNavigate();
   const [status, setStatus] = useState<PaymentStatus | null>(null);
   const [fetching, setFetching] = useState(true);
@@ -80,7 +80,15 @@ export function StudentPaymentPage() {
       return;
     }
     if (!user.hasProfile) {
-      navigate("/apply", { replace: true });
+      void apiFetch<{ profile: { id?: string } | null }>("/api/student/me")
+        .then((d) => {
+          if (d.profile) {
+            markHasProfile();
+            return;
+          }
+          navigate("/apply", { replace: true });
+        })
+        .catch(() => navigate("/apply", { replace: true }));
       return;
     }
 
@@ -152,7 +160,7 @@ export function StudentPaymentPage() {
       stopped = true;
       if (timer) window.clearInterval(timer);
     };
-  }, [user, navigate, load, reconcile, t]);
+  }, [user, navigate, load, reconcile, t, markHasProfile]);
 
   async function startPayment() {
     if (payBusy) return;

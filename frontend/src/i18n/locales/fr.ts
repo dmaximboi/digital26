@@ -208,6 +208,8 @@ export const fr: Record<MessageKey, string> = {
   "signin.lede": "Connectez-vous avec votre compte Google pour continuer.",
   "signin.loadingConfig": "Preparation de Google…",
   "signin.configError": "Impossible de charger la configuration de connexion",
+  "signin.retryHint": "Google s’ouvre encore. Attendez ou réessayez.",
+  "signin.retry": "Réessayer Google",
   "signin.failed": "Échec de la connexion",
 
   "apply.title": "Postuler à The Digital 26",

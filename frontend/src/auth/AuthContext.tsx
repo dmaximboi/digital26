@@ -28,6 +28,7 @@ type AuthState = {
   signIn: (googleCredential: string) => Promise<void>;
   signOut: () => void;
   refresh: () => Promise<void>;
+  markHasProfile: () => void;
 };
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -63,12 +64,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    let existing = false;
+    setUser((current) => {
+      existing = Boolean(current);
+      return current;
+    });
+    if (!existing) setLoading(true);
     try {
       const me = await fetchMe(token);
       if (me) {
         setUser(me);
-      } else {
+      } else if (!existing) {
         clearToken();
         setUser(null);
       }
@@ -94,6 +100,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   }, []);
 
+  const markHasProfile = useCallback(() => {
+    setUser((current) => {
+      if (!current || current.hasProfile) return current;
+      return { ...current, hasProfile: true };
+    });
+  }, []);
+
   const signOut = useCallback(() => {
     clearToken();
     setUser(null);
@@ -110,8 +123,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const value = useMemo(
-    () => ({ loading, user, signIn, signOut, refresh }),
-    [loading, user, signIn, signOut, refresh],
+    () => ({ loading, user, signIn, signOut, refresh, markHasProfile }),
+    [loading, user, signIn, signOut, refresh, markHasProfile],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
