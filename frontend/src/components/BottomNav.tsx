@@ -430,7 +430,7 @@ function AdminBottomNav() {
             aria-label={t("common.closeMenu")}
             onClick={() => setMoreOpen(false)}
           />
-          <div className="bottom-nav__sheet" role="menu">
+          <div className="bottom-nav__sheet" role="menu" onClick={(e) => e.stopPropagation()}>
             <div className="bottom-nav__sheet-lang">
               <LanguageToggle variant="inline" />
             </div>
