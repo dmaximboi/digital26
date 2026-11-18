@@ -27,6 +27,10 @@ import { StudentPaymentPage } from "./pages/StudentPaymentPage";
 import { StudentLibraryPage } from "./pages/StudentLibraryPage";
 import { StudentAttendancePage } from "./pages/StudentAttendancePage";
 import { StudentChatPage } from "./pages/StudentChatPage";
+import { ExamPage } from "./pages/ExamPage";
+import { ExamRoomPage } from "./pages/ExamRoomPage";
+import { AdminExaminationsPage } from "./pages/admin/AdminExaminationsPage";
+import { AdminExamDetailPage } from "./pages/admin/AdminExamDetailPage";
 import { AdminLibraryPage } from "./pages/admin/AdminLibraryPage";
 import { PrivacyPage } from "./pages/PrivacyPage";
 import { TermsPage } from "./pages/TermsPage";
@@ -84,11 +88,16 @@ function AppRoutes() {
       <Route path="/dashboard/library" element={<Navigate to="/library" replace />} />
       <Route path="/dashboard/attendance" element={<StudentAttendancePage />} />
       <Route path="/dashboard/chat" element={<StudentChatPage />} />
+      <Route path="/exam" element={<ExamPage />} />
+      <Route path="/exam/room/:sessionId" element={<ExamRoomPage />} />
 
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboardPage />} />
         <Route path="students" element={<AdminStudentsPage />} />
         <Route path="students/:id/record" element={<AdminStudentRecordPage />} />
+        <Route path="examinations" element={<AdminExaminationsPage />} />
+        <Route path="examinations/:id" element={<AdminExamDetailPage />} />
+        <Route path="examinations/:id/sessions/:sessionId" element={<AdminExamDetailPage />} />
         <Route path="library" element={<AdminLibraryPage />} />
         <Route path="messages" element={<AdminMessagesPage />} />
         <Route path="visits" element={<AdminVisitsPage />} />

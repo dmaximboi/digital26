@@ -92,7 +92,7 @@ export function applySecurity(app: Express): void {
     res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
     res.setHeader(
       "Permissions-Policy",
-      "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+      "camera=(self), microphone=(self), geolocation=(), payment=(), usb=()",
     );
     res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
     if (env.isProd) {

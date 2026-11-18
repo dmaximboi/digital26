@@ -17,6 +17,7 @@ const RESERVED = new Set([
   "quiz",
   "dictionary",
   "library",
+  "exam",
   "glossary",
   "tech-dictionary",
   "tech-terms",

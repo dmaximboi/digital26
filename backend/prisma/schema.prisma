@@ -304,6 +304,7 @@ model StudentProfile {
   projects     StudentProject[]
   credentials  StudentCredential[]
   assessments  StudentAssessment[]
+  examSessions ExamSession[]
 
   @@map("student_profiles")
 }
@@ -353,6 +354,7 @@ model StudentAssessment {
   createdAt        DateTime       @default(now()) @map("created_at")
 
   profile StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  examSession ExamSession?
 
   @@index([studentProfileId, kind])
   @@map("student_assessments")
@@ -506,4 +508,110 @@ model DailyNewsItem {
 
   @@index([newsDate])
   @@map("daily_news")
+}
+
+enum ExaminationStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+enum ExamSessionStatus {
+  IN_PROGRESS
+  SUBMITTED
+  GRADED
+}
+
+enum ExamEventKind {
+  TAB_LEFT
+  NOISE
+  SECOND_VOICE
+  FACE_LEFT
+  MOUTH
+}
+
+/// Named paper written by an admin. Students submit answers. Admins type the mark.
+model Examination {
+  id              String            @id @default(cuid())
+  title           String
+  instructions    String?           @db.Text
+  durationMinutes Int               @default(60) @map("duration_minutes")
+  status          ExaminationStatus @default(DRAFT)
+  createdBy       String?           @map("created_by")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  questions ExamQuestion[]
+  sessions  ExamSession[]
+
+  @@index([status, createdAt])
+  @@map("examinations")
+}
+
+model ExamQuestion {
+  id            String   @id @default(cuid())
+  examinationId String   @map("examination_id")
+  prompt        String   @db.Text
+  marks         Int      @default(1)
+  sortOrder     Int      @default(0) @map("sort_order")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  examination Examination @relation(fields: [examinationId], references: [id], onDelete: Cascade)
+  answers     ExamAnswer[]
+
+  @@index([examinationId, sortOrder])
+  @@map("exam_questions")
+}
+
+model ExamSession {
+  id               String            @id @default(cuid())
+  examinationId    String            @map("examination_id")
+  studentProfileId String            @map("student_profile_id")
+  status           ExamSessionStatus @default(IN_PROGRESS)
+  startedAt        DateTime          @default(now()) @map("started_at")
+  deadlineAt       DateTime          @map("deadline_at")
+  submittedAt      DateTime?         @map("submitted_at")
+  score            String?
+  maxScore         String?           @map("max_score")
+  feedback         String?           @db.Text
+  gradedAt         DateTime?         @map("graded_at")
+  gradedBy         String?           @map("graded_by")
+  assessmentId     String?           @unique @map("assessment_id")
+
+  examination Examination       @relation(fields: [examinationId], references: [id], onDelete: Cascade)
+  profile     StudentProfile    @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  assessment  StudentAssessment? @relation(fields: [assessmentId], references: [id], onDelete: SetNull)
+  answers     ExamAnswer[]
+  events      ExamEvent[]
+
+  @@unique([examinationId, studentProfileId])
+  @@index([examinationId, status])
+  @@index([studentProfileId])
+  @@map("exam_sessions")
+}
+
+model ExamAnswer {
+  id         String   @id @default(cuid())
+  sessionId  String   @map("session_id")
+  questionId String   @map("question_id")
+  response   String   @db.Text
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  session  ExamSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  question ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, questionId])
+  @@map("exam_answers")
+}
+
+model ExamEvent {
+  id        String        @id @default(cuid())
+  sessionId String        @map("session_id")
+  kind      ExamEventKind
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  session ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
+  @@map("exam_events")
 }

@@ -4559,3 +4559,57 @@ dd {
   justify-items: start;
 }
 
+.exam-rules {
+  margin: 0 0 1rem;
+  padding-left: 1.1rem;
+}
+.exam-card {
+  display: grid;
+  gap: 0.45rem;
+}
+.exam-leave,
+.exam-timer {
+  font-weight: 650;
+}
+.exam-cam video {
+  width: 9rem;
+  height: 6.75rem;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #111;
+  border: 1px solid rgba(255, 158, 0, 0.35);
+}
+.exam-questions {
+  display: grid;
+  gap: 1rem;
+  padding-left: 1.1rem;
+}
+.exam-answer {
+  white-space: pre-wrap;
+}
+.exam-admin-form,
+.exam-grade {
+  display: grid;
+  gap: 0.7rem;
+  margin: 1rem 0;
+  max-width: 40rem;
+}
+.exam-admin-form label {
+  display: grid;
+  gap: 0.3rem;
+}
+.exam-admin-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 0.7rem;
+}
+.exam-admin-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+

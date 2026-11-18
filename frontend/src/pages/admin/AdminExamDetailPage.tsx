@@ -1,0 +1,291 @@
+import { FormEvent, useCallback, useEffect, useState } from "react";
+import { Link, useParams } from "react-router-dom";
+import { useAuth } from "../../auth/AuthContext";
+import { useT } from "../../i18n/LocaleContext";
+import type { MessageKey } from "../../i18n/locales/en";
+import { apiFetch } from "../../lib/authApi";
+
+type Question = { id: string; prompt: string; marks: number };
+type SessionRow = {
+  id: string;
+  status: "IN_PROGRESS" | "SUBMITTED" | "GRADED";
+  studentName: string;
+  studentId: string;
+  submittedAt: string | null;
+  score: string | null;
+  maxScore: string | null;
+  warnings: Record<string, number>;
+};
+type ExamDetail = {
+  id: string;
+  title: string;
+  instructions: string | null;
+  durationMinutes: number;
+  status: "DRAFT" | "PUBLISHED" | "CLOSED";
+  maxScore: string;
+  questions: Question[];
+  sessions: SessionRow[];
+};
+type Submission = {
+  id: string;
+  status: "IN_PROGRESS" | "SUBMITTED" | "GRADED";
+  title: string;
+  studentName: string;
+  studentId: string;
+  score: string | null;
+  maxScore: string | null;
+  feedback: string | null;
+  events: { kind: string; createdAt: string }[];
+  questions: { id: string; prompt: string; marks: number; response: string }[];
+};
+
+export function AdminExamDetailPage() {
+  const t = useT();
+  const { id = "", sessionId = "" } = useParams();
+  const { user } = useAuth();
+  const canWrite = Boolean(user?.canWrite);
+  const [exam, setExam] = useState<ExamDetail | null>(null);
+  const [submission, setSubmission] = useState<Submission | null>(null);
+  const [error, setError] = useState("");
+  const [prompt, setPrompt] = useState("");
+  const [marks, setMarks] = useState("1");
+  const [score, setScore] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    if (!id) return;
+    apiFetch<{ exam: ExamDetail }>(`/api/ops/examinations/${id}`)
+      .then((d) => setExam(d.exam))
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : t("common.error")));
+  }, [id, t]);
+
+  useEffect(load, [load]);
+
+  useEffect(() => {
+    if (!id || !sessionId) {
+      setSubmission(null);
+      return;
+    }
+    apiFetch<{ session: Submission }>(`/api/ops/examinations/${id}/sessions/${sessionId}`)
+      .then((d) => {
+        setSubmission(d.session);
+        setScore(d.session.score ?? "");
+        setFeedback(d.session.feedback ?? "");
+      })
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : t("common.error")));
+  }, [id, sessionId, t]);
+
+  async function addQuestion(e: FormEvent) {
+    e.preventDefault();
+    if (!canWrite || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await apiFetch(`/api/ops/examinations/${id}/questions`, {
+        method: "POST",
+        body: JSON.stringify({ prompt, marks: Number(marks) }),
+      });
+      setPrompt("");
+      setMarks("1");
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeQuestion(questionId: string) {
+    if (!canWrite) return;
+    setError("");
+    try {
+      await apiFetch(`/api/ops/examinations/${id}/questions/${questionId}/delete`, { method: "POST", body: "{}" });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    }
+  }
+
+  async function setStatus(action: "publish" | "close") {
+    if (!canWrite) return;
+    setError("");
+    try {
+      await apiFetch(`/api/ops/examinations/${id}/${action}`, { method: "POST", body: "{}" });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    }
+  }
+
+  async function saveGrade(e: FormEvent) {
+    e.preventDefault();
+    if (!canWrite || !sessionId || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await apiFetch(`/api/ops/examinations/${id}/sessions/${sessionId}/grade`, {
+        method: "POST",
+        body: JSON.stringify({ score, feedback }),
+      });
+      const fresh = await apiFetch<{ session: Submission }>(`/api/ops/examinations/${id}/sessions/${sessionId}`);
+      setSubmission(fresh.session);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!exam) {
+    return <p className="muted">{error || t("common.loading")}</p>;
+  }
+
+  const locked = exam.sessions.length > 0;
+
+  return (
+    <div className="ops-page">
+      <p>
+        <Link to="/admin/examinations">{t("common.back")}</Link>
+      </p>
+      <h2>{exam.title}</h2>
+      <p className="muted">
+        {statusLabel(exam.status, t)} · {exam.durationMinutes} min · {t("exam.score")} {exam.maxScore}
+      </p>
+      {exam.instructions && <p>{exam.instructions}</p>}
+      {error && <p className="status error">{error}</p>}
+      {canWrite && exam.status !== "PUBLISHED" && (
+        <button type="button" className="btn primary" onClick={() => void setStatus("publish")}>
+          {t("adminExam.publish")}
+        </button>
+      )}
+      {canWrite && exam.status === "PUBLISHED" && (
+        <button type="button" className="btn" onClick={() => void setStatus("close")}>
+          {t("adminExam.close")}
+        </button>
+      )}
+
+      <h3>{t("adminExam.questions")}</h3>
+      <ol className="exam-questions">
+        {exam.questions.map((q) => (
+          <li key={q.id}>
+            <p>{q.prompt}</p>
+            <p className="muted">{t("exam.marks", { marks: q.marks })}</p>
+            {canWrite && !locked && (
+              <button type="button" className="btn sm" onClick={() => void removeQuestion(q.id)}>
+                {t("adminExam.remove")}
+              </button>
+            )}
+          </li>
+        ))}
+      </ol>
+      {canWrite && !locked && (
+        <form className="exam-admin-form" onSubmit={(e) => void addQuestion(e)}>
+          <label>
+            {t("adminExam.prompt")}
+            <textarea className="form-input" rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} required minLength={2} />
+          </label>
+          <label>
+            {t("adminExam.points")}
+            <input className="form-input" type="number" min={1} max={100} value={marks} onChange={(e) => setMarks(e.target.value)} required />
+          </label>
+          <button className="btn primary" type="submit" disabled={busy}>
+            {t("adminExam.addQuestion")}
+          </button>
+        </form>
+      )}
+      {locked && <p className="muted">{t("adminExam.locked")}</p>}
+
+      <h3>{t("adminExam.submissions")}</h3>
+      {exam.sessions.length === 0 && <p className="muted">{t("adminExam.noSubmissions")}</p>}
+      <ul className="exam-admin-list">
+        {exam.sessions.map((row) => (
+          <li key={row.id}>
+            <div>
+              <strong>{row.studentName}</strong>
+              <p className="muted">
+                {sessionLabel(row.status, t)}
+                {row.score ? ` · ${row.score}/${row.maxScore ?? exam.maxScore}` : ""}
+                {Object.entries(row.warnings).map(([kind, count]) => ` · ${t(eventKey(kind))} ${count}`)}
+              </p>
+            </div>
+            <Link className="btn sm" to={`/admin/examinations/${exam.id}/sessions/${row.id}`}>
+              {t("common.open")}
+            </Link>
+          </li>
+        ))}
+      </ul>
+
+      {submission && (
+        <div className="exam-grade">
+          <h3>
+            {submission.studentName} · {submission.title}
+          </h3>
+          <p>
+            <Link to={`/admin/students/${submission.studentId}/record`}>{t("adminExam.openRecord")}</Link>
+          </p>
+          <ol className="exam-questions">
+            {submission.questions.map((q, index) => (
+              <li key={q.id}>
+                <p>
+                  <strong>
+                    {index + 1}. {q.prompt}
+                  </strong>
+                </p>
+                <p className="muted">{t("exam.marks", { marks: q.marks })}</p>
+                <p className="exam-answer">{q.response || t("exam.blank")}</p>
+              </li>
+            ))}
+          </ol>
+          <h3>{t("adminExam.events")}</h3>
+          {submission.events.length === 0 && <p className="muted">{t("adminExam.noEvents")}</p>}
+          <ul>
+            {submission.events.map((event, index) => (
+              <li key={`${event.kind}-${index}`}>
+                {t(eventKey(event.kind))} · {new Date(event.createdAt).toLocaleString()}
+              </li>
+            ))}
+          </ul>
+          <p className="muted">{t("adminExam.eventNote")}</p>
+          {canWrite && submission.status !== "IN_PROGRESS" && (
+            <form className="exam-admin-form" onSubmit={(e) => void saveGrade(e)}>
+              <label>
+                {t("adminExam.score")} / {submission.maxScore}
+                <input className="form-input" value={score} onChange={(e) => setScore(e.target.value)} required maxLength={40} />
+              </label>
+              <label>
+                {t("adminExam.feedback")}
+                <textarea className="form-input" rows={3} value={feedback} onChange={(e) => setFeedback(e.target.value)} maxLength={2000} />
+              </label>
+              <button className="btn primary" type="submit" disabled={busy}>
+                {t("adminExam.saveGrade")}
+              </button>
+            </form>
+          )}
+          {submission.status === "IN_PROGRESS" && <p className="muted">{t("adminExam.stillWriting")}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function statusLabel(status: ExamDetail["status"], t: (key: MessageKey) => string): string {
+  if (status === "PUBLISHED") return t("adminExam.status.PUBLISHED");
+  if (status === "CLOSED") return t("adminExam.status.CLOSED");
+  return t("adminExam.status.DRAFT");
+}
+
+function sessionLabel(status: SessionRow["status"], t: (key: MessageKey) => string): string {
+  if (status === "SUBMITTED") return t("adminExam.session.SUBMITTED");
+  if (status === "GRADED") return t("adminExam.session.GRADED");
+  return t("adminExam.session.IN_PROGRESS");
+}
+
+function eventKey(kind: string): "adminExam.event.TAB_LEFT" | "adminExam.event.NOISE" | "adminExam.event.SECOND_VOICE" | "adminExam.event.FACE_LEFT" | "adminExam.event.MOUTH" {
+  if (kind === "NOISE") return "adminExam.event.NOISE";
+  if (kind === "SECOND_VOICE") return "adminExam.event.SECOND_VOICE";
+  if (kind === "FACE_LEFT") return "adminExam.event.FACE_LEFT";
+  if (kind === "MOUTH") return "adminExam.event.MOUTH";
+  return "adminExam.event.TAB_LEFT";
+}

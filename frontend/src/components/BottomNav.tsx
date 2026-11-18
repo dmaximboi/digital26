@@ -34,6 +34,7 @@ const APP_ITEMS = [
 
 const STUDENT_TABS: Tab[] = [
   { to: "/dashboard", icon: "Home", labelKey: "nav.home", end: true },
+  { to: "/exam", icon: "Exam", labelKey: "nav.exam", match: (p) => p === "/exam" || p.startsWith("/exam/") },
   {
     to: "/library",
     icon: "Library",
@@ -179,6 +180,13 @@ function TabIcon({ name }: { name: string }) {
           <path d="M4 7h16M4 12h16M4 17h16" />
         </svg>
       );
+    case "Exam":
+      return (
+        <svg {...common}>
+          <rect x="5" y="3.5" width="14" height="17" rx="2" />
+          <path d="M8.5 8h7M8.5 12h7M8.5 16h4" />
+        </svg>
+      );
     case "Apps":
       return (
         <svg {...common} strokeWidth="1.7">
@@ -239,7 +247,10 @@ function PublicBottomNav() {
   const isAdmin = user?.role === "ADMIN" || user?.role === "READONLY";
   const isStudent = user?.role === "STUDENT" && user.hasProfile;
   const onStudentArea =
-    location.pathname.startsWith("/dashboard") || location.pathname.startsWith("/apply");
+    location.pathname.startsWith("/dashboard") ||
+    location.pathname.startsWith("/apply") ||
+    location.pathname === "/exam" ||
+    location.pathname.startsWith("/exam/");
   const appsActive =
     location.pathname.startsWith("/quiz") ||
     location.pathname.startsWith("/news") ||
@@ -479,6 +490,9 @@ function AdminBottomNav() {
             <div className="bottom-nav__sheet-lang">
               <LanguageToggle variant="inline" />
             </div>
+            <NavLink to="/admin/examinations" onClick={() => setMoreOpen(false)}>
+              {t("nav.examinations")}
+            </NavLink>
             <NavLink to="/admin/messages" onClick={() => setMoreOpen(false)}>
               {t("nav.inbox")}
             </NavLink>

@@ -14,6 +14,7 @@ import { bachsWebhookHandler, paymentsRouter } from "./routes/payments.js";
 import { libraryRouter } from "./routes/library.js";
 import { quizRouter } from "./routes/quiz.js";
 import { dictionaryRouter } from "./routes/dictionary.js";
+import { examsRouter } from "./routes/exams.js";
 
 export function createApp() {
   const app = express();
@@ -29,7 +30,7 @@ export function createApp() {
     },
   );
 
-  app.use(express.json({ limit: "64kb" }));
+  app.use(express.json({ limit: "256kb" }));
   app.use(express.urlencoded({ extended: false, limit: "32kb" }));
   app.use(globalLimiter);
 
@@ -53,6 +54,7 @@ export function createApp() {
   app.use("/api", libraryRouter);
   app.use("/api", quizRouter);
   app.use("/api", dictionaryRouter);
+  app.use("/api", examsRouter);
   app.use("/api", studentsRouter);
   app.use("/api", agreementsRouter);
   app.use("/api", certificatesRouter);

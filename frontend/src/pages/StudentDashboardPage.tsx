@@ -257,6 +257,11 @@ export function StudentDashboardPage() {
       )}
 
       <div className="dashboard-cards">
+        <Link to="/exam" className="dashboard-card">
+          <h3>{t("dash.exam")}</h3>
+          <p>{t("dash.examDesc")}</p>
+        </Link>
+
         <Link to="/library" className="dashboard-card">
           <h3>{t("dash.library")}</h3>
           <p>{t("dash.libraryDesc")}</p>
