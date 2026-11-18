@@ -35,10 +35,10 @@ const APP_ITEMS = [
 const STUDENT_TABS: Tab[] = [
   { to: "/dashboard", icon: "Home", labelKey: "nav.home", end: true },
   {
-    to: "/dashboard/library",
+    to: "/library",
     icon: "Library",
     labelKey: "nav.library",
-    match: (p) => p.startsWith("/dashboard/library"),
+    match: (p) => p === "/library" || p.startsWith("/dashboard/library"),
   },
   {
     to: "/dashboard/chat",
@@ -255,24 +255,69 @@ function PublicBottomNav() {
 
   if (!loading && isStudent && onStudentArea) {
     return (
-      <nav className="bottom-nav" aria-label="Student">
-        {STUDENT_TABS.map((tab) => (
+      <>
+        <nav className="bottom-nav" aria-label="Student">
           <NavLink
-            key={tab.to}
-            to={tab.to}
-            end={tab.end}
+            to="/dashboard"
+            end
             className={() =>
-              isActiveTab(tab, location.pathname)
-                ? "bottom-nav__item is-active"
-                : "bottom-nav__item"
+              location.pathname === "/dashboard" ? "bottom-nav__item is-active" : "bottom-nav__item"
             }
           >
-            <TabIcon name={tab.icon} />
-            <span>{t(tab.labelKey)}</span>
+            <TabIcon name="Home" />
+            <span>{t("nav.home")}</span>
           </NavLink>
-        ))}
-        <SignOutTab />
-      </nav>
+          <button
+            type="button"
+            className={appsOpen || appsActive ? "bottom-nav__item is-active" : "bottom-nav__item"}
+            aria-expanded={appsOpen}
+            aria-haspopup="dialog"
+            onClick={() => setAppsOpen((v) => !v)}
+          >
+            <TabIcon name="Apps" />
+            <span>{t("nav.apps")}</span>
+          </button>
+          {STUDENT_TABS.slice(1).map((tab) => (
+            <NavLink
+              key={tab.to}
+              to={tab.to}
+              end={tab.end}
+              className={() =>
+                isActiveTab(tab, location.pathname)
+                  ? "bottom-nav__item is-active"
+                  : "bottom-nav__item"
+              }
+            >
+              <TabIcon name={tab.icon} />
+              <span>{t(tab.labelKey)}</span>
+            </NavLink>
+          ))}
+          <SignOutTab />
+        </nav>
+        {appsOpen && (
+          <>
+            <button
+              type="button"
+              className="bottom-nav__backdrop"
+              aria-label={t("common.closeMenu")}
+              onClick={() => setAppsOpen(false)}
+            />
+            <div className="bottom-nav__apps" role="dialog" aria-label={t("apps.title")}>
+              {APP_ITEMS.map((item) => (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className="bottom-nav__app"
+                  onClick={() => setAppsOpen(false)}
+                >
+                  <TabIcon name={item.icon} />
+                  <span>{t(item.labelKey)}</span>
+                </NavLink>
+              ))}
+            </div>
+          </>
+        )}
+      </>
     );
   }
 

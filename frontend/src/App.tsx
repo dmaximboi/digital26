@@ -59,6 +59,7 @@ function AppRoutes() {
       <Route path="/news" element={<NewsPage />} />
       <Route path="/news/:id" element={<NewsPage />} />
       <Route path="/dictionary" element={<DictionaryPage />} />
+      <Route path="/library" element={<StudentLibraryPage />} />
       <Route path="/glossary" element={<DictionaryPage />} />
       <Route path="/tech-dictionary" element={<DictionaryPage />} />
       <Route path="/tech-terms" element={<DictionaryPage />} />
@@ -80,7 +81,7 @@ function AppRoutes() {
 
       <Route path="/dashboard" element={<StudentDashboardPage />} />
       <Route path="/dashboard/payment" element={<StudentPaymentPage />} />
-      <Route path="/dashboard/library" element={<StudentLibraryPage />} />
+      <Route path="/dashboard/library" element={<Navigate to="/library" replace />} />
       <Route path="/dashboard/attendance" element={<StudentAttendancePage />} />
       <Route path="/dashboard/chat" element={<StudentChatPage />} />
 

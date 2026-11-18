@@ -11,7 +11,7 @@ import {
   requireAdmin,
   requireAdminWrite,
 } from "../middleware/requireAuth.js";
-import { authLimiter } from "../middleware/security.js";
+import { authLimiter, publicLookupLimiter } from "../middleware/security.js";
 import { compressAndStoreStudentPhoto } from "../lib/studentPhoto.js";
 import { isSafeExternalUrl, toViewFocusedUrl } from "../lib/libraryUrl.js";
 import {
@@ -22,10 +22,12 @@ import {
 } from "../lib/bachs.js";
 import {
   hasLibraryAccess,
+  hasLibraryAccessByEmail,
   newPaymentReference,
   paymentLabel,
   verifyAndFulfillOrder,
 } from "../lib/payments.js";
+import { z } from "zod";
 import { writeAudit } from "../lib/audit.js";
 
 export const libraryRouter = Router();
@@ -322,34 +324,260 @@ libraryRouter.delete(
   },
 );
 
-/** Student catalog - never includes externalUrl until /open. */
-libraryRouter.get("/student/library", requireAuth, async (req: AuthedRequest, res) => {
+const libraryEmailSchema = z.object({
+  email: z.string().email().max(200),
+  name: z.string().min(2).max(120).optional(),
+});
+
+async function paidLibraryIds(email: string, itemIds: string[]): Promise<Set<string>> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized || itemIds.length === 0) return new Set();
+  const rows = await prisma.paymentOrder.findMany({
+    where: {
+      kind: PaymentKind.LIBRARY,
+      status: PaymentStatus.PAID,
+      customerEmail: normalized,
+      publicId: { in: itemIds },
+    },
+    select: { publicId: true },
+  });
+  return new Set(rows.map((row) => row.publicId).filter(Boolean) as string[]);
+}
+
+function catalogItem(
+  item: {
+    id: string;
+    title: string;
+    description: string | null;
+    coverUrl: string;
+    isFree: boolean;
+    priceUsd: string | null;
+  },
+  paidIds: Set<string>,
+) {
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    coverUrl: publicCoverUrl(item.coverUrl),
+    isFree: item.isFree,
+    priceUsd: item.priceUsd,
+    unlocked: item.isFree || paidIds.has(item.id),
+  };
+}
+
+/** Public catalog. Links stay hidden until a free open or a paid receipt email. */
+libraryRouter.get("/public/library", publicLookupLimiter, async (req, res) => {
   try {
-    const gate = await requireActiveStudent(req);
-    if (!gate.ok) {
-      res.status(gate.status).json({ error: gate.error });
-      return;
+    const email = typeof req.query.email === "string" ? req.query.email.trim().toLowerCase() : "";
+    const checkoutId =
+      typeof req.query.checkout_id === "string" ? req.query.checkout_id.trim() : "";
+    if (checkoutId) {
+      await verifyAndFulfillOrder({ checkoutId });
     }
 
     const items = await prisma.libraryItem.findMany({
       where: { published: true },
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
     });
+    const paidIds = await paidLibraryIds(email, items.map((item) => item.id));
+    res.setHeader("Cache-Control", "private, no-store");
+    res.json({ items: items.map((item) => catalogItem(item, paidIds)) });
+  } catch (err) {
+    console.error("[library.public.list]", err);
+    const code = (err as { code?: string } | null)?.code;
+    if (code === "P2021" || code === "P2010" || /library_items|LibraryItem/i.test(String(err))) {
+      res.json({ items: [] });
+      return;
+    }
+    res.status(500).json({ error: "Failed to load library" });
+  }
+});
 
+libraryRouter.post("/public/library/:id/open", publicLookupLimiter, async (req, res) => {
+  try {
+    const id = String(req.params.id || "").trim();
+    const item = await prisma.libraryItem.findFirst({ where: { id, published: true } });
+    if (!item) {
+      res.status(404).json({ error: "Library item not found" });
+      return;
+    }
+
+    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const checkoutId =
+      typeof req.body?.checkoutId === "string" ? req.body.checkoutId.trim() : "";
+    let unlocked = item.isFree;
+    if (!unlocked && checkoutId) {
+      await verifyAndFulfillOrder({ checkoutId });
+      const byCheckout = await prisma.paymentOrder.findUnique({
+        where: { checkoutId },
+        select: { status: true, kind: true, publicId: true },
+      });
+      unlocked = Boolean(
+        byCheckout &&
+          byCheckout.status === PaymentStatus.PAID &&
+          byCheckout.kind === PaymentKind.LIBRARY &&
+          byCheckout.publicId === item.id,
+      );
+    }
+    if (!unlocked && email) {
+      unlocked = await hasLibraryAccessByEmail(email, item.id);
+    }
+    if (!unlocked) {
+      res.status(402).json({
+        error: `Pay $${item.priceUsd || "0.00"} to unlock this resource`,
+        amountUsd: item.priceUsd,
+      });
+      return;
+    }
+
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      ok: true,
+      viewUrl: toViewFocusedUrl(item.externalUrl),
+      title: item.title,
+    });
+  } catch (err) {
+    console.error("[library.public.open]", err);
+    res.status(500).json({ error: "Failed to open resource" });
+  }
+});
+
+libraryRouter.post("/public/library/:id/checkout", publicLookupLimiter, async (req, res) => {
+  try {
+    if (!isBachsConfigured()) {
+      res.status(503).json({ error: "Payments are not configured yet" });
+      return;
+    }
+
+    const parsed = libraryEmailSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Enter a valid email for the receipt" });
+      return;
+    }
+
+    const id = String(req.params.id || "").trim();
+    const item = await prisma.libraryItem.findFirst({ where: { id, published: true } });
+    if (!item) {
+      res.status(404).json({ error: "Library item not found" });
+      return;
+    }
+    if (item.isFree || !item.priceUsd) {
+      res.json({ ok: true, alreadyPaid: true, free: true });
+      return;
+    }
+
+    const email = parsed.data.email.toLowerCase();
+    if (await hasLibraryAccessByEmail(email, item.id)) {
+      res.json({ ok: true, alreadyPaid: true, paid: true });
+      return;
+    }
+
+    const amountUsd = item.priceUsd;
+    const recent = await prisma.paymentOrder.findFirst({
+      where: {
+        kind: PaymentKind.LIBRARY,
+        publicId: item.id,
+        customerEmail: email,
+        status: PaymentStatus.PENDING,
+        checkoutId: { not: null },
+        createdAt: { gte: new Date(Date.now() - 45 * 60 * 1000) },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (recent?.checkoutId) {
+      try {
+        const remote = await getBachsCheckout(recent.checkoutId);
+        if (isSuccessfulCheckout(remote)) {
+          await verifyAndFulfillOrder({
+            orderId: recent.id,
+            checkoutId: recent.checkoutId,
+            reference: recent.reference,
+            chargeId: remote.charge?.charge_id,
+          });
+          res.json({ ok: true, alreadyPaid: true, paid: true, checkoutId: recent.checkoutId });
+          return;
+        }
+        if (String(remote.status).toUpperCase() === "OPEN" && remote.checkout_url) {
+          res.json({
+            ok: true,
+            reused: true,
+            checkoutId: recent.checkoutId,
+            checkoutUrl: remote.checkout_url,
+            amountUsd: recent.amountUsd,
+          });
+          return;
+        }
+      } catch {
+        /* create fresh */
+      }
+    }
+
+    const reference = newPaymentReference(PaymentKind.LIBRARY);
+    const order = await prisma.paymentOrder.create({
+      data: {
+        kind: PaymentKind.LIBRARY,
+        status: PaymentStatus.PENDING,
+        amountUsd,
+        reference,
+        customerEmail: email,
+        publicId: item.id,
+        metadata: { label: item.title, product: "library" },
+      },
+    });
+
+    const session = await createBachsCheckout({
+      amountUsd,
+      customerEmail: email,
+      customerName: parsed.data.name?.trim() || email.split("@")[0] || "Reader",
+      successUrl: `${siteBase()}/library`,
+      cancelUrl: `${siteBase()}/library`,
+      reference,
+      metadata: {
+        kind: "LIBRARY",
+        reference,
+        order_id: order.id,
+        public_id: item.id,
+      },
+    });
+
+    await prisma.paymentOrder.update({
+      where: { id: order.id },
+      data: { checkoutId: session.checkout_id },
+    });
+
+    res.status(201).json({
+      ok: true,
+      checkoutId: session.checkout_id,
+      checkoutUrl: session.checkout_url,
+      amountUsd,
+    });
+  } catch (err) {
+    console.error("[library.public.checkout]", err);
+    res.status(500).json({ error: "Could not open library checkout" });
+  }
+});
+
+/** Student catalog - never includes externalUrl until /open. */
+libraryRouter.get("/student/library", requireAuth, async (req: AuthedRequest, res) => {
+  try {
+    const items = await prisma.libraryItem.findMany({
+      where: { published: true },
+      orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+    });
+
+    const byUser = await prisma.paymentOrder.findMany({
+      where: {
+        kind: PaymentKind.LIBRARY,
+        userId: req.userId!,
+        status: PaymentStatus.PAID,
+        publicId: { in: items.map((i) => i.id) },
+      },
+      select: { publicId: true },
+    });
+    const byEmail = await paidLibraryIds(req.userEmail || "", items.map((i) => i.id));
     const paidIds = new Set(
-      (
-        await prisma.paymentOrder.findMany({
-          where: {
-            kind: PaymentKind.LIBRARY,
-            userId: req.userId!,
-            status: PaymentStatus.PAID,
-            publicId: { in: items.map((i) => i.id) },
-          },
-          select: { publicId: true },
-        })
-      )
-        .map((p) => p.publicId)
-        .filter(Boolean) as string[],
+      [...byUser.map((p) => p.publicId).filter(Boolean), ...byEmail] as string[],
     );
 
     res.json({
@@ -387,12 +615,6 @@ libraryRouter.post(
   requireAuth,
   async (req: AuthedRequest, res) => {
     try {
-      const gate = await requireActiveStudent(req);
-      if (!gate.ok) {
-        res.status(gate.status).json({ error: gate.error });
-        return;
-      }
-
       const id = String(req.params.id || "").trim();
       const item = await prisma.libraryItem.findFirst({
         where: { id, published: true },
@@ -402,7 +624,10 @@ libraryRouter.post(
         return;
       }
 
-      const unlocked = item.isFree || (await hasLibraryAccess(req.userId!, item.id));
+      const unlocked =
+        item.isFree ||
+        (await hasLibraryAccess(req.userId!, item.id)) ||
+        (await hasLibraryAccessByEmail(req.userEmail || "", item.id));
       if (!unlocked) {
         res.status(402).json({
           error: `Pay $${item.priceUsd || "0.00"} to unlock this resource`,

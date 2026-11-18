@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useT } from "../i18n/LocaleContext";
-import { apiFetch } from "../lib/authApi";
+import { apiGet, apiPost } from "../lib/api";
 import { setPageMeta } from "../lib/seo";
+
+const EMAIL_KEY = "d26_library_email";
 
 type LibItem = {
   id: string;
@@ -15,63 +17,76 @@ type LibItem = {
   unlocked: boolean;
 };
 
+function readEmail(): string {
+  try {
+    return localStorage.getItem(EMAIL_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
 export function StudentLibraryPage() {
   const t = useT();
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const [items, setItems] = useState<LibItem[]>([]);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState("");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [email, setEmail] = useState(() => user?.email || readEmail());
 
   useEffect(() => {
     setPageMeta({
       title: t("library.title"),
       description: t("library.metaDesc"),
+      path: "/library",
     });
   }, [t]);
 
   useEffect(() => {
-    if (!loading && !user) navigate("/signin", { replace: true });
-  }, [loading, user, navigate]);
+    if (user?.email) setEmail(user.email);
+  }, [user?.email]);
 
-  const load = useCallback(async () => {
-    const data = await apiFetch<{ items: LibItem[] }>("/api/student/library");
+  const load = useCallback(async (receiptEmail: string, checkoutId = "") => {
+    const q = new URLSearchParams();
+    if (receiptEmail.trim()) q.set("email", receiptEmail.trim());
+    if (checkoutId) q.set("checkout_id", checkoutId);
+    const data = await apiGet<{ items: LibItem[] }>(`/api/public/library?${q}`);
     setItems(data.items);
   }, []);
 
   useEffect(() => {
-    if (!user) return;
-    if (user.role === "ADMIN" || user.role === "READONLY") {
-      navigate("/admin/library", { replace: true });
-      return;
-    }
-    if (!user.hasProfile) {
-      navigate("/apply", { replace: true });
-      return;
-    }
-
     const params = new URLSearchParams(window.location.search);
-    const checkoutId = params.get("checkout_id");
+    const checkoutId = params.get("checkout_id")?.trim() || "";
+    const receipt = user?.email || readEmail();
 
     (async () => {
       setFetching(true);
       setError("");
       try {
+        await load(receipt, checkoutId);
         if (checkoutId) {
-          await apiFetch("/api/public/payments/sync?checkout_id=" + encodeURIComponent(checkoutId));
           const url = new URL(window.location.href);
           url.searchParams.delete("checkout_id");
-          window.history.replaceState({}, "", url.pathname);
+          url.searchParams.delete("paid");
+          url.searchParams.delete("cancelled");
+          window.history.replaceState({}, "", `${url.pathname}${url.search}`);
         }
-        await load();
       } catch (err) {
         setError(err instanceof Error ? err.message : t("common.error"));
       } finally {
         setFetching(false);
       }
     })();
-  }, [user, navigate, load, t]);
+  }, [load, t, user?.email]);
+
+  function rememberEmail(next: string) {
+    setEmail(next);
+    try {
+      if (next.trim()) localStorage.setItem(EMAIL_KEY, next.trim());
+    } catch {
+      /* ignore */
+    }
+  }
 
   async function openItem(item: LibItem) {
     if (busyId) return;
@@ -79,24 +94,26 @@ export function StudentLibraryPage() {
     setError("");
     try {
       if (!item.unlocked) {
-        const checkout = await apiFetch<{
+        if (!email.trim()) {
+          setError(t("library.needEmail"));
+          return;
+        }
+        const checkout = await apiPost<{
           checkoutUrl?: string;
           alreadyPaid?: boolean;
           free?: boolean;
-        }>(`/api/student/library/${item.id}/checkout`, {
-          method: "POST",
-          body: "{}",
-        });
+          checkoutId?: string;
+        }>(`/api/public/library/${item.id}/checkout`, { email: email.trim() });
+        rememberEmail(email);
         if (checkout.checkoutUrl) {
           window.location.href = checkout.checkoutUrl;
           return;
         }
-        await load();
+        await load(email.trim());
       }
 
-      const opened = await apiFetch<{ viewUrl: string }>(`/api/student/library/${item.id}/open`, {
-        method: "POST",
-        body: "{}",
+      const opened = await apiPost<{ viewUrl: string }>(`/api/public/library/${item.id}/open`, {
+        email: email.trim(),
       });
       if (!opened.viewUrl) throw new Error(t("common.error"));
       window.open(opened.viewUrl, "_blank", "noopener,noreferrer");
@@ -107,7 +124,7 @@ export function StudentLibraryPage() {
     }
   }
 
-  if (loading || fetching) {
+  if (fetching) {
     return (
       <section className="panel library-page" aria-busy="true">
         <p className="muted">{t("library.loading")}</p>
@@ -115,14 +132,28 @@ export function StudentLibraryPage() {
     );
   }
 
+  const backTo = user?.role === "STUDENT" && user.hasProfile ? "/dashboard" : "/";
+
   return (
     <section className="panel library-page studio-page">
-      <Link to="/dashboard" className="back-link">
-        &larr; {t("library.back")}
+      <Link to={backTo} className="back-link">
+        &larr; {user?.role === "STUDENT" && user.hasProfile ? t("library.back") : t("nav.home")}
       </Link>
       <p className="home-kicker">{t("dash.kicker")}</p>
       <h1>{t("library.title")}</h1>
-      <p className="lede">{t("library.lede")}</p>
+      <p className="lede">{t("library.publicLede")}</p>
+
+      <label className="form-label library-email">
+        {t("library.email")}
+        <input
+          className="form-input"
+          type="email"
+          value={email}
+          onChange={(e) => rememberEmail(e.target.value)}
+          placeholder={t("library.email")}
+          autoComplete="email"
+        />
+      </label>
 
       {error && (
         <p className="status error" role="alert">

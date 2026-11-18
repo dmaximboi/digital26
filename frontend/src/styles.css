@@ -2149,6 +2149,7 @@ dd {
 .payment-receipt p { margin: .3rem 0; font-size: .92rem; }
 
 .library-page { max-width: 920px; margin: 0 auto; padding-inline: 1.25rem; }
+.library-email { margin: 0.8rem 0 1rem; max-width: 28rem; }
 .library-grid {
   display: grid;
   gap: 1rem;

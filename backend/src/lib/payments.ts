@@ -68,6 +68,21 @@ export async function hasLibraryAccess(userId: string, itemId: string): Promise<
   return Boolean(paid);
 }
 
+export async function hasLibraryAccessByEmail(email: string, itemId: string): Promise<boolean> {
+  const normalized = email.trim().toLowerCase();
+  if (!normalized) return false;
+  const paid = await prisma.paymentOrder.findFirst({
+    where: {
+      kind: PaymentKind.LIBRARY,
+      publicId: itemId,
+      customerEmail: normalized,
+      status: PaymentStatus.PAID,
+    },
+    select: { id: true },
+  });
+  return Boolean(paid);
+}
+
 function moneyEqual(a: string, b: string): boolean {
   const left = Number.parseFloat(a);
   const right = Number.parseFloat(b);
