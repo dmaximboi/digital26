@@ -576,6 +576,8 @@ export const en = {
   "adminExam.points": "Points",
   "adminExam.addQuestion": "Add question",
   "adminExam.remove": "Remove",
+  "adminExam.delete": "Delete exam",
+  "adminExam.deleteConfirm": "Delete this exam? The questions and submissions are removed. Marks already written on a student report stay.",
   "adminExam.locked": "Questions stay as they are after a student opens the paper.",
   "adminExam.submissions": "submissions",
   "adminExam.noSubmissions": "No one has opened this paper yet.",

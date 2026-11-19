@@ -4680,6 +4680,7 @@ dd {
   color: var(--accent);
 }
 .exam-offer__score { font-weight: 700; color: var(--ink); }
+.exam-offer__actions { display: flex; flex-wrap: wrap; gap: 0.45rem; align-items: center; }
 .exam-admin__head,
 .exam-review header {
   display: flex;

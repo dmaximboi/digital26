@@ -127,6 +127,9 @@ export function ExamRoomPage() {
             hudRef.current = pulse;
             if (pulse.face) setFaceLocked(true);
           },
+          onFaceReady(supported) {
+            setFaceOn(supported);
+          },
           onWarning(kind) {
             setAlerts((count) => count + 1);
             setNotice(t(warningKey(kind)));
@@ -136,7 +139,6 @@ export function ExamRoomPage() {
             }).catch(() => {});
           },
         });
-        setFaceOn(watch.faceSupported);
         stopWatch = watch.stop;
         setPhase("scan");
         setFaceLocked(false);

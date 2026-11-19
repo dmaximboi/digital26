@@ -562,6 +562,8 @@ export const ar: Record<MessageKey, string> = {
   "adminExam.points": "الدرجات",
   "adminExam.addQuestion": "إضافة سؤال",
   "adminExam.remove": "حذف",
+  "adminExam.delete": "حذف الامتحان",
+  "adminExam.deleteConfirm": "حذف هذا الامتحان؟ تُحذف الأسئلة والتسليمات. الدرجات المكتوبة في سجل الطالب تبقى.",
   "adminExam.locked": "تثبت الأسئلة بعد أن يفتح طالب الورقة.",
   "adminExam.submissions": "تسليمات",
   "adminExam.noSubmissions": "لم يفتح أحد هذه الورقة بعد.",

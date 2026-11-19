@@ -562,6 +562,8 @@ export const fr: Record<MessageKey, string> = {
   "adminExam.points": "Points",
   "adminExam.addQuestion": "Ajouter la question",
   "adminExam.remove": "Retirer",
+  "adminExam.delete": "Supprimer l'examen",
+  "adminExam.deleteConfirm": "Supprimer cet examen ? Les questions et les copies sont retirées. Les notes déjà écrites sur le dossier de l'étudiant restent.",
   "adminExam.locked": "Les questions restent fixes dès qu’un étudiant ouvre l’épreuve.",
   "adminExam.submissions": "copies",
   "adminExam.noSubmissions": "Personne n’a encore ouvert cette épreuve.",

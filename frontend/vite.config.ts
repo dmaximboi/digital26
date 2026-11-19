@@ -30,6 +30,7 @@ export default defineConfig({
           /^\/llms\.txt$/,
           /^\/dictionary\.md$/,
           /^\/glossary\.html$/,
+          /^\/mediapipe\//,
         ],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
         runtimeCaching: [

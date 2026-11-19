@@ -4,11 +4,17 @@ export type ExamFace = { x: number; y: number; w: number; h: number };
 
 export type ExamPulse = { level: number; bars: number[]; face: ExamFace | null };
 
-type FaceBox = { boundingBox: DOMRectReadOnly };
-type FaceDetectorLike = { detect: (input: CanvasImageSource) => Promise<FaceBox[]> };
+type Landmark = { x: number; y: number };
+type FaceRunner = {
+  detectForVideo: (video: HTMLVideoElement, timestamp: number) => {
+    faceLandmarks: Landmark[][];
+    faceBlendshapes: { categories: { categoryName: string; score: number }[] }[];
+  };
+  close: () => void;
+};
 
 export function faceCheckSupported(): boolean {
-  return typeof (window as unknown as { FaceDetector?: unknown }).FaceDetector === "function";
+  return typeof WebAssembly === "object";
 }
 
 export async function openExamMedia(): Promise<MediaStream> {
@@ -26,6 +32,7 @@ export function watchExam(opts: {
   video: HTMLVideoElement;
   onWarning: (kind: ExamWarning) => void;
   onPulse?: (pulse: ExamPulse) => void;
+  onFaceReady?: (supported: boolean) => void;
 }): { stop: () => void; faceSupported: boolean } {
   const audioCtx = new AudioContext();
   const source = audioCtx.createMediaStreamSource(opts.stream);
@@ -36,29 +43,44 @@ export function watchExam(opts: {
   const freq = new Uint8Array(analyser.frequencyBinCount);
   const binHz = audioCtx.sampleRate / analyser.fftSize;
 
-  const canvas = document.createElement("canvas");
-  canvas.width = 320;
-  canvas.height = 240;
-  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  let landmarker: FaceRunner | null = null;
+  let lastVideoTs = 0;
+  const mouthSamples: number[] = [];
 
-  let detector: FaceDetectorLike | null = null;
-  const FaceCtor = (window as unknown as {
-    FaceDetector?: new (opts?: { fastMode?: boolean; maxDetectedFaces?: number }) => FaceDetectorLike;
-  }).FaceDetector;
-  if (FaceCtor) {
-    try {
-      detector = new FaceCtor({ fastMode: false, maxDetectedFaces: 3 });
-    } catch {
-      detector = null;
-    }
-  }
+  const base = "/mediapipe";
+  void import("@mediapipe/tasks-vision")
+    .then(async ({ FaceLandmarker, FilesetResolver }) => {
+      if (stopped) return;
+      const files = await FilesetResolver.forVisionTasks(`${base}/wasm`);
+      if (stopped) return;
+      const created = await FaceLandmarker.createFromOptions(files, {
+        baseOptions: {
+          modelAssetPath: `${base}/face_landmarker.task`,
+          delegate: "CPU",
+        },
+        runningMode: "VIDEO",
+        numFaces: 1,
+        outputFaceBlendshapes: true,
+        minFaceDetectionConfidence: 0.4,
+        minFacePresenceConfidence: 0.4,
+        minTrackingConfidence: 0.4,
+      });
+      if (stopped) {
+        created.close();
+        return;
+      }
+      landmarker = created;
+      opts.onFaceReady?.(true);
+    })
+    .catch(() => {
+      if (!stopped) opts.onFaceReady?.(false);
+    });
 
   const lastSent: Partial<Record<ExamWarning, number>> = {};
   let noiseSince: number | null = null;
   let voiceSince: number | null = null;
   let faceSince: number | null = null;
   let mouthSince: number | null = null;
-  let prevMouth: Uint8ClampedArray | null = null;
   let lastFace: ExamFace | null = null;
   let stopped = false;
   let timer = 0;
@@ -123,54 +145,55 @@ export function watchExam(opts: {
     else voiceSince = null;
     if (voiceSince && now - voiceSince > 1500) emit("SECOND_VOICE", now);
 
-    if (detector && ctx && opts.video.readyState >= 2) {
-      ctx.drawImage(opts.video, 0, 0, canvas.width, canvas.height);
+    if (landmarker && opts.video.readyState >= 2 && opts.video.videoWidth > 0) {
+      const stamp = Math.max(lastVideoTs + 1, Math.round(performance.now()));
+      lastVideoTs = stamp;
       try {
-        const faces = await detector.detect(canvas);
-        if (faces.length === 0) {
+        const found = landmarker.detectForVideo(opts.video, stamp);
+        const marks = found.faceLandmarks[0];
+        if (!marks || marks.length < 300) {
           faceSince = faceSince ?? now;
           mouthSince = null;
-          prevMouth = null;
+          mouthSamples.length = 0;
           lastFace = null;
         } else {
           faceSince = null;
-          const box = faces[0]?.boundingBox;
-          if (!box) {
-            lastFace = null;
-          } else {
-          lastFace = {
-            x: box.x / canvas.width,
-            y: box.y / canvas.height,
-            w: box.width / canvas.width,
-            h: box.height / canvas.height,
-          };
-          const x = Math.max(0, Math.floor(box.x));
-          const y = Math.max(0, Math.floor(box.y + box.height * 0.55));
-          const w = Math.min(canvas.width - x, Math.floor(box.width));
-          const h = Math.min(canvas.height - y, Math.floor(box.height * 0.4));
-          if (w > 8 && h > 8) {
-            const data = ctx.getImageData(x, y, w, h).data;
-            if (prevMouth && prevMouth.length === data.length) {
-              let diff = 0;
-              let samples = 0;
-              for (let i = 0; i < data.length; i += 16) {
-                diff += Math.abs((data[i] ?? 0) - (prevMouth[i] ?? 0));
-                samples += 1;
-              }
-              const avg = samples ? diff / samples : 0;
-              if (avg > 22) mouthSince = mouthSince ?? now;
-              else mouthSince = null;
-              if (mouthSince && now - mouthSince > 2500) emit("MOUTH", now);
-            }
-            prevMouth = new Uint8ClampedArray(data);
+          let minX = 1;
+          let minY = 1;
+          let maxX = 0;
+          let maxY = 0;
+          for (const point of marks) {
+            if (point.x < minX) minX = point.x;
+            if (point.y < minY) minY = point.y;
+            if (point.x > maxX) maxX = point.x;
+            if (point.y > maxY) maxY = point.y;
           }
-          }
+          lastFace = { x: minX, y: minY, w: Math.max(0.02, maxX - minX), h: Math.max(0.02, maxY - minY) };
+          const jaw = found.faceBlendshapes[0]?.categories.find((item) => item.categoryName === "jawOpen")?.score;
+          const open = jaw ?? lipOpen(marks);
+          mouthSamples.push(open);
+          if (mouthSamples.length > 8) mouthSamples.shift();
+          const swing = Math.max(...mouthSamples) - Math.min(...mouthSamples);
+          if (mouthSamples.length >= 5 && swing > 0.18) mouthSince = mouthSince ?? now;
+          else mouthSince = null;
+          if (mouthSince && now - mouthSince > 2000) emit("MOUTH", now);
         }
         if (faceSince && now - faceSince > 1000) emit("FACE_LEFT", now);
       } catch {
         // A single missed frame should not turn face tracking off.
       }
     }
+  }
+
+  function lipOpen(marks: Landmark[]): number {
+    const upper = marks[13];
+    const lower = marks[14];
+    const left = marks[61];
+    const right = marks[291];
+    if (!upper || !lower || !left || !right) return 0;
+    const height = Math.hypot(upper.x - lower.x, upper.y - lower.y);
+    const width = Math.hypot(left.x - right.x, left.y - right.y);
+    return width > 0.01 ? height / width : 0;
   }
 
   function pulse() {
@@ -201,11 +224,13 @@ export function watchExam(opts: {
   }
 
   return {
-    faceSupported: Boolean(detector),
+    faceSupported: false,
     stop() {
       stopped = true;
       window.clearInterval(timer);
       window.clearInterval(pulseTimer);
+      landmarker?.close();
+      landmarker = null;
       source.disconnect();
       void audioCtx.close();
     },

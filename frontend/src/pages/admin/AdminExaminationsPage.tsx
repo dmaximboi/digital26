@@ -25,6 +25,7 @@ export function AdminExaminationsPage() {
   const [instructions, setInstructions] = useState("");
   const [minutes, setMinutes] = useState("60");
   const [busy, setBusy] = useState(false);
+  const [deletingId, setDeletingId] = useState("");
 
   const load = useCallback(() => {
     apiFetch<{ exams: ExamRow[] }>("/api/ops/examinations")
@@ -56,6 +57,22 @@ export function AdminExaminationsPage() {
       setError(err instanceof Error ? err.message : t("common.error"));
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function deleteExam(exam: ExamRow) {
+    if (!canWrite || deletingId) return;
+    const ok = window.confirm(t("adminExam.deleteConfirm"));
+    if (!ok) return;
+    setDeletingId(exam.id);
+    setError("");
+    try {
+      await apiFetch(`/api/ops/examinations/${exam.id}/delete`, { method: "POST", body: "{}" });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setDeletingId("");
     }
   }
 
@@ -99,9 +116,21 @@ export function AdminExaminationsPage() {
                 {exam.durationMinutes} min · {exam.questionCount} · {exam.submissions} {t("adminExam.submissions")}
               </p>
             </div>
-            <Link className="btn sm" to={`/admin/examinations/${exam.id}`}>
-              {t("adminExam.choose")}
-            </Link>
+            <div className="exam-offer__actions">
+              <Link className="btn sm" to={`/admin/examinations/${exam.id}`}>
+                {t("adminExam.choose")}
+              </Link>
+              {canWrite && (
+                <button
+                  type="button"
+                  className="btn sm danger"
+                  disabled={deletingId === exam.id}
+                  onClick={() => void deleteExam(exam)}
+                >
+                  {t("adminExam.delete")}
+                </button>
+              )}
+            </div>
           </article>
         ))}
       </div>

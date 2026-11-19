@@ -592,6 +592,22 @@ examsRouter.post("/ops/examinations/:id/publish", requireAdminWrite, async (req:
   }
 });
 
+examsRouter.post("/ops/examinations/:id/delete", requireAdminWrite, async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const existing = await prisma.examination.findUnique({ where: { id } });
+    if (!existing) {
+      res.status(404).json({ error: "Exam not found" });
+      return;
+    }
+    await prisma.examination.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[ops.examinations.delete]", err);
+    res.status(500).json({ error: "Failed to delete exam" });
+  }
+});
+
 examsRouter.post("/ops/examinations/:id/close", requireAdminWrite, async (req, res) => {
   try {
     const id = String(req.params.id);

@@ -1,5 +1,5 @@
 import { FormEvent, useCallback, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "../../auth/AuthContext";
 import { useT } from "../../i18n/LocaleContext";
 import type { MessageKey } from "../../i18n/locales/en";
@@ -49,6 +49,7 @@ type Submission = {
 
 export function AdminExamDetailPage() {
   const t = useT();
+  const navigate = useNavigate();
   const { id = "", sessionId = "" } = useParams();
   const { user } = useAuth();
   const canWrite = Boolean(user?.canWrite);
@@ -170,6 +171,20 @@ export function AdminExamDetailPage() {
     }
   }
 
+  async function deleteExam() {
+    if (!canWrite || busy) return;
+    if (!window.confirm(t("adminExam.deleteConfirm"))) return;
+    setBusy(true);
+    setError("");
+    try {
+      await apiFetch(`/api/ops/examinations/${id}/delete`, { method: "POST", body: "{}" });
+      navigate("/admin/examinations", { replace: true });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+      setBusy(false);
+    }
+  }
+
   async function saveGrade(e: FormEvent) {
     e.preventDefault();
     if (!canWrite || !sessionId || busy) return;
@@ -220,6 +235,11 @@ export function AdminExamDetailPage() {
           {canWrite && exam.status === "PUBLISHED" && (
             <button type="button" className="btn" onClick={() => void setStatus("close")}>
               {t("adminExam.close")}
+            </button>
+          )}
+          {canWrite && (
+            <button type="button" className="btn danger" disabled={busy} onClick={() => void deleteExam()}>
+              {t("adminExam.delete")}
             </button>
           )}
         </div>
