@@ -5,7 +5,7 @@ import { useT } from "../../i18n/LocaleContext";
 import type { MessageKey } from "../../i18n/locales/en";
 import { apiFetch } from "../../lib/authApi";
 
-type Question = { id: string; prompt: string; marks: number };
+type Question = { id: string; prompt: string; marks: number; choices?: string[] };
 type SessionRow = {
   id: string;
   status: "IN_PROGRESS" | "SUBMITTED" | "GRADED";
@@ -44,7 +44,7 @@ type Submission = {
   maxScore: string | null;
   feedback: string | null;
   events: { kind: string; createdAt: string }[];
-  questions: { id: string; prompt: string; marks: number; response: string }[];
+  questions: { id: string; prompt: string; marks: number; response: string; choice?: string; choices?: string[] }[];
 };
 
 export function AdminExamDetailPage() {
@@ -56,6 +56,7 @@ export function AdminExamDetailPage() {
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [error, setError] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [options, setOptions] = useState("");
   const [marks, setMarks] = useState("1");
   const [score, setScore] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -103,9 +104,18 @@ export function AdminExamDetailPage() {
     try {
       await apiFetch(`/api/ops/examinations/${id}/questions`, {
         method: "POST",
-        body: JSON.stringify({ prompt, marks: Number(marks) }),
+        body: JSON.stringify({
+          prompt,
+          marks: Number(marks),
+          choices: options
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, 6),
+        }),
       });
       setPrompt("");
+      setOptions("");
       setMarks("1");
       load();
     } catch (err) {
@@ -256,6 +266,7 @@ export function AdminExamDetailPage() {
                   </strong>
                 </p>
                 <p className="muted">{t("exam.marks", { marks: q.marks })}</p>
+                {(q.choices ?? []).length > 0 && <p className="muted">{(q.choices ?? []).join(" · ")}</p>}
                 {canWrite && !locked && (
                   <button type="button" className="btn sm" onClick={() => void removeQuestion(q.id)}>
                     {t("adminExam.remove")}
@@ -269,6 +280,10 @@ export function AdminExamDetailPage() {
               <label>
                 {t("adminExam.prompt")}
                 <textarea className="form-input" rows={3} value={prompt} onChange={(e) => setPrompt(e.target.value)} required minLength={2} />
+              </label>
+              <label>
+                {t("adminExam.options")}
+                <textarea className="form-input" rows={3} value={options} onChange={(e) => setOptions(e.target.value)} placeholder={t("adminExam.optionsHint")} />
               </label>
               <label>
                 {t("adminExam.points")}
@@ -322,6 +337,7 @@ export function AdminExamDetailPage() {
                     </strong>
                   </p>
                   <p className="muted">{t("exam.marks", { marks: q.marks })}</p>
+                  {q.choice && <p>{t("exam.picked")}: {q.choice}</p>}
                   <p className="exam-answer">{q.response || t("exam.blank")}</p>
                 </li>
               ))}

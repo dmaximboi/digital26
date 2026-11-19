@@ -22,6 +22,7 @@ const createExamSchema = z.object({
 const questionSchema = z.object({
   prompt: promptSchema,
   marks: z.coerce.number().int().min(1).max(100),
+  choices: z.array(z.string().trim().min(1).max(200)).max(6).optional(),
 });
 
 const answersSchema = z.object({
@@ -30,6 +31,7 @@ const answersSchema = z.object({
       z.object({
         questionId: z.string().min(1).max(40),
         response: answerSchema,
+        choice: z.string().trim().max(200).optional().nullable(),
       }),
     )
     .max(40),
@@ -209,9 +211,9 @@ function studentView(session: {
     instructions: string | null;
     durationMinutes: number;
     status: ExaminationStatus;
-    questions: { id: string; prompt: string; marks: number; sortOrder: number }[];
+    questions: { id: string; prompt: string; marks: number; sortOrder: number; choices: string[] }[];
   };
-  answers: { questionId: string; response: string }[];
+  answers: { questionId: string; response: string; choice: string | null }[];
   events: { kind: ExamEventKind }[];
 }) {
   const open = session.status === "IN_PROGRESS";
@@ -232,6 +234,8 @@ function studentView(session: {
           id: q.id,
           prompt: q.prompt,
           marks: q.marks,
+          choices: q.choices,
+          choice: session.answers.find((a) => a.questionId === q.id)?.choice ?? "",
           response: session.answers.find((a) => a.questionId === q.id)?.response ?? "",
         }))
       : [],
@@ -280,8 +284,9 @@ examsRouter.put("/student/exams/sessions/:sessionId/answers", requireAuth, async
           sessionId: session.id,
           questionId: answer.questionId,
           response: answer.response,
+          choice: answer.choice?.trim() || null,
         },
-        update: { response: answer.response },
+        update: { response: answer.response, choice: answer.choice?.trim() || null },
       });
     }
     res.json({ ok: true });
@@ -452,6 +457,7 @@ examsRouter.get("/ops/examinations/:id", requireAdmin, async (req, res) => {
           id: q.id,
           prompt: q.prompt,
           marks: q.marks,
+          choices: q.choices,
           sortOrder: q.sortOrder,
         })),
         access: exam.access.map((row) => ({
@@ -631,6 +637,7 @@ examsRouter.post("/ops/examinations/:id/questions", requireAdminWrite, async (re
         examinationId: id,
         prompt: parsed.data.prompt,
         marks: parsed.data.marks,
+        choices: parsed.data.choices ?? [],
         sortOrder: exam._count.questions,
       },
     });
@@ -693,6 +700,8 @@ examsRouter.get("/ops/examinations/:id/sessions/:sessionId", requireAdmin, async
           id: q.id,
           prompt: q.prompt,
           marks: q.marks,
+          choices: q.choices,
+          choice: session.answers.find((a) => a.questionId === q.id)?.choice ?? "",
           response: session.answers.find((a) => a.questionId === q.id)?.response ?? "",
         })),
       },

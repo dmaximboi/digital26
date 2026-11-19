@@ -569,6 +569,7 @@ model ExamQuestion {
   id            String   @id @default(cuid())
   examinationId String   @map("examination_id")
   prompt        String   @db.Text
+  choices       String[] @default([])
   marks         Int      @default(1)
   sortOrder     Int      @default(0) @map("sort_order")
   createdAt     DateTime @default(now()) @map("created_at")
@@ -611,6 +612,7 @@ model ExamAnswer {
   id         String   @id @default(cuid())
   sessionId  String   @map("session_id")
   questionId String   @map("question_id")
+  choice     String?
   response   String   @db.Text
   updatedAt  DateTime @updatedAt @map("updated_at")
 

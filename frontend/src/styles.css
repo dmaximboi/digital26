@@ -1727,7 +1727,7 @@ dd {
 .form-label { font-weight: 650; font-size: 0.94rem; color: var(--ink); display: flex; flex-direction: column; gap: 0.45rem; }
 .form-input {
   background: var(--surface);
-  border: 1px solid transparent;
+  border: 1.5px solid #f5a623;
   color: var(--ink);
   padding: 0.85rem 1rem;
   border-radius: 0.9rem;
@@ -1735,7 +1735,8 @@ dd {
   font-size: var(--fs-body);
   line-height: 1.4;
 }
-.form-input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+.form-input:hover,
+.form-input:focus { border-color: #f5a623; outline: 2px solid #f5a623; outline-offset: 1px; }
 .form-input:disabled { opacity: .55; }
 .form-textarea { resize: vertical; min-height: 70px; }
 .form-hint { font-size: var(--fs-caption); color: var(--muted); font-weight: 400; line-height: 1.45; }
@@ -4641,6 +4642,7 @@ dd {
   display: block;
   color: var(--muted);
 }
+.exam-board > .back-link { display: inline-block; margin-bottom: 0.85rem; }
 .exam-board__head h1 { margin-bottom: 0.35rem; }
 .exam-rules {
   display: grid;
@@ -5143,8 +5145,27 @@ html[dir="rtl"] .visor-paper {
 html[dir="rtl"] .board-question h2 { font-family: "Noto Sans Arabic", sans-serif; }
 .board-question textarea {
   width: 100%; resize: vertical; min-height: 4.5rem;
-  border: 0; border-bottom: 1px solid rgba(57, 240, 138, 0.45);
-  background: transparent; color: #f3fff6; font: inherit; outline: none;
+  border: 1.5px solid #f5a623;
+  border-radius: 0.85rem;
+  padding: 0.65rem 0.75rem;
+  background: rgba(0, 0, 0, 0.28);
+  color: #f3fff6;
+  font: inherit;
+  outline: none;
+}
+.board-question textarea:hover,
+.board-question textarea:focus { border-color: #f5a623; }
+.board-picks { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 0.65rem; }
+.board-picks button {
+  border: 1.5px solid #f5a623; border-radius: 999px; background: transparent; color: #ffe7b8;
+  padding: 0.35rem 0.7rem; cursor: pointer;
+}
+.board-picks button.is-on { background: rgba(245, 166, 35, 0.28); color: #fff; }
+.board-face-alert {
+  position: absolute; z-index: 6; left: 50%; top: 42%; transform: translate(-50%, -50%);
+  margin: 0; padding: 0.7rem 0.9rem; border-radius: 0.8rem;
+  background: rgba(80, 8, 8, 0.88); color: #ffd0d0; border: 1px solid #ff8d8d;
+  font-weight: 700; text-align: center;
 }
 .board-nav { display: flex; justify-content: space-between; gap: 0.5rem; margin-top: 0.7rem; }
 .board-nav button, .board-next {

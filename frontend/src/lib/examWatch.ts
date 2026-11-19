@@ -37,15 +37,17 @@ export function watchExam(opts: {
   const binHz = audioCtx.sampleRate / analyser.fftSize;
 
   const canvas = document.createElement("canvas");
-  canvas.width = 160;
-  canvas.height = 120;
+  canvas.width = 320;
+  canvas.height = 240;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
   let detector: FaceDetectorLike | null = null;
-  const FaceCtor = (window as unknown as { FaceDetector?: new () => FaceDetectorLike }).FaceDetector;
+  const FaceCtor = (window as unknown as {
+    FaceDetector?: new (opts?: { fastMode?: boolean; maxDetectedFaces?: number }) => FaceDetectorLike;
+  }).FaceDetector;
   if (FaceCtor) {
     try {
-      detector = new FaceCtor();
+      detector = new FaceCtor({ fastMode: false, maxDetectedFaces: 3 });
     } catch {
       detector = null;
     }
@@ -64,7 +66,8 @@ export function watchExam(opts: {
 
   function emit(kind: ExamWarning, now: number) {
     const prev = lastSent[kind] ?? 0;
-    if (now - prev < 20_000) return;
+    const wait = kind === "FACE_LEFT" ? 8_000 : 20_000;
+    if (now - prev < wait) return;
     lastSent[kind] = now;
     opts.onWarning(kind);
   }
@@ -163,9 +166,9 @@ export function watchExam(opts: {
           }
           }
         }
-        if (faceSince && now - faceSince > 2500) emit("FACE_LEFT", now);
+        if (faceSince && now - faceSince > 1000) emit("FACE_LEFT", now);
       } catch {
-        detector = null;
+        // A single missed frame should not turn face tracking off.
       }
     }
   }

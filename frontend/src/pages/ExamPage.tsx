@@ -28,7 +28,7 @@ export function ExamPage() {
   const [busyId, setBusyId] = useState("");
 
   useEffect(() => {
-    setPageMeta({ title: t("exam.title"), description: t("exam.lede"), robots: "noindex,nofollow" });
+    setPageMeta({ title: t("exam.title"), description: t("exam.leaveWarning"), robots: "noindex,nofollow" });
   }, [t]);
 
   useEffect(() => {
@@ -94,10 +94,9 @@ export function ExamPage() {
 
   return (
     <section className="panel studio-page exam-board">
+      <Link to="/dashboard" className="back-link">{t("exam.backDash")}</Link>
       <header className="exam-board__head">
-        <p className="home-kicker">{t("exam.kicker")}</p>
         <h1>{t("exam.title")}</h1>
-        <p className="lede">{t("exam.lede")}</p>
       </header>
       <ul className="exam-rules">
         <li>{t("exam.ruleTab")}</li>
@@ -143,9 +142,6 @@ export function ExamPage() {
           );
         })}
       </div>
-      <p>
-        <Link to="/dashboard">{t("exam.backDash")}</Link>
-      </p>
     </section>
   );
 }

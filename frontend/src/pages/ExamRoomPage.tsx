@@ -6,7 +6,14 @@ import { apiFetch } from "../lib/authApi";
 import { openExamMedia, watchExam, type ExamFace, type ExamPulse, type ExamWarning } from "../lib/examWatch";
 import { setPageMeta } from "../lib/seo";
 
-type Question = { id: string; prompt: string; marks: number; response: string };
+type Question = {
+  id: string;
+  prompt: string;
+  marks: number;
+  response: string;
+  choices?: string[];
+  choice?: string;
+};
 type SessionView = {
   id: string;
   status: "IN_PROGRESS" | "SUBMITTED" | "GRADED";
@@ -36,11 +43,15 @@ export function ExamRoomPage() {
   const pipRef = useRef<HTMLVideoElement | null>(null);
   const skipLeave = useRef(false);
   const done = useRef(false);
+  const armedRef = useRef(false);
   const [session, setSession] = useState<SessionView | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [picks, setPicks] = useState<Record<string, string>>({});
+  const [faceAway, setFaceAway] = useState(false);
   const [error, setError] = useState("");
   const [mediaError, setMediaError] = useState("");
   const [armed, setArmed] = useState(false);
+  armedRef.current = armed;
   const [faceOn, setFaceOn] = useState(false);
   const [notice, setNotice] = useState("");
   const [now, setNow] = useState(Date.now());
@@ -67,8 +78,13 @@ export function ExamRoomPage() {
         if (cancelled) return;
         setSession(d.session);
         const next: Record<string, string> = {};
-        for (const q of d.session.questions) next[q.id] = q.response;
+        const picked: Record<string, string> = {};
+        for (const q of d.session.questions) {
+          next[q.id] = q.response;
+          picked[q.id] = q.choice ?? "";
+        }
         setAnswers(next);
+        setPicks(picked);
       })
       .catch((err: unknown) => {
         if (!cancelled) setError(err instanceof Error ? err.message : t("common.error"));
@@ -156,6 +172,17 @@ export function ExamRoomPage() {
   }, [phase]);
 
   useEffect(() => {
+    if (!armed || !faceOn) {
+      setFaceAway(false);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setFaceAway(!hudRef.current?.face);
+    }, 400);
+    return () => window.clearInterval(id);
+  }, [armed, faceOn, hudRef]);
+
+  useEffect(() => {
     if (!session || session.status !== "IN_PROGRESS") return;
     const mark = Symbol(session.id);
     const holder = window as unknown as { __examRoom?: symbol };
@@ -182,12 +209,38 @@ export function ExamRoomPage() {
     const onHide = () => {
       if (document.visibilityState === "hidden") handIn("TAB_LEFT");
     };
+    let leaveTimer = 0;
+    const onBlur = () => {
+      window.setTimeout(() => {
+        if (!armedRef.current || document.hasFocus()) return;
+        handIn("TAB_LEFT");
+      }, 200);
+    };
+    const onOut = (event: MouseEvent) => {
+      if (!armedRef.current) return;
+      const nextNode = event.relatedTarget;
+      if (nextNode instanceof Node && document.documentElement.contains(nextNode)) return;
+      window.clearTimeout(leaveTimer);
+      leaveTimer = window.setTimeout(() => handIn("TAB_LEFT"), 500);
+    };
+    const onOver = (event: MouseEvent) => {
+      if (event.target instanceof Node && document.documentElement.contains(event.target)) {
+        window.clearTimeout(leaveTimer);
+      }
+    };
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", onHide);
+    window.addEventListener("blur", onBlur);
+    document.addEventListener("mouseout", onOut);
+    document.addEventListener("mouseover", onOver);
 
     return () => {
+      window.clearTimeout(leaveTimer);
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", onHide);
+      window.removeEventListener("blur", onBlur);
+      document.removeEventListener("mouseout", onOut);
+      document.removeEventListener("mouseover", onOver);
       window.setTimeout(() => {
         if (holder.__examRoom === mark) handIn("TAB_LEFT");
       }, 0);
@@ -216,6 +269,7 @@ export function ExamRoomPage() {
       const payload = session.questions.map((q) => ({
         questionId: q.id,
         response: answers[q.id] ?? "",
+        choice: picks[q.id] ?? "",
       }));
       void apiFetch(`/api/student/exams/sessions/${session.id}/answers`, {
         method: "PUT",
@@ -225,7 +279,7 @@ export function ExamRoomPage() {
         .catch(() => setSaved(false));
     }, 800);
     return () => window.clearTimeout(handle);
-  }, [answers, session, armed]);
+  }, [answers, picks, session, armed]);
 
   async function submitNow() {
     if (!session || done.current) return;
@@ -236,6 +290,7 @@ export function ExamRoomPage() {
       const payload = session.questions.map((q) => ({
         questionId: q.id,
         response: answers[q.id] ?? "",
+        choice: picks[q.id] ?? "",
       }));
       await apiFetch(`/api/student/exams/sessions/${session.id}/answers`, {
         method: "PUT",
@@ -298,7 +353,10 @@ export function ExamRoomPage() {
         instructions={session.instructions}
         questions={session.questions}
         answers={answers}
+        picks={picks}
         onAnswer={(id, value) => setAnswers((current) => ({ ...current, [id]: value }))}
+        onPick={(id, value) => setPicks((current) => ({ ...current, [id]: value }))}
+        faceAway={faceAway}
         phase={phase}
         faceLocked={faceLocked}
         faceOn={faceOn}
@@ -354,7 +412,10 @@ function VisorStage(props: {
   instructions: string | null;
   questions: Question[];
   answers: Record<string, string>;
+  picks: Record<string, string>;
   onAnswer: (id: string, value: string) => void;
+  onPick: (id: string, value: string) => void;
+  faceAway: boolean;
   phase: Phase;
   faceLocked: boolean;
   faceOn: boolean;
@@ -423,9 +484,10 @@ function VisorStage(props: {
           <video ref={props.videoRef} className="board-video" muted playsInline autoPlay />
           <FaceLock hudRef={props.hudRef} />
           <p className="board-live">{props.armed ? t("exam.live") : t("exam.scanning")}</p>
-          <p className={`board-quiet ${props.notice ? "is-bad" : ""}`}>
-            {props.notice || t("exam.noNoise")}
+          <p className={`board-quiet ${props.notice || props.faceAway ? "is-bad" : ""}`}>
+            {props.faceAway ? t("exam.warnFace") : props.notice || t("exam.noNoise")}
           </p>
+          {props.faceAway && <p className="board-face-alert">{t("exam.warnFace")}</p>}
           {props.phase !== "paper" && (
             <div className="board-question">
               <p className="board-qcount">{props.faceLocked ? t("exam.faceOk") : t("exam.scanning")}</p>
@@ -451,6 +513,20 @@ function VisorStage(props: {
                 <span> {t("exam.marks", { marks: question.marks })}</span>
               </p>
               <h2>{question.prompt}</h2>
+              {(question.choices ?? []).length > 0 && (
+                <div className="board-picks">
+                  {(question.choices ?? []).map((choice) => (
+                    <button
+                      key={choice}
+                      type="button"
+                      className={props.picks[question.id] === choice ? "is-on" : ""}
+                      onClick={() => props.onPick(question.id, props.picks[question.id] === choice ? "" : choice)}
+                    >
+                      {choice}
+                    </button>
+                  ))}
+                </div>
+              )}
               <textarea
                 rows={3}
                 maxLength={4000}
