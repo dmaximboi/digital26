@@ -105,11 +105,8 @@ examsRouter.get("/student/exams", requireAuth, async (req: AuthedRequest, res) =
       items.push({
         id: exam.id,
         title: exam.title,
-        instructions: exam.instructions,
         durationMinutes: exam.durationMinutes,
         status: exam.status,
-        questionCount: exam.questions.length,
-        maxScore: String(maxMarks(exam.questions)),
         session: session
           ? {
               id: session.id,
@@ -499,7 +496,7 @@ examsRouter.put("/ops/examinations/:id/access", requireAdminWrite, async (req: A
     }
     const ids = [...new Set(parsed.data.studentProfileIds)];
     const profiles = await prisma.studentProfile.findMany({
-      where: { id: { in: ids }, status: "APPROVED", registrationPaidAt: { not: null } },
+      where: { id: { in: ids }, status: "APPROVED" },
       select: { id: true },
     });
     const allowed = new Set(profiles.map((row) => row.id));

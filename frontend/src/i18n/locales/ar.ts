@@ -544,6 +544,7 @@ export const ar: Record<MessageKey, string> = {
   "adminExam.kicker": "الامتحانات",
   "adminExam.title": "الامتحانات",
   "adminExam.lede": "سمِّ الورقة، اختر الطلاب، أضف الأسئلة، انشرها، ثم صحّح كل تسليم. الدرجة تُكتب في تقرير الطالب.",
+  "adminExam.choose": "اختيار الطلاب",
   "adminExam.access": "الطلاب الذين يمكنهم فتح هذه الورقة",
   "adminExam.accessHint": "فقط الطلاب المحددون يمكنهم البدء. من بدأ بالفعل يستطيع الإكمال.",
   "adminExam.accessEmpty": "لا يوجد طالب مقبول ومدفوع بعد.",

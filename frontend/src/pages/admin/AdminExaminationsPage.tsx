@@ -100,7 +100,7 @@ export function AdminExaminationsPage() {
               </p>
             </div>
             <Link className="btn sm" to={`/admin/examinations/${exam.id}`}>
-              {t("common.open")}
+              {t("adminExam.choose")}
             </Link>
           </article>
         ))}

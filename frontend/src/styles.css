@@ -2020,8 +2020,17 @@ dd {
   background: var(--accent);
 }
 .progress-hub__hint { margin: 0.65rem 0 0; font-size: 0.85rem; }
-.dashboard-cards { display: grid; gap: 1rem; margin-top: 1.5rem; }
+.dashboard-cards { display: grid; gap: 1.15rem; margin-top: 1.75rem; }
+.dashboard-approved .dashboard-cards { grid-template-columns: 1fr; }
+@media (min-width: 960px) {
+  .dashboard-approved .dashboard-cards { grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+}
 @media (min-width: 540px) { .dashboard-cards { grid-template-columns: 1fr 1fr; } }
+.dashboard-approved .dashboard-card {
+  min-height: 8rem;
+  padding: 1.45rem 1.35rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
 .dashboard-card {
   display: block; text-decoration: none; color: inherit;
   background: var(--surface);
@@ -3735,6 +3744,15 @@ dd {
 .bottom-nav--admin {
   width: 100%;
 }
+.bottom-nav--student {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding-inline: 0.85rem;
+}
+.bottom-nav--student .bottom-nav__item {
+  font-size: 0.72rem;
+  gap: 0.28rem;
+}
 .bottom-nav__backdrop,
 .bottom-nav__sheet {
   transform: none !important;
@@ -4606,7 +4624,10 @@ dd {
   padding: 0;
   display: grid;
   gap: 0.45rem;
-  max-width: 36rem;
+  max-width: none;
+}
+@media (min-width: 720px) {
+  .exam-access-panel .exam-access { grid-template-columns: 1fr 1fr; }
 }
 .exam-access label {
   display: flex;

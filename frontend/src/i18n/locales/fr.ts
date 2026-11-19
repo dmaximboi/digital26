@@ -544,6 +544,7 @@ export const fr: Record<MessageKey, string> = {
   "adminExam.kicker": "Examens",
   "adminExam.title": "Examens",
   "adminExam.lede": "Nommez l’épreuve, choisissez les étudiants, ajoutez les questions, publiez, puis notez chaque copie. La note va sur le rapport de l’étudiant.",
+  "adminExam.choose": "Choisir les étudiants",
   "adminExam.access": "Étudiants qui peuvent ouvrir cette épreuve",
   "adminExam.accessHint": "Seuls les étudiants cochés peuvent commencer. Un étudiant déjà entré peut encore finir.",
   "adminExam.accessEmpty": "Aucun étudiant approuvé et payé n’est disponible.",

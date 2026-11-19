@@ -8,11 +8,8 @@ import { setPageMeta } from "../lib/seo";
 type ExamItem = {
   id: string;
   title: string;
-  instructions: string | null;
   durationMinutes: number;
   status: "PUBLISHED" | "CLOSED";
-  questionCount: number;
-  maxScore: string;
   session: {
     id: string;
     status: "IN_PROGRESS" | "SUBMITTED" | "GRADED";
@@ -124,17 +121,13 @@ export function ExamPage() {
                   {graded ? t("exam.graded") : waiting ? t("exam.waiting") : live ? t("exam.continue") : t("exam.start")}
                 </p>
                 <h2>{exam.title}</h2>
-                <p>
-                  {t("exam.duration", { minutes: exam.durationMinutes })} · {exam.questionCount} · {exam.maxScore}
-                </p>
-                {exam.instructions && !finished && <p className="muted">{exam.instructions}</p>}
+                <p>{t("exam.duration", { minutes: exam.durationMinutes })}</p>
                 {finished && <p className="muted">{t("exam.closedPaper")}</p>}
                 {graded && (
                   <p className="exam-offer__score">
-                    {t("exam.score")}: {session?.score}/{session?.maxScore || exam.maxScore}
+                    {t("exam.score")}: {session?.score}/{session?.maxScore ?? ""}
                   </p>
                 )}
-                {graded && session?.feedback && <p>{session.feedback}</p>}
               </div>
               {!finished && (exam.status === "PUBLISHED" || session) && (
                 <button

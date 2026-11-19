@@ -33,29 +33,6 @@ const APP_ITEMS = [
   { to: "/dictionary", icon: "Dictionary", labelKey: "apps.dictionary" as const },
 ];
 
-const STUDENT_TABS: Tab[] = [
-  { to: "/dashboard", icon: "Home", labelKey: "nav.home", end: true },
-  { to: "/exam", icon: "Exam", labelKey: "nav.exam", match: (p) => p === "/exam" || p.startsWith("/exam/") },
-  {
-    to: "/library",
-    icon: "Library",
-    labelKey: "nav.library",
-    match: (p) => p === "/library" || p.startsWith("/dashboard/library"),
-  },
-  {
-    to: "/dashboard/chat",
-    icon: "Chat",
-    labelKey: "nav.chat",
-    match: (p) => p.startsWith("/dashboard/chat"),
-  },
-  {
-    to: "/dashboard/payment",
-    icon: "Pay",
-    labelKey: "nav.pay",
-    match: (p) => p.startsWith("/dashboard/payment"),
-  },
-];
-
 const ADMIN_TABS: Tab[] = [
   { to: "/admin", icon: "Home", labelKey: "nav.home", end: true },
   { to: "/admin/students", icon: "Students", labelKey: "nav.students" },
@@ -220,31 +197,13 @@ function isActiveTab(tab: Tab, pathname: string): boolean {
   return pathname === tab.to || pathname.startsWith(`${tab.to}/`);
 }
 
-function SignOutTab() {
-  const { signOut } = useAuth();
-  const navigate = useNavigate();
-  const t = useT();
-  return (
-    <button
-      type="button"
-      className="bottom-nav__item"
-      onClick={() => {
-        signOut();
-        navigate("/signin");
-      }}
-    >
-      <TabIcon name="Sign out" />
-      <span>{t("nav.signOut")}</span>
-    </button>
-  );
-}
-
 function PublicBottomNav() {
   const { user, loading, signOut } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const t = useT();
   const [appsOpen, setAppsOpen] = useState(false);
+  const [deskOpen, setDeskOpen] = useState(false);
   const isAdmin = user?.role === "ADMIN" || user?.role === "READONLY";
   const isStudent = user?.role === "STUDENT" && user.hasProfile;
   const onStudentArea =
@@ -264,12 +223,13 @@ function PublicBottomNav() {
 
   useEffect(() => {
     setAppsOpen(false);
+    setDeskOpen(false);
   }, [location.pathname]);
 
   if (!loading && isStudent && onStudentArea) {
     return (
       <>
-        <nav className="bottom-nav" aria-label="Student">
+        <nav className="bottom-nav bottom-nav--student" aria-label="Student">
           <NavLink
             to="/dashboard"
             end
@@ -280,35 +240,77 @@ function PublicBottomNav() {
             <TabIcon name="Home" />
             <span>{t("nav.home")}</span>
           </NavLink>
+          <NavLink
+            to="/library"
+            className={() =>
+              location.pathname === "/library" || location.pathname.startsWith("/dashboard/library")
+                ? "bottom-nav__item is-active"
+                : "bottom-nav__item"
+            }
+          >
+            <TabIcon name="Library" />
+            <span>{t("nav.library")}</span>
+          </NavLink>
+          <NavLink
+            to="/dashboard/chat"
+            className={() =>
+              location.pathname.startsWith("/dashboard/chat")
+                ? "bottom-nav__item is-active"
+                : "bottom-nav__item"
+            }
+          >
+            <TabIcon name="Chat" />
+            <span>{t("nav.chat")}</span>
+          </NavLink>
           <button
             type="button"
-            className={appsOpen || appsActive ? "bottom-nav__item is-active" : "bottom-nav__item"}
-            aria-expanded={appsOpen}
+            className={deskOpen ? "bottom-nav__item is-active" : "bottom-nav__item"}
+            aria-expanded={deskOpen}
             aria-haspopup="dialog"
-            onClick={() => setAppsOpen((v) => !v)}
+            onClick={() => setDeskOpen((open) => !open)}
           >
-            <TabIcon name="Apps" />
-            <span>{t("nav.apps")}</span>
+            <TabIcon name="More" />
+            <span>{t("nav.more")}</span>
           </button>
-          {STUDENT_TABS.slice(1)
-            .filter((tab) => tab.to !== "/exam" || examOpen)
-            .map((tab) => (
-            <NavLink
-              key={tab.to}
-              to={tab.to}
-              end={tab.end}
-              className={() =>
-                isActiveTab(tab, location.pathname)
-                  ? "bottom-nav__item is-active"
-                  : "bottom-nav__item"
-              }
-            >
-              <TabIcon name={tab.icon} />
-              <span>{t(tab.labelKey)}</span>
-            </NavLink>
-          ))}
-          <SignOutTab />
         </nav>
+        {deskOpen && (
+          <>
+            <button
+              type="button"
+              className="bottom-nav__backdrop"
+              aria-label={t("common.closeMenu")}
+              onClick={() => setDeskOpen(false)}
+            />
+            <div className="bottom-nav__sheet" role="dialog" aria-label={t("nav.more")}>
+              {examOpen && (
+                <NavLink to="/exam" onClick={() => setDeskOpen(false)}>
+                  {t("nav.exam")}
+                </NavLink>
+              )}
+              <NavLink to="/dashboard/attendance" onClick={() => setDeskOpen(false)}>
+                {t("dash.attendance")}
+              </NavLink>
+              <NavLink to="/dashboard/payment" onClick={() => setDeskOpen(false)}>
+                {t("nav.pay")}
+              </NavLink>
+              {APP_ITEMS.map((item) => (
+                <NavLink key={item.to} to={item.to} onClick={() => setDeskOpen(false)}>
+                  {t(item.labelKey)}
+                </NavLink>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  setDeskOpen(false);
+                  signOut();
+                  navigate("/signin");
+                }}
+              >
+                {t("nav.signOut")}
+              </button>
+            </div>
+          </>
+        )}
         {appsOpen && (
           <>
             <button

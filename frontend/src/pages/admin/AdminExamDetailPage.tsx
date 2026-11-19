@@ -76,7 +76,7 @@ export function AdminExamDetailPage() {
   useEffect(() => {
     apiFetch<{ items: RosterStudent[] }>("/api/ops/students")
       .then((d) => setRoster(d.items))
-      .catch(() => setRoster([]));
+      .catch((err: unknown) => setError(err instanceof Error ? err.message : t("common.error")));
   }, []);
 
   useEffect(load, [load]);
@@ -186,7 +186,7 @@ export function AdminExamDetailPage() {
 
   const locked = exam.sessions.length > 0;
 
-  const eligible = roster.filter((student) => student.status === "APPROVED" && student.registrationPaid);
+  const eligible = roster.filter((student) => student.status === "APPROVED");
 
   return (
     <div className="ops-page exam-admin">
@@ -216,8 +216,36 @@ export function AdminExamDetailPage() {
       </header>
       {error && <p className="status error">{error}</p>}
 
-      <div className="exam-admin__grid">
-        <section className="exam-panel">
+      <section className="exam-panel exam-access-panel">
+        <h3>{t("adminExam.access")}</h3>
+        <p className="muted">{t("adminExam.accessHint")}</p>
+        <ul className="exam-access">
+          {eligible.map((student) => (
+            <li key={student.id}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={picked.includes(student.id)}
+                  disabled={!canWrite}
+                  onChange={() => toggleStudent(student.id)}
+                />
+                <span>
+                  {student.fullName}
+                  {student.user?.email ? <small>{student.user.email}</small> : null}
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {eligible.length === 0 && <p className="muted">{t("adminExam.accessEmpty")}</p>}
+        {canWrite && (
+          <button type="button" className="btn primary" disabled={busy} onClick={() => void saveAccess()}>
+            {t("adminExam.saveAccess")}
+          </button>
+        )}
+      </section>
+
+      <section className="exam-panel">
           <h3>{t("adminExam.questions")}</h3>
           <ol className="exam-sheet">
             {exam.questions.map((q, index) => (
@@ -253,36 +281,6 @@ export function AdminExamDetailPage() {
           )}
           {locked && <p className="muted">{t("adminExam.locked")}</p>}
         </section>
-
-        <section className="exam-panel">
-          <h3>{t("adminExam.access")}</h3>
-          <p className="muted">{t("adminExam.accessHint")}</p>
-          <ul className="exam-access">
-            {eligible.map((student) => (
-              <li key={student.id}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={picked.includes(student.id)}
-                    disabled={!canWrite}
-                    onChange={() => toggleStudent(student.id)}
-                  />
-                  <span>
-                    {student.fullName}
-                    {student.user?.email ? <small>{student.user.email}</small> : null}
-                  </span>
-                </label>
-              </li>
-            ))}
-          </ul>
-          {eligible.length === 0 && <p className="muted">{t("adminExam.accessEmpty")}</p>}
-          {canWrite && (
-            <button type="button" className="btn" disabled={busy} onClick={() => void saveAccess()}>
-              {t("adminExam.saveAccess")}
-            </button>
-          )}
-        </section>
-      </div>
 
       <section className="exam-panel">
         <h3>{t("adminExam.submissions")}</h3>

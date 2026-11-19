@@ -558,6 +558,7 @@ export const en = {
   "adminExam.kicker": "Exams",
   "adminExam.title": "Exams",
   "adminExam.lede": "Name the paper, choose the students, add questions, publish it, then mark each submission. The mark is written on the student report.",
+  "adminExam.choose": "Choose students",
   "adminExam.access": "Students who can open this paper",
   "adminExam.accessHint": "Only the students you tick can start this exam. A student who already started can still finish.",
   "adminExam.accessEmpty": "No approved, paid student is available yet.",
