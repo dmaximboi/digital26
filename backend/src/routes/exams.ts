@@ -48,6 +48,10 @@ const submitSchema = z.object({
   reason: z.enum(["STUDENT", "TAB_LEFT", "DEADLINE"]).optional(),
 });
 
+const accessSchema = z.object({
+  studentProfileIds: z.array(z.string().trim().min(1).max(40)).max(200),
+});
+
 function maxMarks(questions: { marks: number }[]): number {
   return questions.reduce((sum, q) => sum + q.marks, 0);
 }
@@ -80,7 +84,12 @@ examsRouter.get("/student/exams", requireAuth, async (req: AuthedRequest, res) =
       return;
     }
     const exams = await prisma.examination.findMany({
-      where: { status: { in: ["PUBLISHED", "CLOSED"] } },
+      where: {
+        OR: [
+          { status: "PUBLISHED", access: { some: { studentProfileId: profile.id } } },
+          { sessions: { some: { studentProfileId: profile.id } } },
+        ],
+      },
       orderBy: { createdAt: "desc" },
       include: {
         questions: { select: { marks: true } },
@@ -137,13 +146,23 @@ examsRouter.post("/student/exams/:id/start", requireAuth, async (req: AuthedRequ
       res.status(404).json({ error: "This exam is not open" });
       return;
     }
+    const allowed = await prisma.examAccess.findUnique({
+      where: {
+        examinationId_studentProfileId: { examinationId: id, studentProfileId: profile.id },
+      },
+      select: { id: true },
+    });
+    const existing = await prisma.examSession.findUnique({
+      where: { examinationId_studentProfileId: { examinationId: id, studentProfileId: profile.id } },
+    });
+    if (!allowed && !existing) {
+      res.status(403).json({ error: "This exam is not open to you" });
+      return;
+    }
     if (exam.questions.length === 0) {
       res.status(400).json({ error: "This exam has no questions yet" });
       return;
     }
-    const existing = await prisma.examSession.findUnique({
-      where: { examinationId_studentProfileId: { examinationId: id, studentProfileId: profile.id } },
-    });
     if (existing) {
       const session = await closeIfExpired(existing);
       res.status(200).json({ sessionId: session.id, status: session.status });
@@ -191,6 +210,7 @@ function studentView(session: {
   examination: {
     title: string;
     instructions: string | null;
+    durationMinutes: number;
     status: ExaminationStatus;
     questions: { id: string; prompt: string; marks: number; sortOrder: number }[];
   };
@@ -203,18 +223,21 @@ function studentView(session: {
     status: session.status,
     title: session.examination.title,
     instructions: session.examination.instructions,
+    durationMinutes: session.examination.durationMinutes,
     deadlineAt: session.deadlineAt.toISOString(),
     submittedAt: session.submittedAt?.toISOString() ?? null,
     score: open ? null : session.score,
     maxScore: session.maxScore,
     feedback: open ? null : session.feedback,
     warningCount: session.events.length,
-    questions: session.examination.questions.map((q) => ({
-      id: q.id,
-      prompt: q.prompt,
-      marks: q.marks,
-      response: session.answers.find((a) => a.questionId === q.id)?.response ?? "",
-    })),
+    questions: open
+      ? session.examination.questions.map((q) => ({
+          id: q.id,
+          prompt: q.prompt,
+          marks: q.marks,
+          response: session.answers.find((a) => a.questionId === q.id)?.response ?? "",
+        }))
+      : [],
   };
 }
 
@@ -404,6 +427,9 @@ examsRouter.get("/ops/examinations/:id", requireAdmin, async (req, res) => {
       where: { id: String(req.params.id) },
       include: {
         questions: { orderBy: { sortOrder: "asc" } },
+        access: {
+          include: { profile: { select: { id: true, fullName: true, user: { select: { email: true } } } } },
+        },
         sessions: {
           orderBy: { startedAt: "desc" },
           include: {
@@ -431,6 +457,11 @@ examsRouter.get("/ops/examinations/:id", requireAdmin, async (req, res) => {
           marks: q.marks,
           sortOrder: q.sortOrder,
         })),
+        access: exam.access.map((row) => ({
+          id: row.profile.id,
+          fullName: row.profile.fullName,
+          email: row.profile.user.email,
+        })),
         sessions: exam.sessions.map((s) => ({
           id: s.id,
           status: s.status,
@@ -450,6 +481,53 @@ examsRouter.get("/ops/examinations/:id", requireAdmin, async (req, res) => {
   } catch (err) {
     console.error("[ops.examinations.get]", err);
     res.status(500).json({ error: "Failed to load exam" });
+  }
+});
+
+examsRouter.put("/ops/examinations/:id/access", requireAdminWrite, async (req: AuthedRequest, res) => {
+  try {
+    const parsed = accessSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Choose the students who can open this exam" });
+      return;
+    }
+    const id = String(req.params.id);
+    const exam = await prisma.examination.findUnique({ where: { id }, select: { id: true } });
+    if (!exam) {
+      res.status(404).json({ error: "Exam not found" });
+      return;
+    }
+    const ids = [...new Set(parsed.data.studentProfileIds)];
+    const profiles = await prisma.studentProfile.findMany({
+      where: { id: { in: ids }, status: "APPROVED", registrationPaidAt: { not: null } },
+      select: { id: true },
+    });
+    const allowed = new Set(profiles.map((row) => row.id));
+    const keep = ids.filter((studentId) => allowed.has(studentId));
+    await prisma.$transaction([
+      prisma.examAccess.deleteMany({
+        where: { examinationId: id, studentProfileId: { notIn: keep.length ? keep : ["__none__"] } },
+      }),
+      ...keep.map((studentProfileId) =>
+        prisma.examAccess.upsert({
+          where: {
+            examinationId_studentProfileId: { examinationId: id, studentProfileId },
+          },
+          create: { examinationId: id, studentProfileId },
+          update: {},
+        }),
+      ),
+    ]);
+    await writeAudit({
+      adminEmail: req.userEmail || "admin",
+      action: "exam.access",
+      targetId: id,
+      metadata: { count: keep.length },
+    });
+    res.json({ ok: true, count: keep.length });
+  } catch (err) {
+    console.error("[ops.examinations.access]", err);
+    res.status(500).json({ error: "Failed to save exam access" });
   }
 });
 
@@ -495,6 +573,11 @@ examsRouter.post("/ops/examinations/:id/publish", requireAdminWrite, async (req:
     }
     if (exam.questions.length === 0) {
       res.status(400).json({ error: "Add at least one question before publishing" });
+      return;
+    }
+    const accessCount = await prisma.examAccess.count({ where: { examinationId: id } });
+    if (accessCount === 0) {
+      res.status(400).json({ error: "Choose at least one student before publishing" });
       return;
     }
     await prisma.examination.update({ where: { id }, data: { status: "PUBLISHED" } });

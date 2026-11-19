@@ -1,5 +1,9 @@
 export type ExamWarning = "NOISE" | "SECOND_VOICE" | "FACE_LEFT" | "MOUTH";
 
+export type ExamFace = { x: number; y: number; w: number; h: number };
+
+export type ExamPulse = { level: number; bars: number[]; face: ExamFace | null };
+
 type FaceBox = { boundingBox: DOMRectReadOnly };
 type FaceDetectorLike = { detect: (input: CanvasImageSource) => Promise<FaceBox[]> };
 
@@ -13,7 +17,7 @@ export async function openExamMedia(): Promise<MediaStream> {
   }
   return navigator.mediaDevices.getUserMedia({
     audio: { echoCancellation: true, noiseSuppression: false },
-    video: { facingMode: "user", width: { ideal: 320 }, height: { ideal: 240 } },
+    video: { facingMode: "user", width: { ideal: 960 }, height: { ideal: 540 } },
   });
 }
 
@@ -21,6 +25,7 @@ export function watchExam(opts: {
   stream: MediaStream;
   video: HTMLVideoElement;
   onWarning: (kind: ExamWarning) => void;
+  onPulse?: (pulse: ExamPulse) => void;
 }): { stop: () => void; faceSupported: boolean } {
   const audioCtx = new AudioContext();
   const source = audioCtx.createMediaStreamSource(opts.stream);
@@ -52,8 +57,10 @@ export function watchExam(opts: {
   let faceSince: number | null = null;
   let mouthSince: number | null = null;
   let prevMouth: Uint8ClampedArray | null = null;
+  let lastFace: ExamFace | null = null;
   let stopped = false;
   let timer = 0;
+  let pulseTimer = 0;
 
   function emit(kind: ExamWarning, now: number) {
     const prev = lastSent[kind] ?? 0;
@@ -121,10 +128,19 @@ export function watchExam(opts: {
           faceSince = faceSince ?? now;
           mouthSince = null;
           prevMouth = null;
+          lastFace = null;
         } else {
           faceSince = null;
           const box = faces[0]?.boundingBox;
-          if (!box) return;
+          if (!box) {
+            lastFace = null;
+          } else {
+          lastFace = {
+            x: box.x / canvas.width,
+            y: box.y / canvas.height,
+            w: box.width / canvas.width,
+            h: box.height / canvas.height,
+          };
           const x = Math.max(0, Math.floor(box.x));
           const y = Math.max(0, Math.floor(box.y + box.height * 0.55));
           const w = Math.min(canvas.width - x, Math.floor(box.width));
@@ -145,6 +161,7 @@ export function watchExam(opts: {
             }
             prevMouth = new Uint8ClampedArray(data);
           }
+          }
         }
         if (faceSince && now - faceSince > 2500) emit("FACE_LEFT", now);
       } catch {
@@ -153,15 +170,39 @@ export function watchExam(opts: {
     }
   }
 
+  function pulse() {
+    if (!opts.onPulse) return;
+    analyser.getByteTimeDomainData(time);
+    const bars: number[] = [];
+    const count = 24;
+    const step = Math.max(1, Math.floor(time.length / count));
+    let energy = 0;
+    for (let i = 0; i < count; i++) {
+      let peak = 0;
+      for (let j = 0; j < step; j++) {
+        const sample = time[i * step + j] ?? 128;
+        const amp = Math.abs(sample - 128) / 128;
+        if (amp > peak) peak = amp;
+      }
+      bars.push(peak);
+      energy += peak;
+    }
+    opts.onPulse({ level: energy / count, bars, face: lastFace });
+  }
+
   timer = window.setInterval(() => {
     void tick();
   }, 700);
+  if (opts.onPulse) {
+    pulseTimer = window.setInterval(pulse, 90);
+  }
 
   return {
     faceSupported: Boolean(detector),
     stop() {
       stopped = true;
       window.clearInterval(timer);
+      window.clearInterval(pulseTimer);
       source.disconnect();
       void audioCtx.close();
     },

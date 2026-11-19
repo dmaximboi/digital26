@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
 import { getToken, useAuth } from "../auth/AuthContext";
 import { useT } from "../i18n/LocaleContext";
 import { apiFetch } from "../lib/authApi";
-import { openExamMedia, watchExam, type ExamWarning } from "../lib/examWatch";
+import { openExamMedia, watchExam, type ExamFace, type ExamPulse, type ExamWarning } from "../lib/examWatch";
 import { setPageMeta } from "../lib/seo";
 
 type Question = { id: string; prompt: string; marks: number; response: string };
@@ -12,6 +12,7 @@ type SessionView = {
   status: "IN_PROGRESS" | "SUBMITTED" | "GRADED";
   title: string;
   instructions: string | null;
+  durationMinutes: number;
   deadlineAt: string;
   score: string | null;
   maxScore: string | null;
@@ -22,12 +23,17 @@ type SessionView = {
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
 
+type Phase = "scan" | "brief" | "paper";
+
+type Hud = ExamPulse;
+
 export function ExamRoomPage() {
   const t = useT();
   const { sessionId = "" } = useParams();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const pipRef = useRef<HTMLVideoElement | null>(null);
   const skipLeave = useRef(false);
   const done = useRef(false);
   const [session, setSession] = useState<SessionView | null>(null);
@@ -40,6 +46,10 @@ export function ExamRoomPage() {
   const [now, setNow] = useState(Date.now());
   const [saved, setSaved] = useState(false);
   const [mediaTry, setMediaTry] = useState(0);
+  const [phase, setPhase] = useState<Phase>("scan");
+  const [faceLocked, setFaceLocked] = useState(false);
+  const [alerts, setAlerts] = useState(0);
+  const hudRef = useRef<Hud>({ level: 0, bars: Array(24).fill(0.05), face: null });
 
   useEffect(() => {
     setPageMeta({ title: t("exam.title"), description: t("exam.leaveWarning"), robots: "noindex,nofollow" });
@@ -69,10 +79,10 @@ export function ExamRoomPage() {
   }, [user, sessionId, t]);
 
   useEffect(() => {
-    if (!session || session.status !== "IN_PROGRESS" || !armed) return;
+    if (!session || session.status !== "IN_PROGRESS") return;
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [session, armed]);
+  }, [session]);
 
   useEffect(() => {
     if (!session || session.status !== "IN_PROGRESS") return;
@@ -88,14 +98,21 @@ export function ExamRoomPage() {
         }
         stream = next;
         const video = videoRef.current;
-        if (video) {
-          video.srcObject = next;
-          void video.play().catch(() => {});
+        const pip = pipRef.current;
+        for (const node of [video, pip]) {
+          if (!node) continue;
+          node.srcObject = next;
+          void node.play().catch(() => {});
         }
         const watch = watchExam({
           stream: next,
           video: video ?? document.createElement("video"),
+          onPulse(pulse) {
+            hudRef.current = pulse;
+            if (pulse.face) setFaceLocked(true);
+          },
           onWarning(kind) {
+            setAlerts((count) => count + 1);
             setNotice(t(warningKey(kind)));
             void apiFetch(`/api/student/exams/sessions/${session.id}/events`, {
               method: "POST",
@@ -105,6 +122,8 @@ export function ExamRoomPage() {
         });
         setFaceOn(watch.faceSupported);
         stopWatch = watch.stop;
+        setPhase("scan");
+        setFaceLocked(false);
         setArmed(true);
         setMediaError("");
       })
@@ -118,6 +137,23 @@ export function ExamRoomPage() {
       stream?.getTracks().forEach((track) => track.stop());
     };
   }, [session?.id, session?.status, mediaTry, t]);
+
+  useEffect(() => {
+    if (!armed || phase !== "scan") return;
+    if (faceLocked) {
+      const id = window.setTimeout(() => setPhase("brief"), 1700);
+      return () => window.clearTimeout(id);
+    }
+    const wait = faceOn ? 8000 : 2800;
+    const id = window.setTimeout(() => setPhase("brief"), wait);
+    return () => window.clearTimeout(id);
+  }, [armed, faceLocked, faceOn, phase]);
+
+  useEffect(() => {
+    if (phase !== "brief") return;
+    const id = window.setTimeout(() => setPhase("paper"), 8000);
+    return () => window.clearTimeout(id);
+  }, [phase]);
 
   useEffect(() => {
     if (!session || session.status !== "IN_PROGRESS") return;
@@ -159,7 +195,7 @@ export function ExamRoomPage() {
   }, [session?.id, session?.status, t]);
 
   useEffect(() => {
-    if (!session || session.status !== "IN_PROGRESS" || !armed) return;
+    if (!session || session.status !== "IN_PROGRESS") return;
     const left = new Date(session.deadlineAt).getTime() - now;
     if (left <= 0 && !done.current) {
       skipLeave.current = true;
@@ -172,7 +208,7 @@ export function ExamRoomPage() {
         setNotice(t("exam.handedInTime"));
       });
     }
-  }, [now, session, armed, t]);
+  }, [now, session, t]);
 
   useEffect(() => {
     if (!session || session.status !== "IN_PROGRESS" || !armed) return;
@@ -248,80 +284,293 @@ export function ExamRoomPage() {
   const minutes = Math.max(0, Math.floor(msLeft / 60000));
   const seconds = Math.max(0, Math.floor((msLeft % 60000) / 1000));
 
+  if (live) {
+    return (
+      <VisorStage
+        videoRef={videoRef}
+        pipRef={pipRef}
+        hudRef={hudRef}
+        title={session.title}
+        name={user.name || user.email}
+        studentId={user.id}
+        alerts={alerts}
+        durationMinutes={session.durationMinutes}
+        instructions={session.instructions}
+        questions={session.questions}
+        answers={answers}
+        onAnswer={(id, value) => setAnswers((current) => ({ ...current, [id]: value }))}
+        phase={phase}
+        faceLocked={faceLocked}
+        faceOn={faceOn}
+        armed={armed}
+        minutes={minutes}
+        seconds={seconds}
+        low={msLeft < 60_000}
+        saved={saved}
+        notice={notice}
+        error={error}
+        mediaError={mediaError}
+        onRetry={() => setMediaTry((n) => n + 1)}
+        onBegin={() => setPhase("paper")}
+        onSubmit={() => void submitNow()}
+        submitDisabled={!armed || done.current}
+        t={t}
+      />
+    );
+  }
+
   return (
     <section className="panel studio-page exam-room">
       <p className="home-kicker">{t("exam.kicker")}</p>
       <h1>{session.title}</h1>
-      {live && <p className="exam-leave">{t("exam.leaveWarning")}</p>}
-      {session.instructions && <p className="lede">{session.instructions}</p>}
-      {live && (
-        <p className="exam-timer">
-          {t("exam.timeLeft")}: {String(minutes).padStart(2, "0")}:{String(seconds).padStart(2, "0")}
-          {saved ? ` · ${t("exam.saved")}` : ""}
-        </p>
-      )}
-      {notice && <p className="status">{notice}</p>}
       {error && <p className="status error">{error}</p>}
-      {live && (
-        <div className="exam-cam">
-          <video ref={videoRef} muted playsInline autoPlay />
-          {mediaError && (
-            <div>
-              <p className="status error">{mediaError}</p>
-              <button type="button" className="btn" onClick={() => setMediaTry((n) => n + 1)}>
-                {t("exam.cameraRetry")}
-              </button>
-            </div>
-          )}
-          {armed && !faceOn && <p className="muted">{t("exam.faceMissing")}</p>}
-        </div>
-      )}
-      {!live && (
-        <div className="exam-result">
-          <p>
-            {session.status === "GRADED"
-              ? `${t("exam.score")}: ${session.score}/${session.maxScore ?? ""}`
-              : t("exam.waiting")}
-          </p>
-          {session.feedback && <p>{session.feedback}</p>}
-          <p className="muted">{t("exam.warningNote", { count: session.warningCount })}</p>
-        </div>
-      )}
-      <ol className="exam-questions">
-        {session.questions.map((q, index) => (
-          <li key={q.id}>
-            <p>
-              <strong>
-                {index + 1}. {q.prompt}
-              </strong>
-            </p>
-            <p className="muted">{t("exam.marks", { marks: q.marks })}</p>
-            {live ? (
-              <textarea
-                className="form-input"
-                rows={4}
-                maxLength={4000}
-                value={answers[q.id] ?? ""}
-                disabled={!armed}
-                onChange={(e) => setAnswers((current) => ({ ...current, [q.id]: e.target.value }))}
-              />
-            ) : (
-              <p className="exam-answer">{answers[q.id] || q.response || t("exam.blank")}</p>
-            )}
-          </li>
-        ))}
-      </ol>
-      {live && (
-        <button type="button" className="btn primary" disabled={!armed || done.current} onClick={() => void submitNow()}>
-          {t("exam.submit")}
-        </button>
-      )}
-      {!live && (
+      <article className="exam-result">
+        <p className="exam-offer__state">{session.status === "GRADED" ? t("exam.graded") : t("exam.waiting")}</p>
+        <p>
+          {session.status === "GRADED"
+            ? `${t("exam.score")}: ${session.score}/${session.maxScore ?? ""}`
+            : t("exam.waiting")}
+        </p>
+        {session.feedback && <p>{session.feedback}</p>}
+        <p className="muted">{t("exam.closedPaper")}</p>
+        <p className="muted">{t("exam.warningNote", { count: session.warningCount })}</p>
         <button type="button" className="btn" onClick={() => navigate("/exam")}>
           {t("exam.backList")}
         </button>
-      )}
+      </article>
     </section>
+  );
+}
+
+function VisorStage(props: {
+  videoRef: RefObject<HTMLVideoElement | null>;
+  pipRef: RefObject<HTMLVideoElement | null>;
+  hudRef: RefObject<Hud>;
+  title: string;
+  name: string;
+  studentId: string;
+  alerts: number;
+  durationMinutes: number;
+  instructions: string | null;
+  questions: Question[];
+  answers: Record<string, string>;
+  onAnswer: (id: string, value: string) => void;
+  phase: Phase;
+  faceLocked: boolean;
+  faceOn: boolean;
+  armed: boolean;
+  minutes: number;
+  seconds: number;
+  low: boolean;
+  saved: boolean;
+  notice: string;
+  error: string;
+  mediaError: string;
+  onRetry: () => void;
+  onBegin: () => void;
+  onSubmit: () => void;
+  submitDisabled: boolean;
+  t: ReturnType<typeof useT>;
+}) {
+  const { t } = props;
+  const [index, setIndex] = useState(0);
+  const question = props.questions[index];
+  const last = props.questions.length - 1;
+  const totalMs = Math.max(props.durationMinutes, 1) * 60_000;
+  const leftMs = (props.minutes * 60 + props.seconds) * 1000;
+  const remainPct = Math.max(0, Math.min(100, (leftMs / totalMs) * 100));
+  const rules = [
+    t("exam.ruleFace"),
+    t("exam.ruleNoise"),
+    t("exam.ruleTab"),
+    t("exam.ruleVoice"),
+    t("exam.ruleMouth"),
+  ];
+
+  return (
+    <section className={`board ${props.notice ? "is-alert" : ""}`}>
+      <header className="board-top">
+        <p className="board-brand"><strong>D26</strong> Digital26</p>
+        <div>
+          <p className="board-kicker">D26</p>
+          <h1>{props.title}</h1>
+        </div>
+        <p className="board-motto">{t("exam.motto")}</p>
+      </header>
+      <div className="board-body">
+        <aside className="board-card">
+          <div className="board-student">
+            <span className="board-avatar" aria-hidden="true" />
+            <p>{t("exam.studentName")}</p>
+            <strong>{props.name}</strong>
+            <p>{t("exam.studentId")}</p>
+            <strong>{props.studentId.slice(-10)}</strong>
+          </div>
+          <div>
+            <h2>{t("exam.rulesTitle")}</h2>
+            <ul>
+              {rules.map((rule) => (
+                <li key={rule}>{rule}</li>
+              ))}
+            </ul>
+          </div>
+          <p className={`board-face ${props.faceLocked ? "is-ok" : ""}`}>
+            <strong>{props.faceLocked ? t("exam.faceOk") : t("exam.scanning")}</strong>
+            <span>{props.faceOn ? t("exam.faceLocked") : t("exam.faceMissing")}</span>
+          </p>
+        </aside>
+        <div className="board-stage">
+          <video ref={props.videoRef} className="board-video" muted playsInline autoPlay />
+          <FaceLock hudRef={props.hudRef} />
+          <p className="board-live">{props.armed ? t("exam.live") : t("exam.scanning")}</p>
+          <p className={`board-quiet ${props.notice ? "is-bad" : ""}`}>
+            {props.notice || t("exam.noNoise")}
+          </p>
+          {props.phase !== "paper" && (
+            <div className="board-question">
+              <p className="board-qcount">{props.faceLocked ? t("exam.faceOk") : t("exam.scanning")}</p>
+              <h2>{t("exam.prepared", { name: props.name })}</h2>
+              {props.instructions && <p>{props.instructions}</p>}
+              {props.mediaError && <p>{props.mediaError}</p>}
+              {props.phase === "brief" && (
+                <button type="button" className="board-next" onClick={props.onBegin}>
+                  {t("exam.begin")}
+                </button>
+              )}
+              {props.mediaError && (
+                <button type="button" className="board-next" onClick={props.onRetry}>
+                  {t("exam.cameraRetry")}
+                </button>
+              )}
+            </div>
+          )}
+          {props.phase === "paper" && question && (
+            <div className="board-question">
+              <p className="board-qcount">
+                {t("exam.questionOf", { n: index + 1, total: props.questions.length })}
+                <span> {t("exam.marks", { marks: question.marks })}</span>
+              </p>
+              <h2>{question.prompt}</h2>
+              <textarea
+                rows={3}
+                maxLength={4000}
+                value={props.answers[question.id] ?? ""}
+                disabled={!props.armed}
+                placeholder={t("exam.writeHere")}
+                onChange={(e) => props.onAnswer(question.id, e.target.value)}
+              />
+              <div className="board-nav">
+                <button type="button" disabled={index === 0} onClick={() => setIndex((n) => Math.max(0, n - 1))}>
+                  {t("exam.prev")}
+                </button>
+                {index < last ? (
+                  <button type="button" className="board-next" onClick={() => setIndex((n) => Math.min(last, n + 1))}>
+                    {t("exam.next")}
+                  </button>
+                ) : (
+                  <button type="button" className="board-next" disabled={props.submitDisabled} onClick={props.onSubmit}>
+                    {t("exam.submit")}
+                  </button>
+                )}
+              </div>
+              {props.saved && <p className="board-saved">{t("exam.saved")}</p>}
+            </div>
+          )}
+          {props.error && <p className="board-quiet is-bad">{props.error}</p>}
+        </div>
+        <aside className="board-card board-meters">
+          <div className={props.low ? "is-low" : ""}>
+            <p>{t("exam.timeRemaining")}</p>
+            <strong className="board-clock">
+              {String(props.minutes).padStart(2, "0")}:{String(props.seconds).padStart(2, "0")}
+            </strong>
+            <span className="board-bar"><i style={{ width: `${remainPct}%` }} /></span>
+          </div>
+          <div>
+            <p>{t("exam.statusLabel")}</p>
+            <strong>{t("exam.inProgress")}</strong>
+          </div>
+          <div>
+            <p>{t("exam.alerts")}</p>
+            <strong>{props.alerts}</strong>
+          </div>
+          <div className="board-pip">
+            <p>{t("exam.liveMonitor")}</p>
+            <video ref={props.pipRef} muted playsInline autoPlay />
+          </div>
+          <NoiseMeter hudRef={props.hudRef} label={t("exam.noiseLevel")} lowLabel={t("exam.levelLow")} highLabel={t("exam.levelHigh")} />
+        </aside>
+      </div>
+      <footer className="board-foot">
+        <span>{t("exam.roomFooter")}</span>
+        <span>{t("exam.tagline")}</span>
+      </footer>
+    </section>
+  );
+}
+
+function FaceLock(props: { hudRef: RefObject<Hud> }) {
+  const { hudRef } = props;
+  const [face, setFace] = useState<ExamFace | null>(null);
+  useEffect(() => {
+    let frame = 0;
+    let last = 0;
+    const draw = (now: number) => {
+      if (now - last > 80) {
+        last = now;
+        setFace(hudRef.current?.face ?? null);
+      }
+      frame = window.requestAnimationFrame(draw);
+    };
+    frame = window.requestAnimationFrame(draw);
+    return () => window.cancelAnimationFrame(frame);
+  }, [hudRef]);
+  if (!face) return null;
+  return (
+    <div
+      className="board-lock"
+      style={{
+        left: `${(1 - face.x - face.w) * 100}%`,
+        top: `${face.y * 100}%`,
+        width: `${face.w * 100}%`,
+        height: `${face.h * 100}%`,
+      }}
+    />
+  );
+}
+
+function NoiseMeter(props: { hudRef: RefObject<Hud>; label: string; lowLabel: string; highLabel: string }) {
+  const { hudRef } = props;
+  const [bars, setBars] = useState<number[]>(() => Array(12).fill(0.08));
+  const [level, setLevel] = useState(0);
+  useEffect(() => {
+    let frame = 0;
+    let last = 0;
+    const draw = (now: number) => {
+      if (now - last > 80) {
+        last = now;
+        const hud = hudRef.current;
+        if (hud) {
+          setBars(hud.bars.slice(0, 12));
+          setLevel(hud.level);
+        }
+      }
+      frame = window.requestAnimationFrame(draw);
+    };
+    frame = window.requestAnimationFrame(draw);
+    return () => window.cancelAnimationFrame(frame);
+  }, [hudRef]);
+  const loud = level > 0.18;
+  return (
+    <div className={loud ? "is-loud" : ""}>
+      <p>{props.label}</p>
+      <div className="board-wave" aria-hidden="true">
+        {bars.map((bar, i) => (
+          <i key={i} style={{ height: `${Math.max(12, Math.round(bar * 100))}%` }} />
+        ))}
+      </div>
+      <span>{loud ? props.highLabel : props.lowLabel}</span>
+    </div>
   );
 }
 

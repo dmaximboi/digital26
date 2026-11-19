@@ -48,6 +48,10 @@ export function ExamPage() {
       .catch((err: unknown) => setError(err instanceof Error ? err.message : t("common.error")));
   }, [user, t]);
 
+  useEffect(() => {
+    if (exams && exams.length === 0) navigate("/dashboard", { replace: true });
+  }, [exams, navigate]);
+
   async function openExam(exam: ExamItem) {
     if (exam.session && exam.session.status !== "IN_PROGRESS") {
       navigate(`/exam/room/${exam.session.id}`);
@@ -83,7 +87,7 @@ export function ExamPage() {
   if (!user) return <Navigate to="/signin" replace />;
   if (user.role === "ADMIN" || user.role === "READONLY") return <Navigate to="/admin/examinations" replace />;
 
-  if (exams === null && !error) {
+  if ((exams === null && !error) || (exams && exams.length === 0)) {
     return (
       <section className="panel">
         <p className="muted">{t("common.loading")}</p>
@@ -92,10 +96,12 @@ export function ExamPage() {
   }
 
   return (
-    <section className="panel studio-page">
-      <p className="home-kicker">{t("exam.kicker")}</p>
-      <h1>{t("exam.title")}</h1>
-      <p className="lede">{t("exam.lede")}</p>
+    <section className="panel studio-page exam-board">
+      <header className="exam-board__head">
+        <p className="home-kicker">{t("exam.kicker")}</p>
+        <h1>{t("exam.title")}</h1>
+        <p className="lede">{t("exam.lede")}</p>
+      </header>
       <ul className="exam-rules">
         <li>{t("exam.ruleTab")}</li>
         <li>{t("exam.ruleFace")}</li>
@@ -104,40 +110,41 @@ export function ExamPage() {
         <li>{t("exam.ruleMouth")}</li>
       </ul>
       {error && <p className="status error">{error}</p>}
-      {exams && exams.length === 0 && <p className="muted">{t("exam.empty")}</p>}
-      <div className="dashboard-cards">
+      <div className="exam-board__list">
         {exams?.map((exam) => {
           const session = exam.session;
           const graded = session?.status === "GRADED";
           const waiting = session?.status === "SUBMITTED";
           const live = session?.status === "IN_PROGRESS";
+          const finished = graded || waiting;
           return (
-            <article key={exam.id} className="dashboard-card exam-card">
-              <h3>{exam.title}</h3>
-              <p>
-                {t("exam.duration", { minutes: exam.durationMinutes })} · {exam.questionCount} · {exam.maxScore}
-              </p>
-              {exam.instructions && <p className="muted">{exam.instructions}</p>}
-              {graded && (
-                <p>
-                  <strong>
-                    {t("exam.score")}: {session?.score}/{session?.maxScore || exam.maxScore}
-                  </strong>
+            <article key={exam.id} className="exam-offer">
+              <div>
+                <p className="exam-offer__state">
+                  {graded ? t("exam.graded") : waiting ? t("exam.waiting") : live ? t("exam.continue") : t("exam.start")}
                 </p>
-              )}
-              {graded && session?.feedback && <p className="muted">{session.feedback}</p>}
-              {waiting && <p className="muted">{t("exam.waiting")}</p>}
-              {exam.status === "PUBLISHED" || session ? (
+                <h2>{exam.title}</h2>
+                <p>
+                  {t("exam.duration", { minutes: exam.durationMinutes })} · {exam.questionCount} · {exam.maxScore}
+                </p>
+                {exam.instructions && !finished && <p className="muted">{exam.instructions}</p>}
+                {finished && <p className="muted">{t("exam.closedPaper")}</p>}
+                {graded && (
+                  <p className="exam-offer__score">
+                    {t("exam.score")}: {session?.score}/{session?.maxScore || exam.maxScore}
+                  </p>
+                )}
+                {graded && session?.feedback && <p>{session.feedback}</p>}
+              </div>
+              {!finished && (exam.status === "PUBLISHED" || session) && (
                 <button
                   type="button"
                   className="btn primary"
                   disabled={busyId === exam.id}
                   onClick={() => void openExam(exam)}
                 >
-                  {graded || waiting ? t("exam.view") : live ? t("exam.continue") : t("exam.start")}
+                  {live ? t("exam.continue") : t("exam.start")}
                 </button>
-              ) : (
-                <p className="muted">{t("exam.notOpen")}</p>
               )}
             </article>
           );

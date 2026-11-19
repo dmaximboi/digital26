@@ -4,6 +4,7 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useT } from "../i18n/LocaleContext";
 import type { MessageKey } from "../i18n/locales/en";
+import { useExamOffer } from "../lib/useExamOffer";
 import { LanguageToggle } from "./LanguageToggle";
 
 type Tab = {
@@ -251,6 +252,7 @@ function PublicBottomNav() {
     location.pathname.startsWith("/apply") ||
     location.pathname === "/exam" ||
     location.pathname.startsWith("/exam/");
+  const examOpen = useExamOffer(Boolean(isStudent && onStudentArea));
   const appsActive =
     location.pathname.startsWith("/quiz") ||
     location.pathname.startsWith("/news") ||
@@ -288,7 +290,9 @@ function PublicBottomNav() {
             <TabIcon name="Apps" />
             <span>{t("nav.apps")}</span>
           </button>
-          {STUDENT_TABS.slice(1).map((tab) => (
+          {STUDENT_TABS.slice(1)
+            .filter((tab) => tab.to !== "/exam" || examOpen)
+            .map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}

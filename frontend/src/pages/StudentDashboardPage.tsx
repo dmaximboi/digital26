@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { useT } from "../i18n/LocaleContext";
 import { apiFetch } from "../lib/authApi";
+import { useExamOffer } from "../lib/useExamOffer";
 import { setPageMeta } from "../lib/seo";
 
 type Profile = {
@@ -37,6 +38,7 @@ type Progress = {
 export function StudentDashboardPage() {
   const t = useT();
   const { user, loading, markHasProfile } = useAuth();
+  const examOpen = useExamOffer(Boolean(user && user.role === "STUDENT" && user.hasProfile));
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [fetching, setFetching] = useState(true);
@@ -257,10 +259,12 @@ export function StudentDashboardPage() {
       )}
 
       <div className="dashboard-cards">
-        <Link to="/exam" className="dashboard-card">
-          <h3>{t("dash.exam")}</h3>
-          <p>{t("dash.examDesc")}</p>
-        </Link>
+        {examOpen && (
+          <Link to="/exam" className="dashboard-card">
+            <h3>{t("dash.exam")}</h3>
+            <p>{t("dash.examDesc")}</p>
+          </Link>
+        )}
 
         <Link to="/library" className="dashboard-card">
           <h3>{t("dash.library")}</h3>

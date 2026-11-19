@@ -89,21 +89,22 @@ export function AdminExaminationsPage() {
         </form>
       )}
       {!exams && <p className="muted">{t("common.loading")}</p>}
-      <ul className="exam-admin-list">
+      <div className="exam-board__list">
         {exams?.map((exam) => (
-          <li key={exam.id}>
+          <article key={exam.id} className="exam-offer">
             <div>
-              <strong>{exam.title}</strong>
+              <p className="exam-offer__state">{statusLabel(exam.status, t)}</p>
+              <h2>{exam.title}</h2>
               <p className="muted">
-                {statusLabel(exam.status, t)} · {exam.durationMinutes} min · {exam.questionCount} · {exam.submissions} {t("adminExam.submissions")}
+                {exam.durationMinutes} min · {exam.questionCount} · {exam.submissions} {t("adminExam.submissions")}
               </p>
             </div>
             <Link className="btn sm" to={`/admin/examinations/${exam.id}`}>
               {t("common.open")}
             </Link>
-          </li>
+          </article>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }

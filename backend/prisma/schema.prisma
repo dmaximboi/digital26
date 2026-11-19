@@ -305,6 +305,7 @@ model StudentProfile {
   credentials  StudentCredential[]
   assessments  StudentAssessment[]
   examSessions ExamSession[]
+  examAccess   ExamAccess[]
 
   @@map("student_profiles")
 }
@@ -543,9 +544,25 @@ model Examination {
 
   questions ExamQuestion[]
   sessions  ExamSession[]
+  access    ExamAccess[]
 
   @@index([status, createdAt])
   @@map("examinations")
+}
+
+/// Students an admin has allowed to open one paper. Empty means nobody.
+model ExamAccess {
+  id               String   @id @default(cuid())
+  examinationId    String   @map("examination_id")
+  studentProfileId String   @map("student_profile_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  examination Examination    @relation(fields: [examinationId], references: [id], onDelete: Cascade)
+  profile     StudentProfile @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([examinationId, studentProfileId])
+  @@index([studentProfileId])
+  @@map("exam_access")
 }
 
 model ExamQuestion {
