@@ -214,6 +214,7 @@ export const en = {
   "signin.title": "Sign In",
   "signin.kicker": "Welcome back",
   "signin.lede": "Sign in with your Google account to continue.",
+  "signin.google": "Sign in with Google",
   "signin.loadingConfig": "Preparing Google…",
   "signin.configError": "Could not load sign-in configuration",
   "signin.retryHint": "Google is still opening. You can wait or try again.",

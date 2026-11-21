@@ -209,6 +209,7 @@ export const fr: Record<MessageKey, string> = {
 
   "signin.title": "Connexion",
   "signin.kicker": "Bon retour",
+  "signin.google": "Se connecter avec Google",
   "signin.lede": "Connectez-vous avec votre compte Google pour continuer.",
   "signin.loadingConfig": "Preparation de Google…",
   "signin.configError": "Impossible de charger la configuration de connexion",

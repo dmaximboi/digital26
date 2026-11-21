@@ -210,6 +210,7 @@ export const ar: Record<MessageKey, string> = {
   "signin.title": "تسجيل الدخول",
   "signin.kicker": "مرحباً بعودتك",
   "signin.lede": "سجّل الدخول بحساب Google للمتابعة.",
+  "signin.google": "تسجيل الدخول باستخدام Google",
   "signin.loadingConfig": "جارٍ تجهيز Google…",
   "signin.configError": "تعذّر تحميل إعدادات تسجيل الدخول",
   "signin.retryHint": "Google ما زال يفتح. يمكنك الانتظار أو المحاولة مجدداً.",

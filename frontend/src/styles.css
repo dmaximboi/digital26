@@ -1680,25 +1680,86 @@ dd {
 }
 
 /* Sign In page */
-.signin-page { text-align: left; max-width: 480px; margin: 0 auto; padding-inline: var(--space-5); }
-.signin-title { font-family: var(--font-display); color: var(--ink); margin-bottom: var(--space-2); }
+.signin-page {
+  text-align: center;
+  max-width: 40rem;
+  margin: 7vh auto 0;
+  padding-inline: 1.25rem;
+}
+.signin-card {
+  padding: 2.6rem 2rem 2.2rem;
+  border-radius: 1.6rem;
+  border: 1px solid rgba(245, 166, 35, 0.38);
+  background:
+    radial-gradient(ellipse at top, rgba(245, 166, 35, 0.14), transparent 55%),
+    rgba(12, 16, 22, 0.72);
+  box-shadow: 0 28px 70px rgba(0, 0, 0, 0.35);
+}
+.signin-title {
+  font-family: var(--font-display);
+  color: var(--ink);
+  margin: 0.15rem 0 0.55rem;
+  font-size: clamp(2.4rem, 6vw, 3.4rem);
+  line-height: 1.05;
+}
+.signin-page .lede { max-width: 28rem; margin-inline: auto; }
 .google-btn-slot {
-  margin: var(--space-5) 0;
-  min-height: 44px;
+  display: grid;
+  justify-items: center;
+  margin: 1.8rem 0 0.4rem;
+  min-height: 4.5rem;
 }
 .signin-retry {
   display: grid;
+  justify-items: center;
   gap: var(--space-3);
-  margin-top: var(--space-4);
-  max-width: 20rem;
+  margin-top: 1.6rem;
+  max-width: 22rem;
 }
-.google-btn-wrap {
+.google-signin {
+  position: relative;
+  width: min(100%, 24rem);
+  min-height: 4.4rem;
+  margin-inline: auto;
+}
+.google-face {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  min-height: 44px;
+  justify-content: center;
+  gap: 0.85rem;
+  min-height: 4.4rem;
+  padding: 0.85rem 1.4rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #1f1f1f;
+  font-size: 1.2rem;
+  font-weight: 750;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
 }
-.signin-wait { margin: 0; }
+.google-mark { width: 2rem; height: 2rem; flex: 0 0 auto; }
+.google-btn-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 999px;
+  opacity: 0.02;
+}
+.google-btn-wrap iframe,
+.google-btn-wrap > div {
+  width: 100% !important;
+  min-height: 4.4rem;
+  transform: scale(1.7);
+  transform-origin: center center;
+}
+.signin-wait { margin: 0 0 0.6rem; }
+@media (max-width: 700px) {
+  .signin-page { margin-top: 1.5rem; }
+  .signin-card { padding: 2rem 1.1rem 1.8rem; }
+  .google-face { font-size: 1.05rem; }
+}
 .signin-info { margin-top: 2rem; }
 
 /* Nav auth links */
@@ -5043,17 +5104,20 @@ html[dir="rtl"] .visor-paper {
 
 .board {
   --board: #39f08a;
-  --board-line: rgba(90, 190, 255, 0.35);
+  --board-line: rgba(120, 210, 255, 0.28);
   margin-inline: calc(var(--space-5) * -1);
   min-height: calc(100dvh - 7.5rem);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   background:
-    radial-gradient(ellipse at top, rgba(20, 70, 90, 0.45), transparent 55%),
+    radial-gradient(ellipse at 50% 0%, rgba(36, 110, 140, 0.42), transparent 46%),
+    radial-gradient(ellipse at 100% 100%, rgba(245, 166, 35, 0.08), transparent 40%),
     #071018;
   color: #e7fff4;
   border: 1px solid var(--board-line);
-  box-shadow: inset 0 0 0 1px rgba(8, 20, 30, 0.8);
+  border-radius: 1.15rem;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
 }
 .board-top,
 .board-foot {
@@ -5076,20 +5140,21 @@ html[dir="rtl"] .visor-paper {
 .board-kicker, .board-motto, .board-brand { margin: 0; font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: #8fd0ff; }
 .board-body {
   display: grid;
-  grid-template-columns: minmax(13rem, 17rem) minmax(0, 1fr) minmax(12rem, 16rem);
-  gap: 0.7rem;
-  padding: 0.7rem;
+  grid-template-columns: minmax(14rem, 18rem) minmax(0, 1fr) minmax(13rem, 17rem);
+  gap: 0.85rem;
+  padding: 0.85rem;
   min-height: 0;
 }
 .board-card {
   display: grid;
   align-content: start;
-  gap: 0.75rem;
-  padding: 0.75rem;
+  gap: 0.9rem;
+  padding: 1rem;
   border: 1px solid var(--board-line);
-  border-radius: 0.9rem;
-  background: rgba(6, 22, 36, 0.82);
+  border-radius: 1.05rem;
+  background: linear-gradient(180deg, rgba(14, 36, 54, 0.92), rgba(6, 18, 30, 0.88));
   overflow: auto;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 .board-card h2 { margin: 0 0 0.4rem; font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--board); }
 .board-card ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.35rem; }
@@ -5108,11 +5173,12 @@ html[dir="rtl"] .visor-paper {
 .board-face span { color: #b7d7c8; font-size: 0.82rem; }
 .board-stage {
   position: relative;
-  min-height: 28rem;
-  border: 1px solid var(--board-line);
-  border-radius: 0.9rem;
+  min-height: 32rem;
+  border: 1px solid rgba(57, 240, 138, 0.35);
+  border-radius: 1.15rem;
   overflow: hidden;
   background: #000;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.4), 0 16px 40px rgba(0, 0, 0, 0.35);
 }
 .board-video, .board-pip video {
   width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); background: #111;
@@ -5133,13 +5199,15 @@ html[dir="rtl"] .visor-paper {
 .board-quiet { top: 0.7rem; right: 0.7rem; }
 .board-quiet.is-bad, .board.is-alert .board-quiet { border-color: #ff8d8d; color: #ffd0d0; }
 .board-question {
-  position: absolute; z-index: 3; right: 0.8rem; top: 3.2rem;
-  width: min(22rem, calc(100% - 1.6rem));
-  padding: 0.85rem 0.9rem 0.95rem;
-  border: 1px solid rgba(57, 240, 138, 0.7);
-  border-radius: 0.8rem;
-  background: rgba(8, 36, 24, 0.78);
-  box-shadow: 0 0 24px rgba(57, 240, 138, 0.15);
+  position: absolute; z-index: 3; left: 50%; right: auto; top: auto; bottom: 0.85rem;
+  transform: translateX(-50%);
+  width: min(38rem, calc(100% - 1.6rem));
+  padding: 1rem 1.05rem 1.05rem;
+  border: 1px solid rgba(57, 240, 138, 0.55);
+  border-radius: 1.1rem;
+  background: rgba(6, 24, 20, 0.86);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.4);
 }
 .board-qcount { margin: 0; color: var(--board); font-size: 0.85rem; }
 .board-question h2 { margin: 0.35rem 0 0.7rem; font-family: Kalam, "Segoe Print", cursive; font-size: 1.85rem; line-height: 1.35; color: #d9ffe4; font-weight: 700; }
@@ -5171,14 +5239,16 @@ html[dir="rtl"] .board-question h2 { font-family: "Noto Sans Arabic", sans-serif
 }
 .board-handin {
   flex: 0 0 auto;
-  border: 1.5px solid #f5a623;
-  border-radius: 0.8rem;
-  background: rgba(245, 166, 35, 0.2);
-  color: #ffe7b8;
-  padding: 0.55rem 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffc14d, #f5a623);
+  color: #2a1a00;
+  padding: 0.65rem 1.15rem;
   font: inherit;
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: 0.02em;
   cursor: pointer;
+  box-shadow: 0 8px 20px rgba(245, 166, 35, 0.28);
 }
 .board-handin:disabled { opacity: 0.45; cursor: default; }
 .board-nav { display: flex; justify-content: space-between; gap: 0.5rem; margin-top: 0.7rem; }
@@ -5200,6 +5270,7 @@ html[dir="rtl"] .board-question h2 { font-family: "Noto Sans Arabic", sans-serif
 @media (max-width: 980px) {
   .board-body { grid-template-columns: 1fr; }
   .board-stage { min-height: 34rem; }
-  .board-question { top: auto; bottom: 0.8rem; }
+  .board-question { bottom: 0.7rem; width: min(38rem, calc(100% - 1.2rem)); }
+  .board-top { flex-wrap: wrap; }
 }
 

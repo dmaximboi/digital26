@@ -148,11 +148,12 @@ export async function renderGoogleSignInButton(
 
   el.innerHTML = "";
   gsi.renderButton(el, {
-    theme: "filled_black",
+    theme: "filled_blue",
     size: "large",
-    width: 320,
+    width: 400,
     shape: "pill",
     text: "signin_with",
+    logo_alignment: "left",
   });
   return Boolean(el.childElementCount);
 }
