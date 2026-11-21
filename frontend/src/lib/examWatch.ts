@@ -5,13 +5,60 @@ export type ExamFace = { x: number; y: number; w: number; h: number };
 export type ExamPulse = { level: number; bars: number[]; face: ExamFace | null };
 
 type Landmark = { x: number; y: number };
-type FaceRunner = {
+type FaceHit = { box: ExamFace; jaw: number };
+type NativeDetector = { detect: (input: CanvasImageSource) => Promise<{ boundingBox: DOMRectReadOnly }[]> };
+type MeshRunner = {
   detect: (image: HTMLCanvasElement) => {
     faceLandmarks: Landmark[][];
     faceBlendshapes: { categories: { categoryName: string; score: number }[] }[];
   };
-  close: () => void;
 };
+
+let sharedLandmarker: MeshRunner | null = null;
+let sharedLoad: Promise<MeshRunner | null> | null = null;
+let sharedFailed = false;
+
+function loadSharedLandmarker(): Promise<MeshRunner | null> {
+  if (sharedLandmarker) return Promise.resolve(sharedLandmarker);
+  if (sharedFailed) return Promise.resolve(null);
+  if (sharedLoad) return sharedLoad;
+  sharedLoad = import("@mediapipe/tasks-vision")
+    .then(async ({ FaceLandmarker, FilesetResolver }) => {
+      const files = await FilesetResolver.forVisionTasks("/mediapipe/wasm");
+      const created = await FaceLandmarker.createFromOptions(files, {
+        baseOptions: {
+          modelAssetPath: "/mediapipe/face_landmarker.task",
+          delegate: "CPU",
+        },
+        runningMode: "IMAGE",
+        numFaces: 3,
+        outputFaceBlendshapes: true,
+        minFaceDetectionConfidence: 0.35,
+        minFacePresenceConfidence: 0.35,
+        minTrackingConfidence: 0.35,
+      });
+      sharedLandmarker = created;
+      return created;
+    })
+    .catch(() => {
+      sharedFailed = true;
+      sharedLoad = null;
+      return null;
+    });
+  return sharedLoad;
+}
+
+function nativeDetector(): NativeDetector | null {
+  const FaceCtor = (window as unknown as {
+    FaceDetector?: new (opts?: { fastMode?: boolean; maxDetectedFaces?: number }) => NativeDetector;
+  }).FaceDetector;
+  if (!FaceCtor) return null;
+  try {
+    return new FaceCtor({ fastMode: true, maxDetectedFaces: 3 });
+  } catch {
+    return null;
+  }
+}
 
 export function faceCheckSupported(): boolean {
   return typeof WebAssembly === "object";
@@ -45,52 +92,36 @@ export function watchExam(opts: {
   const freq = new Uint8Array(analyser.frequencyBinCount);
   const binHz = audioCtx.sampleRate / analyser.fftSize;
 
-  let landmarker: FaceRunner | null = null;
+  let stopped = false;
+  let landmarker = sharedLandmarker;
+  const fallback = nativeDetector();
   let live = false;
   let jawHigh = false;
   let jawCycles = 0;
   let cycleStart = 0;
   let voiceHits = 0;
   let missingSince: number | null = null;
+  let missFrames = 0;
   const canvas = document.createElement("canvas");
   canvas.width = 480;
   canvas.height = 360;
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-  const base = "/mediapipe";
-  void import("@mediapipe/tasks-vision")
-    .then(async ({ FaceLandmarker, FilesetResolver }) => {
-      if (stopped) return;
-      const files = await FilesetResolver.forVisionTasks(`${base}/wasm`);
-      if (stopped) return;
-      const created = await FaceLandmarker.createFromOptions(files, {
-        baseOptions: {
-          modelAssetPath: `${base}/face_landmarker.task`,
-          delegate: "CPU",
-        },
-        runningMode: "IMAGE",
-        numFaces: 3,
-        outputFaceBlendshapes: true,
-        minFaceDetectionConfidence: 0.35,
-        minFacePresenceConfidence: 0.35,
-        minTrackingConfidence: 0.35,
-      });
-      if (stopped) {
-        created.close();
-        return;
-      }
-      landmarker = created;
+  if (fallback) opts.onFaceReady?.(true);
+  void loadSharedLandmarker().then((ready) => {
+    if (stopped) return;
+    if (ready) {
+      landmarker = ready;
       opts.onFaceReady?.(true);
-    })
-    .catch((err: unknown) => {
-      if (!stopped) opts.onFaceReady?.(false, err instanceof Error ? err.message : "Face check failed");
-    });
+      return;
+    }
+    if (!fallback) opts.onFaceReady?.(false, "Face check failed");
+  });
 
   const lastSent: Partial<Record<ExamWarning, number>> = {};
   let noiseSince: number | null = null;
   let faceSince: number | null = null;
   let lastFace: ExamFace | null = null;
-  let stopped = false;
   let timer = 0;
   let pulseTimer = 0;
 
@@ -171,53 +202,89 @@ export function watchExam(opts: {
       voiceHits = 0;
     }
 
-    if (landmarker && ctx && opts.video.readyState >= 2 && opts.video.videoWidth > 0) {
+    if ((landmarker || fallback) && ctx && opts.video.readyState >= 2 && opts.video.videoWidth > 0) {
+      ctx.drawImage(opts.video, 0, 0, canvas.width, canvas.height);
       try {
-        ctx.drawImage(opts.video, 0, 0, canvas.width, canvas.height);
-        const found = landmarker.detect(canvas);
-        const faces = found.faceLandmarks.filter((set) => set.length >= 100);
-        if (faces.length >= 2) {
-          missingSince = null;
-          faceSince = null;
-          lastFace = boxOf(faces[0] ?? []);
-          emit("SECOND_FACE", now, stillFrom(opts.video));
-        } else if (faces.length === 0) {
-          missingSince = missingSince ?? now;
-          jawHigh = false;
-          if (now - missingSince > 5000) {
-            faceSince = missingSince;
-            lastFace = null;
-          }
-        } else {
-          missingSince = null;
-          faceSince = null;
-          const marks = faces[0] ?? [];
-          lastFace = boxOf(marks);
-          const turned = lastFace.x < 0.08 || lastFace.x + lastFace.w > 0.92;
-          const jaw = found.faceBlendshapes[0]?.categories.find((item) => item.categoryName === "jawOpen")?.score ?? 0;
-          if (turned) {
-            jawHigh = false;
-          } else if (jaw > 0.28) jawHigh = true;
-          else if (jaw < 0.14 && jawHigh) {
-            jawHigh = false;
-            jawCycles += 1;
-            cycleStart = cycleStart || now;
-          }
-          if (cycleStart && now - cycleStart > 8000) {
-            jawCycles = 0;
-            cycleStart = 0;
-          }
-          if (jawCycles >= 2) {
-            emit("MOUTH", now);
-            jawCycles = 0;
-            cycleStart = 0;
-          }
-        }
-        if (faceSince && now - faceSince > 5000) emit("FACE_LEFT", now);
+        const hits = landmarker ? meshHits() : await nativeHits();
+        applyHits(hits, now);
       } catch {
-        // A single missed frame should not turn face tracking off.
+        missFrames += 1;
+        if (missFrames > 12) {
+          lastFace = null;
+          landmarker = null;
+        }
       }
     }
+  }
+
+  function meshHits(): FaceHit[] {
+    if (!landmarker) return [];
+    const found = landmarker.detect(canvas);
+    return found.faceLandmarks
+      .map((marks, index) => {
+        if (marks.length < 100) return null;
+        return {
+          box: boxOf(marks),
+          jaw: found.faceBlendshapes[index]?.categories.find((item) => item.categoryName === "jawOpen")?.score ?? 0,
+        };
+      })
+      .filter((hit): hit is FaceHit => Boolean(hit));
+  }
+
+  async function nativeHits(): Promise<FaceHit[]> {
+    if (!fallback) return [];
+    const faces = await fallback.detect(canvas);
+    return faces.map((face) => ({
+      box: {
+        x: face.boundingBox.x / canvas.width,
+        y: face.boundingBox.y / canvas.height,
+        w: face.boundingBox.width / canvas.width,
+        h: face.boundingBox.height / canvas.height,
+      },
+      jaw: 0,
+    }));
+  }
+
+  function applyHits(hits: FaceHit[], now: number) {
+    missFrames = 0;
+    if (hits.length >= 2) {
+      missingSince = null;
+      faceSince = null;
+      lastFace = hits[0]?.box ?? null;
+      emit("SECOND_FACE", now, stillFrom(opts.video));
+    } else if (hits.length === 0) {
+      missingSince = missingSince ?? now;
+      jawHigh = false;
+      if (now - missingSince > 5000) {
+        faceSince = missingSince;
+        lastFace = null;
+      }
+    } else {
+      missingSince = null;
+      faceSince = null;
+      const hit = hits[0];
+      if (!hit) return;
+      lastFace = hit.box;
+      const turned = hit.box.x < 0.08 || hit.box.x + hit.box.w > 0.92;
+      if (turned || hit.jaw === 0) {
+        jawHigh = false;
+      } else if (hit.jaw > 0.28) jawHigh = true;
+      else if (hit.jaw < 0.14 && jawHigh) {
+        jawHigh = false;
+        jawCycles += 1;
+        cycleStart = cycleStart || now;
+      }
+      if (cycleStart && now - cycleStart > 8000) {
+        jawCycles = 0;
+        cycleStart = 0;
+      }
+      if (jawCycles >= 2) {
+        emit("MOUTH", now);
+        jawCycles = 0;
+        cycleStart = 0;
+      }
+    }
+    if (faceSince && now - faceSince > 5000) emit("FACE_LEFT", now);
   }
 
   function boxOf(marks: Landmark[]): ExamFace {
@@ -293,7 +360,6 @@ export function watchExam(opts: {
       stopped = true;
       window.clearInterval(timer);
       window.clearInterval(pulseTimer);
-      landmarker?.close();
       landmarker = null;
       source.disconnect();
       void audioCtx.close();
