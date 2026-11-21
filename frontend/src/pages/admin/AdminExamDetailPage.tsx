@@ -64,6 +64,13 @@ export function AdminExamDetailPage() {
   const [busy, setBusy] = useState(false);
   const [roster, setRoster] = useState<RosterStudent[]>([]);
   const [picked, setPicked] = useState<string[]>([]);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [minutesDraft, setMinutesDraft] = useState("60");
+  const [instructionsDraft, setInstructionsDraft] = useState("");
+  const [editingId, setEditingId] = useState("");
+  const [editPrompt, setEditPrompt] = useState("");
+  const [editOptions, setEditOptions] = useState("");
+  const [editMarks, setEditMarks] = useState("1");
 
   const load = useCallback(() => {
     if (!id) return;
@@ -71,6 +78,9 @@ export function AdminExamDetailPage() {
       .then((d) => {
         setExam(d.exam);
         setPicked(d.exam.access.map((row) => row.id));
+        setTitleDraft(d.exam.title);
+        setMinutesDraft(String(d.exam.durationMinutes));
+        setInstructionsDraft(d.exam.instructions ?? "");
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : t("common.error")));
   }, [id, t]);
@@ -118,6 +128,60 @@ export function AdminExamDetailPage() {
       setPrompt("");
       setOptions("");
       setMarks("1");
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function startEdit(question: Question) {
+    setEditingId(question.id);
+    setEditPrompt(question.prompt);
+    setEditOptions((question.choices ?? []).join("\n"));
+    setEditMarks(String(question.marks));
+  }
+
+  async function savePaper() {
+    if (!canWrite || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await apiFetch(`/api/ops/examinations/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          title: titleDraft,
+          instructions: instructionsDraft,
+          durationMinutes: Number(minutesDraft),
+        }),
+      });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("common.error"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveQuestion(questionId: string) {
+    if (!canWrite || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await apiFetch(`/api/ops/examinations/${id}/questions/${questionId}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          prompt: editPrompt,
+          marks: Number(editMarks),
+          choices: editOptions
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .slice(0, 6),
+        }),
+      });
+      setEditingId("");
       load();
     } catch (err) {
       setError(err instanceof Error ? err.message : t("common.error"));
@@ -209,8 +273,6 @@ export function AdminExamDetailPage() {
     return <p className="muted">{error || t("common.loading")}</p>;
   }
 
-  const locked = exam.sessions.length > 0;
-
   const eligible = roster.filter((student) => student.status === "APPROVED");
 
   return (
@@ -224,7 +286,6 @@ export function AdminExamDetailPage() {
           <p className="muted">
             {statusLabel(exam.status, t)} · {exam.durationMinutes} min · {t("exam.score")} {exam.maxScore}
           </p>
-          {exam.instructions && <p>{exam.instructions}</p>}
         </div>
         <div className="exam-admin__actions">
           {canWrite && exam.status !== "PUBLISHED" && (
@@ -245,6 +306,36 @@ export function AdminExamDetailPage() {
         </div>
       </header>
       {error && <p className="status error">{error}</p>}
+
+      {canWrite && (
+        <section className="exam-panel">
+          <h3>{t("adminExam.settings")}</h3>
+          <form
+            className="exam-admin-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void savePaper();
+            }}
+          >
+            <label>
+              {t("adminExam.name")}
+              <input className="form-input" value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} required minLength={2} maxLength={120} />
+            </label>
+            <label>
+              {t("adminExam.minutes")}
+              <input className="form-input" type="number" min={10} max={180} value={minutesDraft} onChange={(e) => setMinutesDraft(e.target.value)} required />
+            </label>
+            <label>
+              {t("adminExam.instructions")}
+              <textarea className="form-input" rows={3} value={instructionsDraft} onChange={(e) => setInstructionsDraft(e.target.value)} maxLength={4000} />
+            </label>
+            <p className="muted">{t("adminExam.minutesHint")}</p>
+            <button className="btn primary" type="submit" disabled={busy}>
+              {t("adminExam.savePaper")}
+            </button>
+          </form>
+        </section>
+      )}
 
       <section className="exam-panel exam-access-panel">
         <h3>{t("adminExam.access")}</h3>
@@ -280,22 +371,60 @@ export function AdminExamDetailPage() {
           <ol className="exam-sheet">
             {exam.questions.map((q, index) => (
               <li key={q.id}>
-                <p>
-                  <strong>
-                    {index + 1}. {q.prompt}
-                  </strong>
-                </p>
-                <p className="muted">{t("exam.marks", { marks: q.marks })}</p>
-                {(q.choices ?? []).length > 0 && <p className="muted">{(q.choices ?? []).join(" · ")}</p>}
-                {canWrite && !locked && (
-                  <button type="button" className="btn sm" onClick={() => void removeQuestion(q.id)}>
-                    {t("adminExam.remove")}
-                  </button>
+                {editingId === q.id ? (
+                  <form
+                    className="exam-admin-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void saveQuestion(q.id);
+                    }}
+                  >
+                    <label>
+                      {t("adminExam.prompt")}
+                      <textarea className="form-input" rows={3} value={editPrompt} onChange={(e) => setEditPrompt(e.target.value)} required minLength={2} />
+                    </label>
+                    <label>
+                      {t("adminExam.options")}
+                      <textarea className="form-input" rows={3} value={editOptions} onChange={(e) => setEditOptions(e.target.value)} placeholder={t("adminExam.optionsHint")} />
+                    </label>
+                    <label>
+                      {t("adminExam.points")}
+                      <input className="form-input" type="number" min={1} max={100} value={editMarks} onChange={(e) => setEditMarks(e.target.value)} required />
+                    </label>
+                    <div className="exam-offer__actions">
+                      <button className="btn primary" type="submit" disabled={busy}>
+                        {t("adminExam.saveQuestion")}
+                      </button>
+                      <button type="button" className="btn sm" onClick={() => setEditingId("")}>
+                        {t("common.back")}
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <>
+                    <p>
+                      <strong>
+                        {index + 1}. {q.prompt}
+                      </strong>
+                    </p>
+                    <p className="muted">{t("exam.marks", { marks: q.marks })}</p>
+                    {(q.choices ?? []).length > 0 && <p className="muted">{(q.choices ?? []).join(" · ")}</p>}
+                    {canWrite && (
+                      <div className="exam-offer__actions">
+                        <button type="button" className="btn sm" onClick={() => startEdit(q)}>
+                          {t("adminExam.editQuestion")}
+                        </button>
+                        <button type="button" className="btn sm" onClick={() => void removeQuestion(q.id)}>
+                          {t("adminExam.remove")}
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
               </li>
             ))}
           </ol>
-          {canWrite && !locked && (
+          {canWrite && (
             <form className="exam-admin-form" onSubmit={(e) => void addQuestion(e)}>
               <label>
                 {t("adminExam.prompt")}
@@ -314,7 +443,6 @@ export function AdminExamDetailPage() {
               </button>
             </form>
           )}
-          {locked && <p className="muted">{t("adminExam.locked")}</p>}
         </section>
 
       <section className="exam-panel">

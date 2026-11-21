@@ -547,15 +547,28 @@ examsRouter.patch("/ops/examinations/:id", requireAdminWrite, async (req: Authed
       res.status(404).json({ error: "Exam not found" });
       return;
     }
+    const nextMinutes = parsed.data.durationMinutes;
     await prisma.examination.update({
       where: { id },
       data: {
         title: parsed.data.title,
         instructions:
           parsed.data.instructions === undefined ? undefined : parsed.data.instructions?.trim() || null,
-        durationMinutes: parsed.data.durationMinutes,
+        durationMinutes: nextMinutes,
       },
     });
+    if (nextMinutes) {
+      const live = await prisma.examSession.findMany({
+        where: { examinationId: id, status: "IN_PROGRESS" },
+        select: { id: true, startedAt: true },
+      });
+      for (const row of live) {
+        await prisma.examSession.update({
+          where: { id: row.id },
+          data: { deadlineAt: new Date(row.startedAt.getTime() + nextMinutes * 60_000) },
+        });
+      }
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error("[ops.examinations.patch]", err);
@@ -640,10 +653,6 @@ examsRouter.post("/ops/examinations/:id/questions", requireAdminWrite, async (re
       res.status(404).json({ error: "Exam not found" });
       return;
     }
-    if (exam._count.sessions > 0) {
-      res.status(409).json({ error: "A student has already opened this paper" });
-      return;
-    }
     if (exam._count.questions >= 40) {
       res.status(400).json({ error: "This paper already has 40 questions" });
       return;
@@ -664,15 +673,41 @@ examsRouter.post("/ops/examinations/:id/questions", requireAdminWrite, async (re
   }
 });
 
+examsRouter.patch("/ops/examinations/:id/questions/:questionId", requireAdminWrite, async (req, res) => {
+  try {
+    const parsed = questionSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "Write the question and the points" });
+      return;
+    }
+    const id = String(req.params.id);
+    const questionId = String(req.params.questionId);
+    const existing = await prisma.examQuestion.findFirst({
+      where: { id: questionId, examinationId: id },
+    });
+    if (!existing) {
+      res.status(404).json({ error: "Question not found" });
+      return;
+    }
+    await prisma.examQuestion.update({
+      where: { id: questionId },
+      data: {
+        prompt: parsed.data.prompt,
+        marks: parsed.data.marks,
+        choices: parsed.data.choices ?? [],
+      },
+    });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[ops.examinations.question.patch]", err);
+    res.status(500).json({ error: "Failed to update question" });
+  }
+});
+
 examsRouter.post("/ops/examinations/:id/questions/:questionId/delete", requireAdminWrite, async (req, res) => {
   try {
     const id = String(req.params.id);
     const questionId = String(req.params.questionId);
-    const sessions = await prisma.examSession.count({ where: { examinationId: id } });
-    if (sessions > 0) {
-      res.status(409).json({ error: "A student has already opened this paper" });
-      return;
-    }
     await prisma.examQuestion.deleteMany({ where: { id: questionId, examinationId: id } });
     res.json({ ok: true });
   } catch (err) {
