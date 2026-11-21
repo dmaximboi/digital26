@@ -217,20 +217,12 @@ export function ExamRoomPage() {
     const onHide = () => {
       if (document.visibilityState === "hidden") handIn("TAB_LEFT");
     };
-    const onBlur = () => {
-      window.setTimeout(() => {
-        if (!armedRef.current || document.hasFocus()) return;
-        handIn("TAB_LEFT");
-      }, 400);
-    };
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", onHide);
-    window.addEventListener("blur", onBlur);
 
     return () => {
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", onHide);
-      window.removeEventListener("blur", onBlur);
       window.setTimeout(() => {
         if (holder.__examRoom === mark) handIn("TAB_LEFT");
       }, 0);

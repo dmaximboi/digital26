@@ -47,8 +47,11 @@ export function watchExam(opts: {
 
   let landmarker: FaceRunner | null = null;
   let live = false;
-  let lastOpen = 0;
-  let mouthMotion = 0;
+  let jawHigh = false;
+  let jawCycles = 0;
+  let cycleStart = 0;
+  let voiceHits = 0;
+  let missingSince: number | null = null;
   const canvas = document.createElement("canvas");
   canvas.width = 480;
   canvas.height = 360;
@@ -85,9 +88,7 @@ export function watchExam(opts: {
 
   const lastSent: Partial<Record<ExamWarning, number>> = {};
   let noiseSince: number | null = null;
-  let voiceSince: number | null = null;
   let faceSince: number | null = null;
-  let mouthSince: number | null = null;
   let lastFace: ExamFace | null = null;
   let stopped = false;
   let timer = 0;
@@ -141,10 +142,10 @@ export function watchExam(opts: {
     const next = peaks[1];
     if (!top || !next) return false;
     const strong = peaks.filter((peak) => peak.mag > top.mag * 0.45).length;
-    if (strong > 6) return false;
-    if (next.mag < top.mag * 0.4) return false;
+    if (strong > 4) return false;
+    if (next.mag < top.mag * 0.55) return false;
     const gap = Math.abs(top.hz - next.hz);
-    if (gap < 40 || gap > 320) return false;
+    if (gap < 55 || gap > 280) return false;
     const ratio = Math.max(top.hz, next.hz) / Math.max(1, Math.min(top.hz, next.hz));
     const harmonic = [2, 3, 4].some((step) => Math.abs(ratio - step) < 0.08);
     if (harmonic) return false;
@@ -152,7 +153,7 @@ export function watchExam(opts: {
     const hi = Math.max(top.index, next.index);
     let valley = top.mag;
     for (let i = lo + 1; i < hi; i++) valley = Math.min(valley, smooth[i] ?? valley);
-    return valley < next.mag * 0.72;
+    return valley < next.mag * 0.5;
   }
 
   async function tick() {
@@ -163,22 +164,27 @@ export function watchExam(opts: {
     else noiseSince = null;
     if (noiseSince && now - noiseSince > 2000) emit("NOISE", now);
 
-    if (twoVoices()) voiceSince = voiceSince ?? now;
-    else voiceSince = null;
-    if (voiceSince && now - voiceSince > 1800) emit("SECOND_VOICE", now);
+    if (twoVoices()) voiceHits = Math.min(10, voiceHits + 1);
+    else voiceHits = Math.max(0, voiceHits - 2);
+    if (voiceHits >= 8) {
+      emit("SECOND_VOICE", now);
+      voiceHits = 0;
+    }
 
     if (landmarker && ctx && opts.video.readyState >= 2 && opts.video.videoWidth > 0) {
       try {
         ctx.drawImage(opts.video, 0, 0, canvas.width, canvas.height);
         const found = landmarker.detect(canvas);
         const marks = found.faceLandmarks[0];
-        if (!marks || marks.length < 300) {
-          faceSince = faceSince ?? now;
-          mouthSince = null;
-          mouthMotion = 0;
-          lastOpen = 0;
-          lastFace = null;
+        if (!marks || marks.length < 100) {
+          missingSince = missingSince ?? now;
+          jawHigh = false;
+          if (now - missingSince > 5000) {
+            faceSince = missingSince;
+            lastFace = null;
+          }
         } else {
+          missingSince = null;
           faceSince = null;
           let minX = 1;
           let minY = 1;
@@ -192,14 +198,23 @@ export function watchExam(opts: {
           }
           lastFace = { x: minX, y: minY, w: Math.max(0.02, maxX - minX), h: Math.max(0.02, maxY - minY) };
           const jaw = found.faceBlendshapes[0]?.categories.find((item) => item.categoryName === "jawOpen")?.score ?? 0;
-          const delta = lastOpen > 0 ? Math.abs(jaw - lastOpen) : 0;
-          lastOpen = jaw;
-          mouthMotion = mouthMotion * 0.6 + delta;
-          if (jaw > 0.2 && mouthMotion > 0.05) mouthSince = mouthSince ?? now;
-          else mouthSince = null;
-          if (mouthSince && now - mouthSince > 2200) emit("MOUTH", now);
+          if (jaw > 0.55) jawHigh = true;
+          else if (jaw < 0.12 && jawHigh) {
+            jawHigh = false;
+            jawCycles += 1;
+            cycleStart = cycleStart || now;
+          }
+          if (cycleStart && now - cycleStart > 5000) {
+            jawCycles = 0;
+            cycleStart = 0;
+          }
+          if (jawCycles >= 3) {
+            emit("MOUTH", now);
+            jawCycles = 0;
+            cycleStart = 0;
+          }
         }
-        if (faceSince && now - faceSince > 2500) emit("FACE_LEFT", now);
+        if (faceSince && now - faceSince > 5000) emit("FACE_LEFT", now);
       } catch {
         // A single missed frame should not turn face tracking off.
       }
@@ -239,10 +254,12 @@ export function watchExam(opts: {
       live = on;
       if (!on) {
         faceSince = null;
-        mouthSince = null;
-        voiceSince = null;
         noiseSince = null;
-        mouthMotion = 0;
+        jawCycles = 0;
+        jawHigh = false;
+        cycleStart = 0;
+        voiceHits = 0;
+        missingSince = null;
       }
     },
     stop() {
