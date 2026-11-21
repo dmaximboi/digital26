@@ -132,7 +132,7 @@ export function watchExam(opts: {
     const peaks: { index: number; hz: number; mag: number }[] = [];
     for (let i = minBin; i <= maxBin; i++) {
       const mag = smooth[i] ?? 0;
-      if (mag < 70) continue;
+      if (mag < 46) continue;
       if (mag < (smooth[i - 1] ?? 0) || mag <= (smooth[i + 1] ?? 0)) continue;
       peaks.push({ index: i, hz: i * binHz, mag });
     }
@@ -141,18 +141,18 @@ export function watchExam(opts: {
     const next = peaks[1];
     if (!top || !next) return false;
     const strong = peaks.filter((peak) => peak.mag > top.mag * 0.45).length;
-    if (strong > 3) return false;
-    if (next.mag < top.mag * 0.62) return false;
+    if (strong > 6) return false;
+    if (next.mag < top.mag * 0.4) return false;
     const gap = Math.abs(top.hz - next.hz);
-    if (gap < 50 || gap > 260) return false;
+    if (gap < 40 || gap > 320) return false;
     const ratio = Math.max(top.hz, next.hz) / Math.max(1, Math.min(top.hz, next.hz));
-    const harmonic = [1.5, 2, 2.5, 3, 3.5, 4].some((step) => Math.abs(ratio - step) < 0.14);
+    const harmonic = [2, 3, 4].some((step) => Math.abs(ratio - step) < 0.08);
     if (harmonic) return false;
     const lo = Math.min(top.index, next.index);
     const hi = Math.max(top.index, next.index);
     let valley = top.mag;
     for (let i = lo + 1; i < hi; i++) valley = Math.min(valley, smooth[i] ?? valley);
-    return valley < next.mag * 0.48;
+    return valley < next.mag * 0.72;
   }
 
   async function tick() {
@@ -165,7 +165,7 @@ export function watchExam(opts: {
 
     if (twoVoices()) voiceSince = voiceSince ?? now;
     else voiceSince = null;
-    if (voiceSince && now - voiceSince > 3200) emit("SECOND_VOICE", now);
+    if (voiceSince && now - voiceSince > 1800) emit("SECOND_VOICE", now);
 
     if (landmarker && ctx && opts.video.readyState >= 2 && opts.video.videoWidth > 0) {
       try {
@@ -192,30 +192,18 @@ export function watchExam(opts: {
           }
           lastFace = { x: minX, y: minY, w: Math.max(0.02, maxX - minX), h: Math.max(0.02, maxY - minY) };
           const jaw = found.faceBlendshapes[0]?.categories.find((item) => item.categoryName === "jawOpen")?.score ?? 0;
-          const open = Math.max(jaw, lipOpen(marks));
-          const delta = lastOpen ? Math.abs(open - lastOpen) : 0;
-          lastOpen = open;
-          mouthMotion = mouthMotion * 0.72 + delta;
-          if (mouthMotion > 0.08) mouthSince = mouthSince ?? now;
+          const delta = lastOpen > 0 ? Math.abs(jaw - lastOpen) : 0;
+          lastOpen = jaw;
+          mouthMotion = mouthMotion * 0.6 + delta;
+          if (jaw > 0.2 && mouthMotion > 0.05) mouthSince = mouthSince ?? now;
           else mouthSince = null;
-          if (mouthSince && now - mouthSince > 1400) emit("MOUTH", now);
+          if (mouthSince && now - mouthSince > 2200) emit("MOUTH", now);
         }
-        if (faceSince && now - faceSince > 1000) emit("FACE_LEFT", now);
+        if (faceSince && now - faceSince > 2500) emit("FACE_LEFT", now);
       } catch {
         // A single missed frame should not turn face tracking off.
       }
     }
-  }
-
-  function lipOpen(marks: Landmark[]): number {
-    const upper = marks[13];
-    const lower = marks[14];
-    const left = marks[61];
-    const right = marks[291];
-    if (!upper || !lower || !left || !right) return 0;
-    const height = Math.hypot(upper.x - lower.x, upper.y - lower.y);
-    const width = Math.hypot(left.x - right.x, left.y - right.y);
-    return width > 0.01 ? height / width : 0;
   }
 
   function pulse() {

@@ -217,38 +217,20 @@ export function ExamRoomPage() {
     const onHide = () => {
       if (document.visibilityState === "hidden") handIn("TAB_LEFT");
     };
-    let leaveTimer = 0;
     const onBlur = () => {
       window.setTimeout(() => {
         if (!armedRef.current || document.hasFocus()) return;
         handIn("TAB_LEFT");
-      }, 200);
-    };
-    const onOut = (event: MouseEvent) => {
-      if (!armedRef.current) return;
-      const nextNode = event.relatedTarget;
-      if (nextNode instanceof Node && document.documentElement.contains(nextNode)) return;
-      window.clearTimeout(leaveTimer);
-      leaveTimer = window.setTimeout(() => handIn("TAB_LEFT"), 500);
-    };
-    const onOver = (event: MouseEvent) => {
-      if (event.target instanceof Node && document.documentElement.contains(event.target)) {
-        window.clearTimeout(leaveTimer);
-      }
+      }, 400);
     };
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", onHide);
     window.addEventListener("blur", onBlur);
-    document.addEventListener("mouseout", onOut);
-    document.addEventListener("mouseover", onOver);
 
     return () => {
-      window.clearTimeout(leaveTimer);
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", onHide);
       window.removeEventListener("blur", onBlur);
-      document.removeEventListener("mouseout", onOut);
-      document.removeEventListener("mouseover", onOver);
       window.setTimeout(() => {
         if (holder.__examRoom === mark) handIn("TAB_LEFT");
       }, 0);
@@ -465,6 +447,11 @@ function VisorStage(props: {
           <h1>{props.title}</h1>
         </div>
         <p className="board-motto">{t("exam.motto")}</p>
+        {props.phase === "paper" && (
+          <button type="button" className="board-handin" disabled={props.submitDisabled} onClick={props.onSubmit}>
+            {t("exam.submit")}
+          </button>
+        )}
       </header>
       <div className="board-body">
         <aside className="board-card">
@@ -542,15 +529,17 @@ function VisorStage(props: {
                 <button type="button" disabled={index === 0} onClick={() => setIndex((n) => Math.max(0, n - 1))}>
                   {t("exam.prev")}
                 </button>
-                {index < last ? (
-                  <button type="button" className="board-next" onClick={() => setIndex((n) => Math.min(last, n + 1))}>
-                    {t("exam.next")}
-                  </button>
-                ) : (
-                  <button type="button" className="board-next" disabled={props.submitDisabled} onClick={props.onSubmit}>
-                    {t("exam.submit")}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="board-next"
+                  disabled={index >= last}
+                  onClick={() => {
+                    if (index >= last) return;
+                    setIndex((n) => Math.min(last, n + 1));
+                  }}
+                >
+                  {t("exam.next")}
+                </button>
               </div>
               {props.saved && <p className="board-saved">{t("exam.saved")}</p>}
             </div>

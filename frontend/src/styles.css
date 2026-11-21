@@ -5142,7 +5142,7 @@ html[dir="rtl"] .visor-paper {
   box-shadow: 0 0 24px rgba(57, 240, 138, 0.15);
 }
 .board-qcount { margin: 0; color: var(--board); font-size: 0.85rem; }
-.board-question h2 { margin: 0.35rem 0 0.6rem; font-family: Caveat, "Segoe Script", cursive; font-size: 1.7rem; line-height: 1.15; color: #d9ffe4; font-weight: 500; }
+.board-question h2 { margin: 0.35rem 0 0.7rem; font-family: Kalam, "Segoe Print", cursive; font-size: 1.85rem; line-height: 1.35; color: #d9ffe4; font-weight: 700; }
 .board-wait { margin: 0; font-size: 1.02rem; line-height: 1.45; color: #f3fff6; }
 html[dir="rtl"] .board-question h2 { font-family: "Noto Sans Arabic", sans-serif; }
 .board-question textarea {
@@ -5169,6 +5169,18 @@ html[dir="rtl"] .board-question h2 { font-family: "Noto Sans Arabic", sans-serif
   background: rgba(80, 8, 8, 0.88); color: #ffd0d0; border: 1px solid #ff8d8d;
   font-weight: 700; text-align: center;
 }
+.board-handin {
+  flex: 0 0 auto;
+  border: 1.5px solid #f5a623;
+  border-radius: 0.8rem;
+  background: rgba(245, 166, 35, 0.2);
+  color: #ffe7b8;
+  padding: 0.55rem 0.9rem;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.board-handin:disabled { opacity: 0.45; cursor: default; }
 .board-nav { display: flex; justify-content: space-between; gap: 0.5rem; margin-top: 0.7rem; }
 .board-nav button, .board-next {
   border: 1px solid rgba(57, 240, 138, 0.6); background: transparent; color: #e9fff1;
