@@ -515,7 +515,7 @@ export const ar: Record<MessageKey, string> = {
   "exam.warnNoise": "الغرفة صاخبة.",
   "exam.warnVoice": "سُمع صوت ثانٍ.",
   "exam.warnFace": "خرج وجهك من الكاميرا.",
-  "exam.warnMouth": "فمك يتحرك كثيراً.",
+  "exam.warnMouth": "تتحدث كثيراً.",
   "exam.prepared": "{{name}} مستعد للامتحان",
   "exam.scanning": "مسح الوجه",
   "exam.faceLocked": "تم تثبيت الوجه",

@@ -192,9 +192,6 @@ export function ExamRoomPage() {
 
   useEffect(() => {
     if (!session || session.status !== "IN_PROGRESS") return;
-    const mark = Symbol(session.id);
-    const holder = window as unknown as { __examRoom?: symbol };
-    holder.__examRoom = mark;
 
     const handIn = (reason: "TAB_LEFT" | "DEADLINE") => {
       if (done.current || skipLeave.current) return;
@@ -223,9 +220,6 @@ export function ExamRoomPage() {
     return () => {
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", onHide);
-      window.setTimeout(() => {
-        if (holder.__examRoom === mark) handIn("TAB_LEFT");
-      }, 0);
     };
   }, [session?.id, session?.status, t]);
 

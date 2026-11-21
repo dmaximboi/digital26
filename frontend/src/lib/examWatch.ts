@@ -166,7 +166,7 @@ export function watchExam(opts: {
 
     if (twoVoices()) voiceHits = Math.min(10, voiceHits + 1);
     else voiceHits = Math.max(0, voiceHits - 2);
-    if (voiceHits >= 8) {
+    if (voiceHits >= 5) {
       emit("SECOND_VOICE", now);
       voiceHits = 0;
     }
@@ -197,8 +197,11 @@ export function watchExam(opts: {
             if (point.y > maxY) maxY = point.y;
           }
           lastFace = { x: minX, y: minY, w: Math.max(0.02, maxX - minX), h: Math.max(0.02, maxY - minY) };
+          const turned = minX < 0.12 || maxX > 0.88 || minY < 0.04 || maxY > 0.96;
           const jaw = found.faceBlendshapes[0]?.categories.find((item) => item.categoryName === "jawOpen")?.score ?? 0;
-          if (jaw > 0.55) jawHigh = true;
+          if (turned) {
+            jawHigh = false;
+          } else if (jaw > 0.55) jawHigh = true;
           else if (jaw < 0.12 && jawHigh) {
             jawHigh = false;
             jawCycles += 1;

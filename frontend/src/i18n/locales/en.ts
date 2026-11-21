@@ -529,7 +529,7 @@ export const en = {
   "exam.warnNoise": "The room is loud.",
   "exam.warnVoice": "A second voice was heard.",
   "exam.warnFace": "Your face left the camera.",
-  "exam.warnMouth": "Your mouth is moving a lot.",
+  "exam.warnMouth": "You keep talking.",
   "exam.prepared": "{{name}} is prepared for the exam",
   "exam.scanning": "Scanning face",
   "exam.faceLocked": "Face locked",

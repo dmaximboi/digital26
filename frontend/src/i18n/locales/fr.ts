@@ -515,7 +515,7 @@ export const fr: Record<MessageKey, string> = {
   "exam.warnNoise": "La pièce est bruyante.",
   "exam.warnVoice": "Une deuxième voix a été entendue.",
   "exam.warnFace": "Votre visage a quitté la caméra.",
-  "exam.warnMouth": "Votre bouche bouge beaucoup.",
+  "exam.warnMouth": "Vous parlez trop.",
   "exam.prepared": "{{name}} est prêt pour l’examen",
   "exam.scanning": "Analyse du visage",
   "exam.faceLocked": "Visage verrouillé",
