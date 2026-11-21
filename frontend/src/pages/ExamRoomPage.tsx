@@ -347,7 +347,7 @@ export function ExamRoomPage() {
         mediaError={mediaError}
         onRetry={() => setMediaTry((n) => n + 1)}
         onSubmit={() => void submitNow()}
-        submitDisabled={!armed || done.current}
+        submitDisabled={done.current}
         t={t}
       />
     );
@@ -434,12 +434,15 @@ function VisorStage(props: {
           <h1>{props.title}</h1>
         </div>
         <p className="board-motto">{t("exam.motto")}</p>
-        {props.phase === "paper" && (
+      </header>
+      {props.phase === "paper" && (
+        <div className="board-handin-bar">
+          <p>{t("exam.handInHint")}</p>
           <button type="button" className="board-handin" disabled={props.submitDisabled} onClick={props.onSubmit}>
             {t("exam.submit")}
           </button>
-        )}
-      </header>
+        </div>
+      )}
       <div className="board-body">
         <aside className="board-card">
           <div className="board-student">
@@ -528,6 +531,14 @@ function VisorStage(props: {
                   {t("exam.next")}
                 </button>
               </div>
+              <button
+                type="button"
+                className="board-handin board-handin--card"
+                disabled={props.submitDisabled}
+                onClick={props.onSubmit}
+              >
+                {t("exam.submit")}
+              </button>
               {props.saved && <p className="board-saved">{t("exam.saved")}</p>}
             </div>
           )}

@@ -513,6 +513,7 @@ export const en = {
   "exam.leaveWarning": "If you leave this tab, the paper is handed in.",
   "exam.marks": "{{marks}} points",
   "exam.submit": "Hand in",
+  "exam.handInHint": "Hand the paper in from here. Next only moves between questions.",
   "exam.timeLeft": "Time left",
   "exam.saved": "Saved",
   "exam.handedIn": "Handed in.",

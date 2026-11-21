@@ -499,6 +499,7 @@ export const fr: Record<MessageKey, string> = {
   "exam.leaveWarning": "Si vous quittez cet onglet, la copie est envoyée.",
   "exam.marks": "{{marks}} points",
   "exam.submit": "Envoyer",
+  "exam.handInHint": "Remettez l'épreuve d'ici. Suivant ne fait que changer de question.",
   "exam.timeLeft": "Temps restant",
   "exam.saved": "Enregistré",
   "exam.handedIn": "Envoyé.",

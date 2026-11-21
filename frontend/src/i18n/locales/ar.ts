@@ -499,6 +499,7 @@ export const ar: Record<MessageKey, string> = {
   "exam.leaveWarning": "إذا غادرت هذا التبويب تُسلَّم الورقة.",
   "exam.marks": "{{marks}} درجات",
   "exam.submit": "تسليم",
+  "exam.handInHint": "سلّم الورقة من هنا. التالي ينتقل بين الأسئلة فقط.",
   "exam.timeLeft": "الوقت المتبقي",
   "exam.saved": "تم الحفظ",
   "exam.handedIn": "تم التسليم.",
