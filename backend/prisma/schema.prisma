@@ -529,6 +529,7 @@ enum ExamEventKind {
   SECOND_VOICE
   FACE_LEFT
   MOUTH
+  SECOND_FACE
 }
 
 /// Named paper written by an admin. Students submit answers. Admins type the mark.
@@ -627,6 +628,7 @@ model ExamEvent {
   id        String        @id @default(cuid())
   sessionId String        @map("session_id")
   kind      ExamEventKind
+  still     String?       @db.Text
   createdAt DateTime      @default(now()) @map("created_at")
 
   session ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)

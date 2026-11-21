@@ -1,4 +1,4 @@
-export type ExamWarning = "NOISE" | "SECOND_VOICE" | "FACE_LEFT" | "MOUTH";
+export type ExamWarning = "NOISE" | "SECOND_VOICE" | "FACE_LEFT" | "MOUTH" | "SECOND_FACE";
 
 export type ExamFace = { x: number; y: number; w: number; h: number };
 
@@ -30,7 +30,7 @@ export async function openExamMedia(): Promise<MediaStream> {
 export function watchExam(opts: {
   stream: MediaStream;
   video: HTMLVideoElement;
-  onWarning: (kind: ExamWarning) => void;
+  onWarning: (kind: ExamWarning, still?: string) => void;
   onPulse?: (pulse: ExamPulse) => void;
   onFaceReady?: (supported: boolean, reason?: string) => void;
 }): { stop: () => void; faceSupported: boolean; setLive: (on: boolean) => void } {
@@ -69,7 +69,7 @@ export function watchExam(opts: {
           delegate: "CPU",
         },
         runningMode: "IMAGE",
-        numFaces: 1,
+        numFaces: 3,
         outputFaceBlendshapes: true,
         minFaceDetectionConfidence: 0.35,
         minFacePresenceConfidence: 0.35,
@@ -94,13 +94,13 @@ export function watchExam(opts: {
   let timer = 0;
   let pulseTimer = 0;
 
-  function emit(kind: ExamWarning, now: number) {
+  function emit(kind: ExamWarning, now: number, still?: string) {
     if (!live) return;
     const prev = lastSent[kind] ?? 0;
-    const wait = kind === "FACE_LEFT" ? 8_000 : 20_000;
+    const wait = kind === "SECOND_FACE" ? 12_000 : kind === "NOISE" ? 8_000 : kind === "MOUTH" ? 10_000 : kind === "FACE_LEFT" ? 8_000 : 20_000;
     if (now - prev < wait) return;
     lastSent[kind] = now;
-    opts.onWarning(kind);
+    opts.onWarning(kind, still);
   }
 
   function rms(): number {
@@ -160,9 +160,9 @@ export function watchExam(opts: {
     if (stopped) return;
     const now = Date.now();
     const level = rms();
-    if (level > 0.18) noiseSince = noiseSince ?? now;
+    if (level > 0.09) noiseSince = noiseSince ?? now;
     else noiseSince = null;
-    if (noiseSince && now - noiseSince > 2000) emit("NOISE", now);
+    if (noiseSince && now - noiseSince > 900) emit("NOISE", now);
 
     if (twoVoices()) voiceHits = Math.min(10, voiceHits + 1);
     else voiceHits = Math.max(0, voiceHits - 2);
@@ -175,8 +175,13 @@ export function watchExam(opts: {
       try {
         ctx.drawImage(opts.video, 0, 0, canvas.width, canvas.height);
         const found = landmarker.detect(canvas);
-        const marks = found.faceLandmarks[0];
-        if (!marks || marks.length < 100) {
+        const faces = found.faceLandmarks.filter((set) => set.length >= 100);
+        if (faces.length >= 2) {
+          missingSince = null;
+          faceSince = null;
+          lastFace = boxOf(faces[0] ?? []);
+          emit("SECOND_FACE", now, stillFrom(opts.video));
+        } else if (faces.length === 0) {
           missingSince = missingSince ?? now;
           jawHigh = false;
           if (now - missingSince > 5000) {
@@ -186,32 +191,23 @@ export function watchExam(opts: {
         } else {
           missingSince = null;
           faceSince = null;
-          let minX = 1;
-          let minY = 1;
-          let maxX = 0;
-          let maxY = 0;
-          for (const point of marks) {
-            if (point.x < minX) minX = point.x;
-            if (point.y < minY) minY = point.y;
-            if (point.x > maxX) maxX = point.x;
-            if (point.y > maxY) maxY = point.y;
-          }
-          lastFace = { x: minX, y: minY, w: Math.max(0.02, maxX - minX), h: Math.max(0.02, maxY - minY) };
-          const turned = minX < 0.12 || maxX > 0.88 || minY < 0.04 || maxY > 0.96;
+          const marks = faces[0] ?? [];
+          lastFace = boxOf(marks);
+          const turned = lastFace.x < 0.08 || lastFace.x + lastFace.w > 0.92;
           const jaw = found.faceBlendshapes[0]?.categories.find((item) => item.categoryName === "jawOpen")?.score ?? 0;
           if (turned) {
             jawHigh = false;
-          } else if (jaw > 0.55) jawHigh = true;
-          else if (jaw < 0.12 && jawHigh) {
+          } else if (jaw > 0.28) jawHigh = true;
+          else if (jaw < 0.14 && jawHigh) {
             jawHigh = false;
             jawCycles += 1;
             cycleStart = cycleStart || now;
           }
-          if (cycleStart && now - cycleStart > 5000) {
+          if (cycleStart && now - cycleStart > 8000) {
             jawCycles = 0;
             cycleStart = 0;
           }
-          if (jawCycles >= 3) {
+          if (jawCycles >= 2) {
             emit("MOUTH", now);
             jawCycles = 0;
             cycleStart = 0;
@@ -221,6 +217,34 @@ export function watchExam(opts: {
       } catch {
         // A single missed frame should not turn face tracking off.
       }
+    }
+  }
+
+  function boxOf(marks: Landmark[]): ExamFace {
+    let minX = 1;
+    let minY = 1;
+    let maxX = 0;
+    let maxY = 0;
+    for (const point of marks) {
+      if (point.x < minX) minX = point.x;
+      if (point.y < minY) minY = point.y;
+      if (point.x > maxX) maxX = point.x;
+      if (point.y > maxY) maxY = point.y;
+    }
+    return { x: minX, y: minY, w: Math.max(0.02, maxX - minX), h: Math.max(0.02, maxY - minY) };
+  }
+
+  function stillFrom(video: HTMLVideoElement): string | undefined {
+    const shot = document.createElement("canvas");
+    shot.width = 480;
+    shot.height = 270;
+    const draw = shot.getContext("2d");
+    if (!draw) return undefined;
+    draw.drawImage(video, 0, 0, shot.width, shot.height);
+    try {
+      return shot.toDataURL("image/jpeg", 0.55);
+    } catch {
+      return undefined;
     }
   }
 

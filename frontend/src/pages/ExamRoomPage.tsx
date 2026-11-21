@@ -151,12 +151,12 @@ export function ExamRoomPage() {
             setFaceOn(supported);
             setFaceError(supported ? "" : t("exam.faceFailed"));
           },
-          onWarning(kind) {
+          onWarning(kind, still) {
             setAlerts((count) => count + 1);
             setNotice(t(warningKey(kind)));
             void apiFetch(`/api/student/exams/sessions/${session.id}/events`, {
               method: "POST",
-              body: JSON.stringify({ kind }),
+              body: JSON.stringify({ kind, still: still ?? null }),
             }).catch(() => {});
           },
         });
@@ -422,6 +422,7 @@ function VisorStage(props: {
     t("exam.ruleTab"),
     t("exam.ruleVoice"),
     t("exam.ruleMouth"),
+    t("exam.ruleSecondFace"),
   ];
 
   return (
@@ -628,9 +629,10 @@ function NoiseMeter(props: { hudRef: RefObject<Hud>; label: string; lowLabel: st
   );
 }
 
-function warningKey(kind: ExamWarning): "exam.warnNoise" | "exam.warnVoice" | "exam.warnFace" | "exam.warnMouth" {
+function warningKey(kind: ExamWarning): "exam.warnNoise" | "exam.warnVoice" | "exam.warnFace" | "exam.warnMouth" | "exam.warnSecondFace" {
   if (kind === "NOISE") return "exam.warnNoise";
   if (kind === "SECOND_VOICE") return "exam.warnVoice";
   if (kind === "FACE_LEFT") return "exam.warnFace";
+  if (kind === "SECOND_FACE") return "exam.warnSecondFace";
   return "exam.warnMouth";
 }

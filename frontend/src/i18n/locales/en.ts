@@ -507,6 +507,7 @@ export const en = {
   "exam.ruleNoise": "The room should stay quiet.",
   "exam.ruleVoice": "A second voice raises a warning.",
   "exam.ruleMouth": "If your mouth moves too much, that raises a warning.",
+  "exam.ruleSecondFace": "Only one face may be in the camera. A second face is photographed for the admin.",
   "exam.needCamera": "Allow the camera and microphone to continue. Nothing is recorded.",
   "exam.cameraRetry": "Try the camera again",
   "exam.leaveWarning": "If you leave this tab, the paper is handed in.",
@@ -530,6 +531,7 @@ export const en = {
   "exam.warnVoice": "A second voice was heard.",
   "exam.warnFace": "Your face left the camera.",
   "exam.warnMouth": "You keep talking.",
+  "exam.warnSecondFace": "A second face is in the camera. A still was sent to the admin.",
   "exam.prepared": "{{name}} is prepared for the exam",
   "exam.scanning": "Scanning face",
   "exam.faceLocked": "Face locked",
@@ -608,6 +610,7 @@ export const en = {
   "adminExam.event.SECOND_VOICE": "Second voice",
   "adminExam.event.FACE_LEFT": "Face left",
   "adminExam.event.MOUTH": "Mouth moving",
+  "adminExam.event.SECOND_FACE": "Second face",
 } as const;
 
 export type MessageKey = keyof typeof en;

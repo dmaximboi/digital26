@@ -493,6 +493,7 @@ export const fr: Record<MessageKey, string> = {
   "exam.ruleNoise": "La pièce doit rester calme.",
   "exam.ruleVoice": "Une deuxième voix crée un avertissement.",
   "exam.ruleMouth": "Si votre bouche bouge trop, cela crée un avertissement.",
+  "exam.ruleSecondFace": "Un seul visage peut être dans la caméra. Un second visage est photographié pour l'admin.",
   "exam.needCamera": "Autorisez la caméra et le micro pour continuer. Rien n’est enregistré.",
   "exam.cameraRetry": "Réessayer la caméra",
   "exam.leaveWarning": "Si vous quittez cet onglet, la copie est envoyée.",
@@ -516,6 +517,7 @@ export const fr: Record<MessageKey, string> = {
   "exam.warnVoice": "Une deuxième voix a été entendue.",
   "exam.warnFace": "Votre visage a quitté la caméra.",
   "exam.warnMouth": "Vous parlez trop.",
+  "exam.warnSecondFace": "Un second visage est dans la caméra. Une image a été envoyée à l'admin.",
   "exam.prepared": "{{name}} est prêt pour l’examen",
   "exam.scanning": "Analyse du visage",
   "exam.faceLocked": "Visage verrouillé",
@@ -594,4 +596,5 @@ export const fr: Record<MessageKey, string> = {
   "adminExam.event.SECOND_VOICE": "Deuxième voix",
   "adminExam.event.FACE_LEFT": "Visage parti",
   "adminExam.event.MOUTH": "Bouche qui bouge",
+  "adminExam.event.SECOND_FACE": "Second visage",
 };

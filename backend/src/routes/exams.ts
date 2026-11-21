@@ -39,6 +39,7 @@ const answersSchema = z.object({
 
 const eventSchema = z.object({
   kind: z.nativeEnum(ExamEventKind),
+  still: z.string().max(700_000).optional().nullable(),
 });
 
 const gradeSchema = z.object({
@@ -326,8 +327,12 @@ examsRouter.post("/student/exams/sessions/:sessionId/events", requireAuth, async
       },
     });
     if (!recent) {
+      const still =
+        parsed.data.kind === "SECOND_FACE" && parsed.data.still?.startsWith("data:image/")
+          ? parsed.data.still
+          : null;
       await prisma.examEvent.create({
-        data: { sessionId: session.id, kind: parsed.data.kind },
+        data: { sessionId: session.id, kind: parsed.data.kind, still },
       });
     }
     res.json({ ok: true });
@@ -745,6 +750,7 @@ examsRouter.get("/ops/examinations/:id/sessions/:sessionId", requireAdmin, async
         feedback: session.feedback,
         events: session.events.map((event) => ({
           kind: event.kind,
+          still: event.still,
           createdAt: event.createdAt.toISOString(),
         })),
         questions: session.examination.questions.map((q) => ({

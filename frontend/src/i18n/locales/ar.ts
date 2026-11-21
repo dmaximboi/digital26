@@ -493,6 +493,7 @@ export const ar: Record<MessageKey, string> = {
   "exam.ruleNoise": "يجب أن تبقى الغرفة هادئة.",
   "exam.ruleVoice": "صوت ثانٍ يسجّل تنبيهاً.",
   "exam.ruleMouth": "إذا تحرّك فمك كثيراً يُسجَّل تنبيه.",
+  "exam.ruleSecondFace": "وجه واحد فقط في الكاميرا. الوجه الثاني يُصوَّر للمشرف.",
   "exam.needCamera": "اسمح بالكاميرا والميكروفون للمتابعة. لا يُحفظ تسجيل.",
   "exam.cameraRetry": "أعد محاولة الكاميرا",
   "exam.leaveWarning": "إذا غادرت هذا التبويب تُسلَّم الورقة.",
@@ -516,6 +517,7 @@ export const ar: Record<MessageKey, string> = {
   "exam.warnVoice": "سُمع صوت ثانٍ.",
   "exam.warnFace": "خرج وجهك من الكاميرا.",
   "exam.warnMouth": "تتحدث كثيراً.",
+  "exam.warnSecondFace": "يوجد وجه ثانٍ في الكاميرا. أُرسلت لقطة للمشرف.",
   "exam.prepared": "{{name}} مستعد للامتحان",
   "exam.scanning": "مسح الوجه",
   "exam.faceLocked": "تم تثبيت الوجه",
@@ -594,4 +596,5 @@ export const ar: Record<MessageKey, string> = {
   "adminExam.event.SECOND_VOICE": "صوت ثانٍ",
   "adminExam.event.FACE_LEFT": "الوجه غادر",
   "adminExam.event.MOUTH": "الفم يتحرك",
+  "adminExam.event.SECOND_FACE": "وجه ثانٍ",
 };

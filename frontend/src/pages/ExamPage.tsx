@@ -104,6 +104,7 @@ export function ExamPage() {
         <li>{t("exam.ruleNoise")}</li>
         <li>{t("exam.ruleVoice")}</li>
         <li>{t("exam.ruleMouth")}</li>
+        <li>{t("exam.ruleSecondFace")}</li>
       </ul>
       {error && <p className="status error">{error}</p>}
       <div className="exam-board__list">

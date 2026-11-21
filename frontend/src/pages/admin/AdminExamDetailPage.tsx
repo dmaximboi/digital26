@@ -43,7 +43,7 @@ type Submission = {
   score: string | null;
   maxScore: string | null;
   feedback: string | null;
-  events: { kind: string; createdAt: string }[];
+  events: { kind: string; createdAt: string; still?: string | null }[];
   questions: { id: string; prompt: string; marks: number; response: string; choice?: string; choices?: string[] }[];
 };
 
@@ -498,6 +498,9 @@ export function AdminExamDetailPage() {
                   <li key={`${event.kind}-${index}`}>
                     {t(eventKey(event.kind))}
                     <span>{new Date(event.createdAt).toLocaleString()}</span>
+                    {event.still && (
+                      <img className="exam-still" src={event.still} alt={t("adminExam.event.SECOND_FACE")} />
+                    )}
                   </li>
                 ))}
               </ul>
@@ -538,10 +541,11 @@ function sessionLabel(status: SessionRow["status"], t: (key: MessageKey) => stri
   return t("adminExam.session.IN_PROGRESS");
 }
 
-function eventKey(kind: string): "adminExam.event.TAB_LEFT" | "adminExam.event.NOISE" | "adminExam.event.SECOND_VOICE" | "adminExam.event.FACE_LEFT" | "adminExam.event.MOUTH" {
+function eventKey(kind: string): "adminExam.event.TAB_LEFT" | "adminExam.event.NOISE" | "adminExam.event.SECOND_VOICE" | "adminExam.event.FACE_LEFT" | "adminExam.event.MOUTH" | "adminExam.event.SECOND_FACE" {
   if (kind === "NOISE") return "adminExam.event.NOISE";
   if (kind === "SECOND_VOICE") return "adminExam.event.SECOND_VOICE";
   if (kind === "FACE_LEFT") return "adminExam.event.FACE_LEFT";
   if (kind === "MOUTH") return "adminExam.event.MOUTH";
+  if (kind === "SECOND_FACE") return "adminExam.event.SECOND_FACE";
   return "adminExam.event.TAB_LEFT";
 }
