@@ -5143,6 +5143,7 @@ html[dir="rtl"] .visor-paper {
 }
 .board-qcount { margin: 0; color: var(--board); font-size: 0.85rem; }
 .board-question h2 { margin: 0.35rem 0 0.6rem; font-family: Caveat, "Segoe Script", cursive; font-size: 1.7rem; line-height: 1.15; color: #d9ffe4; font-weight: 500; }
+.board-wait { margin: 0; font-size: 1.02rem; line-height: 1.45; color: #f3fff6; }
 html[dir="rtl"] .board-question h2 { font-family: "Noto Sans Arabic", sans-serif; }
 .board-question textarea {
   width: 100%; resize: vertical; min-height: 4.5rem;

@@ -30,7 +30,7 @@ type SessionView = {
 
 const API_BASE = import.meta.env.VITE_API_URL?.replace(/\/$/, "") || "";
 
-type Phase = "scan" | "brief" | "paper";
+type Phase = "scan" | "paper";
 
 type Hud = ExamPulse;
 
@@ -44,6 +44,9 @@ export function ExamRoomPage() {
   const skipLeave = useRef(false);
   const done = useRef(false);
   const armedRef = useRef(false);
+  const watchRef = useRef<{ setLive: (on: boolean) => void } | null>(null);
+  const phaseRef = useRef<Phase>("scan");
+  const faceHold = useRef(0);
   const [session, setSession] = useState<SessionView | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [picks, setPicks] = useState<Record<string, string>>({});
@@ -53,11 +56,13 @@ export function ExamRoomPage() {
   const [armed, setArmed] = useState(false);
   armedRef.current = armed;
   const [faceOn, setFaceOn] = useState(false);
+  const [faceError, setFaceError] = useState("");
   const [notice, setNotice] = useState("");
   const [now, setNow] = useState(Date.now());
   const [saved, setSaved] = useState(false);
   const [mediaTry, setMediaTry] = useState(0);
   const [phase, setPhase] = useState<Phase>("scan");
+  phaseRef.current = phase;
   const [faceLocked, setFaceLocked] = useState(false);
   const [alerts, setAlerts] = useState(0);
   const hudRef = useRef<Hud>({ level: 0, bars: Array(24).fill(0.05), face: null });
@@ -113,6 +118,9 @@ export function ExamRoomPage() {
           return;
         }
         stream = next;
+        faceHold.current = 0;
+        setFaceError("");
+        setFaceOn(false);
         const video = videoRef.current;
         const pip = pipRef.current;
         for (const node of [video, pip]) {
@@ -125,10 +133,23 @@ export function ExamRoomPage() {
           video: video ?? document.createElement("video"),
           onPulse(pulse) {
             hudRef.current = pulse;
-            if (pulse.face) setFaceLocked(true);
+            const seen = Boolean(pulse.face);
+            setFaceLocked(seen);
+            if (!seen) {
+              faceHold.current = 0;
+              return;
+            }
+            const stamp = Date.now();
+            if (!faceHold.current) faceHold.current = stamp;
+            if (phaseRef.current === "scan" && stamp - faceHold.current >= 1200) {
+              phaseRef.current = "paper";
+              setPhase("paper");
+              watchRef.current?.setLive(true);
+            }
           },
           onFaceReady(supported) {
             setFaceOn(supported);
+            setFaceError(supported ? "" : t("exam.faceFailed"));
           },
           onWarning(kind) {
             setAlerts((count) => count + 1);
@@ -139,6 +160,7 @@ export function ExamRoomPage() {
             }).catch(() => {});
           },
         });
+        watchRef.current = watch;
         stopWatch = watch.stop;
         setPhase("scan");
         setFaceLocked(false);
@@ -151,30 +173,14 @@ export function ExamRoomPage() {
 
     return () => {
       cancelled = true;
+      watchRef.current = null;
       stopWatch();
       stream?.getTracks().forEach((track) => track.stop());
     };
   }, [session?.id, session?.status, mediaTry, t]);
 
   useEffect(() => {
-    if (!armed || phase !== "scan") return;
-    if (faceLocked) {
-      const id = window.setTimeout(() => setPhase("brief"), 1700);
-      return () => window.clearTimeout(id);
-    }
-    const wait = faceOn ? 8000 : 2800;
-    const id = window.setTimeout(() => setPhase("brief"), wait);
-    return () => window.clearTimeout(id);
-  }, [armed, faceLocked, faceOn, phase]);
-
-  useEffect(() => {
-    if (phase !== "brief") return;
-    const id = window.setTimeout(() => setPhase("paper"), 8000);
-    return () => window.clearTimeout(id);
-  }, [phase]);
-
-  useEffect(() => {
-    if (!armed || !faceOn) {
+    if (!armed || !faceOn || phase !== "paper") {
       setFaceAway(false);
       return;
     }
@@ -182,7 +188,7 @@ export function ExamRoomPage() {
       setFaceAway(!hudRef.current?.face);
     }, 400);
     return () => window.clearInterval(id);
-  }, [armed, faceOn, hudRef]);
+  }, [armed, faceOn, phase, hudRef]);
 
   useEffect(() => {
     if (!session || session.status !== "IN_PROGRESS") return;
@@ -359,6 +365,7 @@ export function ExamRoomPage() {
         onAnswer={(id, value) => setAnswers((current) => ({ ...current, [id]: value }))}
         onPick={(id, value) => setPicks((current) => ({ ...current, [id]: value }))}
         faceAway={faceAway}
+        faceError={faceError}
         phase={phase}
         faceLocked={faceLocked}
         faceOn={faceOn}
@@ -371,7 +378,6 @@ export function ExamRoomPage() {
         error={error}
         mediaError={mediaError}
         onRetry={() => setMediaTry((n) => n + 1)}
-        onBegin={() => setPhase("paper")}
         onSubmit={() => void submitNow()}
         submitDisabled={!armed || done.current}
         t={t}
@@ -418,6 +424,7 @@ function VisorStage(props: {
   onAnswer: (id: string, value: string) => void;
   onPick: (id: string, value: string) => void;
   faceAway: boolean;
+  faceError: string;
   phase: Phase;
   faceLocked: boolean;
   faceOn: boolean;
@@ -430,7 +437,6 @@ function VisorStage(props: {
   error: string;
   mediaError: string;
   onRetry: () => void;
-  onBegin: () => void;
   onSubmit: () => void;
   submitDisabled: boolean;
   t: ReturnType<typeof useT>;
@@ -492,16 +498,11 @@ function VisorStage(props: {
           {props.faceAway && <p className="board-face-alert">{t("exam.warnFace")}</p>}
           {props.phase !== "paper" && (
             <div className="board-question">
-              <p className="board-qcount">{props.faceLocked ? t("exam.faceOk") : t("exam.scanning")}</p>
-              <h2>{t("exam.prepared", { name: props.name })}</h2>
-              {props.instructions && <p>{props.instructions}</p>}
+              <p className="board-wait">
+                {props.faceError || (props.faceOn ? t("exam.look") : t("exam.faceMissing"))}
+              </p>
               {props.mediaError && <p>{props.mediaError}</p>}
-              {props.phase === "brief" && (
-                <button type="button" className="board-next" onClick={props.onBegin}>
-                  {t("exam.begin")}
-                </button>
-              )}
-              {props.mediaError && (
+              {(props.mediaError || props.faceError) && (
                 <button type="button" className="board-next" onClick={props.onRetry}>
                   {t("exam.cameraRetry")}
                 </button>

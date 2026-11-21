@@ -6,7 +6,7 @@ export type ExamPulse = { level: number; bars: number[]; face: ExamFace | null }
 
 type Landmark = { x: number; y: number };
 type FaceRunner = {
-  detectForVideo: (video: HTMLVideoElement, timestamp: number) => {
+  detect: (image: HTMLCanvasElement) => {
     faceLandmarks: Landmark[][];
     faceBlendshapes: { categories: { categoryName: string; score: number }[] }[];
   };
@@ -32,20 +32,27 @@ export function watchExam(opts: {
   video: HTMLVideoElement;
   onWarning: (kind: ExamWarning) => void;
   onPulse?: (pulse: ExamPulse) => void;
-  onFaceReady?: (supported: boolean) => void;
-}): { stop: () => void; faceSupported: boolean } {
+  onFaceReady?: (supported: boolean, reason?: string) => void;
+}): { stop: () => void; faceSupported: boolean; setLive: (on: boolean) => void } {
   const audioCtx = new AudioContext();
   const source = audioCtx.createMediaStreamSource(opts.stream);
   const analyser = audioCtx.createAnalyser();
-  analyser.fftSize = 2048;
+  analyser.fftSize = 4096;
+  analyser.smoothingTimeConstant = 0.86;
   source.connect(analyser);
+  void audioCtx.resume().catch(() => {});
   const time = new Uint8Array(analyser.fftSize);
   const freq = new Uint8Array(analyser.frequencyBinCount);
   const binHz = audioCtx.sampleRate / analyser.fftSize;
 
   let landmarker: FaceRunner | null = null;
-  let lastVideoTs = 0;
-  const mouthSamples: number[] = [];
+  let live = false;
+  let lastOpen = 0;
+  let mouthMotion = 0;
+  const canvas = document.createElement("canvas");
+  canvas.width = 480;
+  canvas.height = 360;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
   const base = "/mediapipe";
   void import("@mediapipe/tasks-vision")
@@ -58,12 +65,12 @@ export function watchExam(opts: {
           modelAssetPath: `${base}/face_landmarker.task`,
           delegate: "CPU",
         },
-        runningMode: "VIDEO",
+        runningMode: "IMAGE",
         numFaces: 1,
         outputFaceBlendshapes: true,
-        minFaceDetectionConfidence: 0.4,
-        minFacePresenceConfidence: 0.4,
-        minTrackingConfidence: 0.4,
+        minFaceDetectionConfidence: 0.35,
+        minFacePresenceConfidence: 0.35,
+        minTrackingConfidence: 0.35,
       });
       if (stopped) {
         created.close();
@@ -72,8 +79,8 @@ export function watchExam(opts: {
       landmarker = created;
       opts.onFaceReady?.(true);
     })
-    .catch(() => {
-      if (!stopped) opts.onFaceReady?.(false);
+    .catch((err: unknown) => {
+      if (!stopped) opts.onFaceReady?.(false, err instanceof Error ? err.message : "Face check failed");
     });
 
   const lastSent: Partial<Record<ExamWarning, number>> = {};
@@ -87,6 +94,7 @@ export function watchExam(opts: {
   let pulseTimer = 0;
 
   function emit(kind: ExamWarning, now: number) {
+    if (!live) return;
     const prev = lastSent[kind] ?? 0;
     const wait = kind === "FACE_LEFT" ? 8_000 : 20_000;
     if (now - prev < wait) return;
@@ -107,30 +115,44 @@ export function watchExam(opts: {
 
   function twoVoices(): boolean {
     analyser.getByteFrequencyData(freq);
-    const peaks: { hz: number; mag: number }[] = [];
-    const minBin = Math.max(1, Math.floor(85 / binHz));
-    const maxBin = Math.min(freq.length - 2, Math.floor(450 / binHz));
-    for (let i = minBin; i <= maxBin; i++) {
-      const mag = freq[i] ?? 0;
-      const left = freq[i - 1] ?? 0;
-      const right = freq[i + 1] ?? 0;
-      if (mag > 145 && mag >= left && mag >= right) {
-        peaks.push({ hz: i * binHz, mag });
+    const smooth = new Float32Array(freq.length);
+    for (let i = 0; i < freq.length; i++) {
+      let acc = 0;
+      let count = 0;
+      for (let k = -4; k <= 4; k++) {
+        const value = freq[i + k];
+        if (value == null) continue;
+        acc += value;
+        count += 1;
       }
+      smooth[i] = count ? acc / count : 0;
+    }
+    const minBin = Math.max(2, Math.floor(85 / binHz));
+    const maxBin = Math.min(freq.length - 3, Math.floor(380 / binHz));
+    const peaks: { index: number; hz: number; mag: number }[] = [];
+    for (let i = minBin; i <= maxBin; i++) {
+      const mag = smooth[i] ?? 0;
+      if (mag < 70) continue;
+      if (mag < (smooth[i - 1] ?? 0) || mag <= (smooth[i + 1] ?? 0)) continue;
+      peaks.push({ index: i, hz: i * binHz, mag });
     }
     peaks.sort((a, b) => b.mag - a.mag);
-    const chosen: { hz: number; mag: number }[] = [];
-    for (const peak of peaks) {
-      const near = chosen.some((item) => Math.abs(item.hz - peak.hz) < 30);
-      const harmonic = chosen.some((item) => {
-        const ratio = peak.hz / item.hz;
-        return (ratio > 1.85 && ratio < 2.2) || (ratio > 2.8 && ratio < 3.25);
-      });
-      if (near || harmonic) continue;
-      chosen.push(peak);
-      if (chosen.length === 2) break;
-    }
-    return chosen.length >= 2 && (chosen[1]?.mag ?? 0) > 140;
+    const top = peaks[0];
+    const next = peaks[1];
+    if (!top || !next) return false;
+    const strong = peaks.filter((peak) => peak.mag > top.mag * 0.45).length;
+    if (strong > 3) return false;
+    if (next.mag < top.mag * 0.62) return false;
+    const gap = Math.abs(top.hz - next.hz);
+    if (gap < 50 || gap > 260) return false;
+    const ratio = Math.max(top.hz, next.hz) / Math.max(1, Math.min(top.hz, next.hz));
+    const harmonic = [1.5, 2, 2.5, 3, 3.5, 4].some((step) => Math.abs(ratio - step) < 0.14);
+    if (harmonic) return false;
+    const lo = Math.min(top.index, next.index);
+    const hi = Math.max(top.index, next.index);
+    let valley = top.mag;
+    for (let i = lo + 1; i < hi; i++) valley = Math.min(valley, smooth[i] ?? valley);
+    return valley < next.mag * 0.48;
   }
 
   async function tick() {
@@ -143,18 +165,18 @@ export function watchExam(opts: {
 
     if (twoVoices()) voiceSince = voiceSince ?? now;
     else voiceSince = null;
-    if (voiceSince && now - voiceSince > 1500) emit("SECOND_VOICE", now);
+    if (voiceSince && now - voiceSince > 3200) emit("SECOND_VOICE", now);
 
-    if (landmarker && opts.video.readyState >= 2 && opts.video.videoWidth > 0) {
-      const stamp = Math.max(lastVideoTs + 1, Math.round(performance.now()));
-      lastVideoTs = stamp;
+    if (landmarker && ctx && opts.video.readyState >= 2 && opts.video.videoWidth > 0) {
       try {
-        const found = landmarker.detectForVideo(opts.video, stamp);
+        ctx.drawImage(opts.video, 0, 0, canvas.width, canvas.height);
+        const found = landmarker.detect(canvas);
         const marks = found.faceLandmarks[0];
         if (!marks || marks.length < 300) {
           faceSince = faceSince ?? now;
           mouthSince = null;
-          mouthSamples.length = 0;
+          mouthMotion = 0;
+          lastOpen = 0;
           lastFace = null;
         } else {
           faceSince = null;
@@ -169,14 +191,14 @@ export function watchExam(opts: {
             if (point.y > maxY) maxY = point.y;
           }
           lastFace = { x: minX, y: minY, w: Math.max(0.02, maxX - minX), h: Math.max(0.02, maxY - minY) };
-          const jaw = found.faceBlendshapes[0]?.categories.find((item) => item.categoryName === "jawOpen")?.score;
-          const open = jaw ?? lipOpen(marks);
-          mouthSamples.push(open);
-          if (mouthSamples.length > 8) mouthSamples.shift();
-          const swing = Math.max(...mouthSamples) - Math.min(...mouthSamples);
-          if (mouthSamples.length >= 5 && swing > 0.18) mouthSince = mouthSince ?? now;
+          const jaw = found.faceBlendshapes[0]?.categories.find((item) => item.categoryName === "jawOpen")?.score ?? 0;
+          const open = Math.max(jaw, lipOpen(marks));
+          const delta = lastOpen ? Math.abs(open - lastOpen) : 0;
+          lastOpen = open;
+          mouthMotion = mouthMotion * 0.72 + delta;
+          if (mouthMotion > 0.08) mouthSince = mouthSince ?? now;
           else mouthSince = null;
-          if (mouthSince && now - mouthSince > 2000) emit("MOUTH", now);
+          if (mouthSince && now - mouthSince > 1400) emit("MOUTH", now);
         }
         if (faceSince && now - faceSince > 1000) emit("FACE_LEFT", now);
       } catch {
@@ -218,13 +240,23 @@ export function watchExam(opts: {
 
   timer = window.setInterval(() => {
     void tick();
-  }, 700);
+  }, 400);
   if (opts.onPulse) {
     pulseTimer = window.setInterval(pulse, 90);
   }
 
   return {
     faceSupported: false,
+    setLive(on: boolean) {
+      live = on;
+      if (!on) {
+        faceSince = null;
+        mouthSince = null;
+        voiceSince = null;
+        noiseSince = null;
+        mouthMotion = 0;
+      }
+    },
     stop() {
       stopped = true;
       window.clearInterval(timer);
